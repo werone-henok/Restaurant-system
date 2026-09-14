@@ -1,0 +1,208 @@
+export type Language = 'en' | 'am';
+
+export const translations: Record<Language, Record<string, string>> = {
+  en: {
+    // App Header & Common
+    app_title: 'GourmetOS Restaurant',
+    online: 'Online',
+    offline: 'Offline',
+    syncing: 'Syncing...',
+    synced: 'Synced',
+    branch: 'Branch',
+    all_branches: 'Consolidated (All Branches)',
+    welcome_back: 'Welcome back',
+    logout: 'Logout',
+    currency: 'ETB',
+    table: 'Table',
+    order: 'Order',
+    status: 'Status',
+    actions: 'Actions',
+    cancel: 'Cancel',
+    confirm: 'Confirm',
+    save: 'Save',
+    close: 'Close',
+    back: 'Back',
+    notes: 'Notes',
+
+    // Role Navigation
+    nav_dashboard: 'Dashboard',
+    nav_new_order: 'New Order',
+    nav_tables: 'Tables',
+    nav_orders: 'Orders',
+    nav_kitchen: 'Kitchen KDS',
+    nav_bar: 'Bar Queue',
+    nav_payments: 'Payments',
+    nav_inventory: 'Inventory',
+    nav_movements: 'Stock Flow',
+    nav_reports: 'Reports',
+    nav_admin: 'Admin Console',
+    nav_profile: 'Profile',
+
+    // Order Statuses
+    status_PENDING_CASHIER: 'Pending Cashier',
+    status_CONFIRMED: 'Confirmed',
+    status_PREPARING: 'Preparing',
+    status_PARTIALLY_READY: 'Partially Ready',
+    status_READY: 'Ready for Delivery',
+    status_DELIVERED: 'Delivered to Table',
+    status_COMPLETED: 'Paid & Completed',
+    status_CANCELLED: 'Cancelled',
+
+    // Waiter View
+    select_table: 'Select Table',
+    dine_in: 'Dine-in',
+    takeaway: 'Takeaway',
+    delivery: 'Delivery',
+    add_to_order: 'Add to Order',
+    special_instructions: 'Special instructions / preparation notes',
+    place_order_btn: 'Send Order to Cashier',
+    cart_empty: 'No items in order yet',
+    mark_delivered: 'Mark as Delivered',
+
+    // Cashier View
+    cashier_review_orders: 'Review Incoming Orders',
+    confirm_and_route: 'Confirm & Route to Kitchen/Bar',
+    discount: 'Discount',
+    subtotal: 'Subtotal',
+    tax_vat: 'VAT (15%)',
+    total: 'Total',
+    process_payment: 'Process Settlement & Print',
+    payment_method: 'Payment Method',
+    cash: 'Cash',
+    telebirr: 'Telebirr',
+    cbe_birr: 'CBE Birr',
+    card: 'Card / POS',
+    split_payment: 'Split Payment (Multiple Methods)',
+    print_receipt: 'Print Official Receipt',
+
+    // Chef View
+    kitchen_display: 'Kitchen Production Display',
+    mark_preparing: 'Start Preparing',
+    mark_ready: 'Mark Item Ready',
+    no_food_orders: 'No pending kitchen food tickets',
+
+    // Barista View
+    bar_display: 'Beverage & Coffee Bar Display',
+    no_bar_orders: 'No pending beverage orders',
+
+    // Storekeeper View
+    store_management: 'Inventory & Stock Room',
+    receive_goods: 'Receive Goods',
+    record_waste: 'Record Waste / Spoilage',
+    min_stock: 'Min Stock',
+    current_stock: 'Current Stock',
+    low_stock_warning: 'LOW STOCK ALERT',
+    capture_photo: 'Capture Shelf / Item Photo',
+
+    // Owner / Admin Dashboard
+    today_sales: "Today's Total Sales",
+    today_expenses: "Today's Expenses",
+    estimated_profit: 'Net Gross Profit',
+    total_orders: 'Total Orders',
+    top_selling_items: 'Top Selling Items',
+    waiter_performance: 'Waiter Performance',
+    branch_comparison: 'Branch Comparison'
+  },
+  am: {
+    // App Header & Common
+    app_title: 'ጎርሜትኦኤስ ሬስቶራንት',
+    online: 'ኦንላይን',
+    offline: 'ከመስመር ውጭ (ኦፍላይን)',
+    syncing: 'በማመሳሰል ላይ...',
+    synced: 'ተመሳስሏል',
+    branch: 'ቅርንጫፍ',
+    all_branches: 'የሁሉም ቅርንጫፎች ጥቅል ሪፖርት',
+    welcome_back: 'እንኳን ደህና መጡ',
+    logout: 'ውጣ',
+    currency: 'ብር',
+    table: 'ጠረጴዛ',
+    order: 'ትዕዛዝ',
+    status: 'ሁኔታ',
+    actions: 'እርምጃዎች',
+    cancel: 'ሰርዝ',
+    confirm: 'አረጋግጥ',
+    save: 'አስቀምጥ',
+    close: 'ዝጋ',
+    back: 'ተመለስ',
+    notes: 'ማስታወሻ',
+
+    // Role Navigation
+    nav_dashboard: 'ዳሽቦርድ',
+    nav_new_order: 'አዲስ ትዕዛዝ',
+    nav_tables: 'ጠረጴዛዎች',
+    nav_orders: 'ትዕዛዞች',
+    nav_kitchen: 'ኩሽና (ምግብ ቤት)',
+    nav_bar: 'ባር (መጠጥ)',
+    nav_payments: 'ክፍያዎች',
+    nav_inventory: 'ዕቃ ግምጃ ቤት',
+    nav_movements: 'የዕቃ እንቅስቃሴ',
+    nav_reports: 'ሪፖርቶች',
+    nav_admin: 'አስተዳደር',
+    nav_profile: 'መገለጫ',
+
+    // Order Statuses
+    status_PENDING_CASHIER: 'ካሺየር ማረጋገጫ በመጠባበቅ ላይ',
+    status_CONFIRMED: 'ትዕዛዙ ተረጋግጧል',
+    status_PREPARING: 'በመዘጋጀት ላይ',
+    status_PARTIALLY_READY: 'በከፊል ተዘጋጅቷል',
+    status_READY: 'ሊቀርብ ዝግጁ ነው',
+    status_DELIVERED: 'ለደንበኛው ቀርቧል',
+    status_COMPLETED: 'ክፍያ ተጠናቋል',
+    status_CANCELLED: 'ተሰርዟል',
+
+    // Waiter View
+    select_table: 'ጠረጴዛ ይምረጡ',
+    dine_in: 'እዚሁ መመገብ',
+    takeaway: 'ይዞ መሄድ',
+    delivery: 'ማድረስ',
+    add_to_order: 'ወደ ትዕዛዝ ጨምር',
+    special_instructions: 'ልዩ የአዘገጃጀት መመሪያ ወይም ማስታወሻ',
+    place_order_btn: 'ትዕዛዙን ለካሺየር ላክ',
+    cart_empty: 'ምንም የተመረጠ ምግብ የለም',
+    mark_delivered: 'ለደንበኛው ደርሷል',
+
+    // Cashier View
+    cashier_review_orders: 'የገቡ ትዕዛዞችን ይገምግሙ',
+    confirm_and_route: 'አረጋግጥና ወደ ኩሽና/ባር ላክ',
+    discount: 'ቅናሽ',
+    subtotal: 'ንዑስ ድምር',
+    tax_vat: 'ተ.እ.ታ (15%)',
+    total: 'ጠቅላላ ክፍያ',
+    process_payment: 'ክፍያ ተቀበልና ደረሰኝ አትም',
+    payment_method: 'የክፍያ ዓይነት',
+    cash: 'ጥሬ ገንዘብ',
+    telebirr: 'ቴሌብር',
+    cbe_birr: 'ሲቢኢ ብር',
+    card: 'ባንክ ካርድ / ፖስ',
+    split_payment: 'የተከፈለ ክፍያ (በጥሬ ገንዘብና በቴሌብር)',
+    print_receipt: 'ደረሰኝ አትም',
+
+    // Chef View
+    kitchen_display: 'የኩሽና የትዕዛዝ ማሳያ',
+    mark_preparing: 'ማዘጋጀት ጀምር',
+    mark_ready: 'ተዘጋጅቶ አልቋል',
+    no_food_orders: 'በኩሽና የሚጠበቅ የምግብ ትዕዛዝ የለም',
+
+    // Barista View
+    bar_display: 'የባሪስታ (መጠጥና ቡና) ማሳያ',
+    no_bar_orders: 'የሚጠበቅ የመጠጥ ትዕዛዝ የለም',
+
+    // Storekeeper View
+    store_management: 'የዕቃና ግብዓት ክምችት ቁጥጥር',
+    receive_goods: 'አዲስ ዕቃ ተቀበል',
+    record_waste: 'ብልሽት / ብክነት መዝግብ',
+    min_stock: 'ዝቅተኛው መጠን',
+    current_stock: 'አሁን ያለ ክምችት',
+    low_stock_warning: 'ክምችቱ ሊያልቅ ተቃርቧል!',
+    capture_photo: 'የመደርደሪያ / የዕቃ ፎቶ አንሳ',
+
+    // Owner / Admin Dashboard
+    today_sales: 'የዛሬ አጠቃላይ ሽያጭ',
+    today_expenses: 'የዛሬ ወጪዎች',
+    estimated_profit: 'የተጣራ ትርፍ',
+    total_orders: 'አጠቃላይ ትዕዛዞች',
+    top_selling_items: 'በብዛት የተሸጡ ምግቦች',
+    waiter_performance: 'የአስተናጋጆች አፈጻጸም',
+    branch_comparison: 'የቅርንጫፎች ንፅፅር'
+  }
+};
