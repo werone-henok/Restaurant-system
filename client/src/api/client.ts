@@ -1,5 +1,5 @@
-const API_BASE = 'http://localhost:4000/api';
-const WS_BASE = 'ws://localhost:4000/ws';
+const API_BASE_URL = 'https://gourmetos-api.onrender.com/api';
+const WS_BASE = API_BASE_URL.replace(/^http/, 'ws').replace(/\/api$/, '/ws');
 
 export interface SyncItem {
   id: string;
@@ -36,7 +36,7 @@ class ApiClient {
 
   initWebSocket() {
     if (this.ws) {
-      try { this.ws.close(); } catch (e) {}
+      try { this.ws.close(); } catch (e) { }
     }
 
     const url = this.token ? `${WS_BASE}?token=${this.token}` : WS_BASE;
@@ -78,7 +78,7 @@ class ApiClient {
     const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method?.toUpperCase() || 'GET');
 
     try {
-      const response = await fetch(`${API_BASE}${endpoint}`, {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
         headers
       });
