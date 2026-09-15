@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://gourmetos-api.onrender.com/api';
+const API_BASE_URL = 'https://restaurant-system-ipd2.onrender.com/api';
 const WS_BASE = API_BASE_URL.replace(/^http/, 'ws').replace(/\/api$/, '/ws');
 
 export interface SyncItem {
