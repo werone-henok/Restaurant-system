@@ -56,8 +56,8 @@ authRouter.post('/login', (req, res) => {
       branch_id: user.branch_id,
       full_name: user.full_name
     },
-    CONFIG.JWT_SECRET,
-    { expiresIn: CONFIG.JWT_EXPIRES_IN }
+    CONFIG.JWT_SECRET as string,
+    { expiresIn: '7d' }
   );
 
   // Get user custom permissions

@@ -2,6 +2,7 @@
   "name": "restaurant-system-server",
   "version": "1.0.0",
   "description": "Backend API and WebSocket engine for Multi-Branch Restaurant Management System",
+  "type": "module",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
