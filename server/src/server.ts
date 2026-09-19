@@ -40,11 +40,32 @@ async function bootstrap() {
   setupWebSocket(wss);
 
   // ── Security headers ──────────────────────────────────────────────
-  app.use(helmet());
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' }
+  }));
 
   // ── CORS ──────────────────────────────────────────────────────────
-  // CONFIG.CORS_ORIGINS is already a string[] from env.ts
-  app.use(cors({ origin: CONFIG.CORS_ORIGINS, credentials: true }));
+  const allowedOrigins = new Set(CONFIG.CORS_ORIGINS);
+  app.use(cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile native apps, curl, Postman)
+      if (!origin) return callback(null, true);
+
+      if (
+        allowedOrigins.has(origin) ||
+        origin.startsWith('http://localhost') ||
+        origin.startsWith('https://localhost') ||
+        origin.startsWith('capacitor://') ||
+        origin.startsWith('ionic://') ||
+        origin.endsWith('.onrender.com')
+      ) {
+        return callback(null, true);
+      }
+
+      return callback(null, false);
+    },
+    credentials: true
+  }));
 
   // ── Body parsers ──────────────────────────────────────────────────
   app.use(express.json({ limit: '10mb' }));
