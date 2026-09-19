@@ -14,11 +14,13 @@ menuRouter.get('/categories', authenticate, (_req, res) => {
 
 // Get menu items with recipes
 menuRouter.get('/items', authenticate, (req, res) => {
+  const includeAll = req.query.all === 'true';
+  const whereClause = includeAll ? '' : 'WHERE m.is_available = 1';
   const items = db.prepare(`
     SELECT m.*, c.name as category_name 
     FROM menu_items m
     JOIN menu_categories c ON m.category_id = c.id
-    WHERE m.is_available = 1
+    ${whereClause}
     ORDER BY c.sort_order ASC, m.name ASC
   `).all() as any[];
 
@@ -53,7 +55,7 @@ menuRouter.get('/items', authenticate, (req, res) => {
 
 // Create menu item with recipe (Admin, Owner, Chef)
 menuRouter.post('/items', authenticate, authorizeRole(['admin', 'owner', 'chef']), (req: AuthenticatedRequest, res) => {
-  const { category_id, name, name_amharic, description, price, prep_time_minutes, routing_destination, ingredients, instructions } = req.body;
+  const { category_id, name, name_amharic, description, price, photo_url, prep_time_minutes, routing_destination, ingredients, instructions } = req.body;
 
   if (!category_id || !name || price === undefined || !routing_destination) {
     return res.status(400).json({ error: 'Category, name, price and routing destination (KITCHEN/BAR) are required' });
@@ -64,9 +66,9 @@ menuRouter.post('/items', authenticate, authorizeRole(['admin', 'owner', 'chef']
 
   const tx = db.transaction(() => {
     db.prepare(`
-      INSERT INTO menu_items (id, category_id, name, name_amharic, description, price, prep_time_minutes, routing_destination)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(itemId, category_id, name, name_amharic || null, description || null, price, prep_time_minutes || 15, routing_destination);
+      INSERT INTO menu_items (id, category_id, name, name_amharic, description, price, photo_url, prep_time_minutes, routing_destination)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(itemId, category_id, name, name_amharic || null, description || null, price, photo_url || null, prep_time_minutes || 15, routing_destination);
 
     if (ingredients && Array.isArray(ingredients) && ingredients.length > 0) {
       db.prepare(`INSERT INTO recipes (id, menu_item_id, instructions) VALUES (?, ?, ?)`).run(recipeId, itemId, instructions || null);
@@ -190,4 +192,67 @@ menuRouter.put('/items/:id/recipe', authenticate, authorizeRole(['admin', 'owner
 
   res.json({ message: 'Recipe updated successfully', menuItemId });
 });
+
+// Update menu item details (Admin, Owner, Chef)
+menuRouter.put('/items/:id', authenticate, authorizeRole(['admin', 'owner', 'chef']), (req: AuthenticatedRequest, res) => {
+  const { category_id, name, name_amharic, description, price, photo_url, prep_time_minutes, routing_destination, is_available } = req.body;
+  const item = db.prepare('SELECT * FROM menu_items WHERE id = ?').get(req.params.id) as any;
+  if (!item) return res.status(404).json({ error: 'Menu item not found' });
+
+  db.prepare(`
+    UPDATE menu_items
+    SET category_id = COALESCE(?, category_id),
+        name = COALESCE(?, name),
+        name_amharic = COALESCE(?, name_amharic),
+        description = COALESCE(?, description),
+        price = COALESCE(?, price),
+        photo_url = COALESCE(?, photo_url),
+        prep_time_minutes = COALESCE(?, prep_time_minutes),
+        routing_destination = COALESCE(?, routing_destination),
+        is_available = COALESCE(?, is_available)
+    WHERE id = ?
+  `).run(
+    category_id ?? null,
+    name ?? null,
+    name_amharic ?? null,
+    description ?? null,
+    price !== undefined ? Number(price) : null,
+    photo_url !== undefined ? photo_url : null,
+    prep_time_minutes !== undefined ? Number(prep_time_minutes) : null,
+    routing_destination ?? null,
+    is_available !== undefined ? (is_available ? 1 : 0) : null,
+    req.params.id
+  );
+
+  logAudit({
+    branchId: req.user!.branch_id,
+    userId: req.user!.id,
+    action: 'MENU_ITEM_UPDATED',
+    entityType: 'MENU_ITEM',
+    entityId: req.params.id,
+    details: { name: name || item.name, price: price || item.price }
+  });
+
+  res.json({ message: 'Menu item updated successfully', id: req.params.id });
+});
+
+// Delete menu item (Admin, Owner)
+menuRouter.delete('/items/:id', authenticate, authorizeRole(['admin', 'owner']), (req: AuthenticatedRequest, res) => {
+  const item = db.prepare('SELECT * FROM menu_items WHERE id = ?').get(req.params.id) as any;
+  if (!item) return res.status(404).json({ error: 'Menu item not found' });
+
+  db.prepare('DELETE FROM menu_items WHERE id = ?').run(req.params.id);
+
+  logAudit({
+    branchId: req.user!.branch_id,
+    userId: req.user!.id,
+    action: 'MENU_ITEM_DELETED',
+    entityType: 'MENU_ITEM',
+    entityId: req.params.id,
+    details: { name: item.name }
+  });
+
+  res.json({ message: 'Menu item deleted successfully' });
+});
+
 

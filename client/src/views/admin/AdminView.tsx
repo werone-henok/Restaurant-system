@@ -2,16 +2,30 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
 import { CameraCapture } from '../../components/CameraCapture';
-import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, Building2, Plus, Edit2, Trash2, Settings, Shield } from 'lucide-react';
+import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils } from 'lucide-react';
+import { gToast } from '../../utils/toast';
 
 export const AdminView: React.FC = () => {
   const { currentBranchId, branches, refreshBranches, settings, refreshSettings, t } = useApp();
-  const [activeTab, setActiveTab] = useState<'employees' | 'branches' | 'tables' | 'settings' | 'expenses' | 'audit'>('employees');
+  const [activeTab, setActiveTab] = useState<'employees' | 'branches' | 'tables' | 'settings' | 'expenses' | 'audit' | 'menu'>('employees');
   const [users, setUsers] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [tables, setTables] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Menu Management State
+  const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [showMenuModal, setShowMenuModal] = useState(false);
+  const [editingMenuItemId, setEditingMenuItemId] = useState<string | null>(null);
+  const [menuName, setMenuName] = useState('');
+  const [menuNameAmharic, setMenuNameAmharic] = useState('');
+  const [menuPrice, setMenuPrice] = useState<number>(100);
+  const [menuCategory, setMenuCategory] = useState('');
+  const [menuRouting, setMenuRouting] = useState<'KITCHEN' | 'BAR' | 'BOTH'>('KITCHEN');
+  const [menuDesc, setMenuDesc] = useState('');
+  const [menuPhoto, setMenuPhoto] = useState<string>('');
 
   // Table & Section Management State
   const [showTableModal, setShowTableModal] = useState(false);
@@ -58,6 +72,8 @@ export const AdminView: React.FC = () => {
     api.request<any[]>(`/expenses?branchId=${currentBranchId}`).then(setExpenses).catch(() => {});
     api.request<any[]>(`/admin/audit-logs?branchId=${currentBranchId}`).then(setAuditLogs).catch(() => {});
     api.request<any[]>(`/tables?branchId=${currentBranchId}`).then(setTables).catch(() => {});
+    api.request<any[]>('/menu/items?all=true').then(setMenuItems).catch(() => {});
+    api.request<any[]>('/menu/categories').then(setCategories).catch(() => {});
     refreshBranches();
   };
 
@@ -77,7 +93,7 @@ export const AdminView: React.FC = () => {
             capacity: Number(tableCapacity)
           })
         });
-        alert('Table updated successfully!');
+        gToast.success('Table updated successfully!');
       } else {
         await api.request('/tables', {
           method: 'POST',
@@ -89,7 +105,7 @@ export const AdminView: React.FC = () => {
             capacity: Number(tableCapacity)
           })
         });
-        alert('Table and Section created successfully!');
+        gToast.success('Table and Section created successfully!');
       }
       setShowTableModal(false);
       setEditingTableId(null);
@@ -98,7 +114,7 @@ export const AdminView: React.FC = () => {
       setCustomSection('');
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to save table');
+      gToast.error(err.message || 'Failed to save table');
     } finally {
       setLoading(false);
     }
@@ -108,11 +124,84 @@ export const AdminView: React.FC = () => {
     if (!window.confirm(`Are you sure you want to remove Table ${tblNum}?`)) return;
     try {
       await api.request(`/tables/${tblId}`, { method: 'DELETE' });
-      alert('Table removed successfully');
+      gToast.success('Table removed successfully');
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to delete table');
+      gToast.error(err.message || 'Failed to delete table');
     }
+  };
+
+  // Menu CRUD Handlers
+  const handleSaveMenuItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const catId = menuCategory || (categories[0]?.id || 'cat_burgers');
+    setLoading(true);
+    try {
+      if (editingMenuItemId) {
+        await api.request(`/menu/items/${editingMenuItemId}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            name: menuName,
+            name_amharic: menuNameAmharic || null,
+            category_id: catId,
+            price: Number(menuPrice),
+            routing_destination: menuRouting,
+            description: menuDesc,
+            photo_url: menuPhoto.trim() || null
+          })
+        });
+        gToast.success('Menu item updated successfully!');
+      } else {
+        await api.request('/menu/items', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: menuName,
+            name_amharic: menuNameAmharic || null,
+            category_id: catId,
+            price: Number(menuPrice),
+            routing_destination: menuRouting,
+            description: menuDesc,
+            photo_url: menuPhoto.trim() || null
+          })
+        });
+        gToast.success('Menu item created successfully!');
+      }
+      setShowMenuModal(false);
+      setEditingMenuItemId(null);
+      setMenuName('');
+      setMenuNameAmharic('');
+      setMenuPrice(100);
+      setMenuDesc('');
+      setMenuPhoto('');
+      loadData();
+    } catch (err: any) {
+      gToast.error(err.message || 'Failed to save menu item');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteMenuItem = async (itemId: string, itemName: string) => {
+    if (!window.confirm(`Are you sure you want to delete "${itemName}"?`)) return;
+    try {
+      await api.request(`/menu/items/${itemId}`, { method: 'DELETE' });
+      gToast.success('Menu item deleted successfully');
+      loadData();
+    } catch (err: any) {
+      gToast.error(err.message || 'Failed to delete menu item');
+    }
+  };
+
+  const openEditMenuItem = (item: any) => {
+    setEditingMenuItemId(item.id);
+    setMenuName(item.name);
+    setMenuNameAmharic(item.name_amharic || '');
+    setMenuPrice(item.price);
+    setMenuCategory(item.category_id);
+    setMenuRouting(item.routing_destination || 'KITCHEN');
+    setMenuDesc(item.description || '');
+    setMenuPhoto(item.photo_url || '');
+    setShowMenuModal(true);
   };
 
   const openEditTable = (t: any) => {
@@ -159,9 +248,9 @@ export const AdminView: React.FC = () => {
       setStaffName('');
       setStaffUsername('');
       loadData();
-      alert('Staff member created and activated successfully!');
+      gToast.success('Staff member created and activated successfully!');
     } catch (err: any) {
-      alert(err.message || 'Failed to create staff member');
+      gToast.error(err.message || 'Failed to create staff member');
     } finally {
       setLoading(false);
     }
@@ -184,7 +273,7 @@ export const AdminView: React.FC = () => {
             vat_rate: Number(branchVatRate)
           })
         });
-        alert('Branch updated successfully!');
+        gToast.success('Branch updated successfully!');
       } else {
         // Create Branch
         await api.request('/branches', {
@@ -197,7 +286,7 @@ export const AdminView: React.FC = () => {
             vat_rate: Number(branchVatRate)
           })
         });
-        alert('Branch created successfully!');
+        gToast.success('Branch created successfully!');
       }
       setShowBranchModal(false);
       setEditingBranchId(null);
@@ -206,7 +295,7 @@ export const AdminView: React.FC = () => {
       setBranchPhone('');
       refreshBranches();
     } catch (err: any) {
-      alert(err.message || 'Failed to save branch');
+      gToast.error(err.message || 'Failed to save branch');
     } finally {
       setLoading(false);
     }
@@ -217,10 +306,10 @@ export const AdminView: React.FC = () => {
     if (!window.confirm(`Are you sure you want to deactivate and remove ${bName}?`)) return;
     try {
       await api.request(`/branches/${branchId}`, { method: 'DELETE' });
-      alert('Branch deleted successfully');
+      gToast.success('Branch deleted successfully');
       refreshBranches();
     } catch (err: any) {
-      alert(err.message || 'Failed to delete branch');
+      gToast.error(err.message || 'Failed to delete branch');
     }
   };
 
@@ -249,9 +338,9 @@ export const AdminView: React.FC = () => {
         })
       });
       refreshSettings();
-      alert('Restaurant Branding & App Name updated successfully!');
+      gToast.success('Restaurant Branding & App Name updated successfully!');
     } catch (err: any) {
-      alert(err.message || 'Failed to update branding settings');
+      gToast.error(err.message || 'Failed to update branding settings');
     } finally {
       setLoading(false);
     }
@@ -265,7 +354,7 @@ export const AdminView: React.FC = () => {
       });
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to update user');
+      gToast.error(err.message || 'Failed to update user');
     }
   };
 
@@ -284,9 +373,9 @@ export const AdminView: React.FC = () => {
       });
       setExpenseDescription('');
       loadData();
-      alert('Expense recorded successfully');
+      gToast.success('Expense recorded successfully');
     } catch (err: any) {
-      alert(err.message || 'Failed to add expense');
+      gToast.error(err.message || 'Failed to add expense');
     } finally {
       setLoading(false);
     }
@@ -333,6 +422,12 @@ export const AdminView: React.FC = () => {
           style={{ flex: 1, minWidth: 70, padding: '8px 4px', fontSize: 11, fontWeight: 700, borderRadius: 8, background: activeTab === 'audit' ? '#ffffff' : 'transparent', color: activeTab === 'audit' ? 'var(--primary)' : 'var(--text-muted)' }}
         >
           Audit
+        </button>
+        <button
+          onClick={() => setActiveTab('menu')}
+          style={{ flex: 1, minWidth: 70, padding: '8px 4px', fontSize: 11, fontWeight: 700, borderRadius: 8, background: activeTab === 'menu' ? '#ffffff' : 'transparent', color: activeTab === 'menu' ? 'var(--primary)' : 'var(--text-muted)' }}
+        >
+          Menu ({menuItems.length})
         </button>
       </div>
 
@@ -650,6 +745,94 @@ export const AdminView: React.FC = () => {
         </div>
       )}
 
+      {/* 6. MENU MANAGEMENT TAB */}
+      {activeTab === 'menu' && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase' }}>
+              Menu Catalogue ({menuItems.length} items)
+            </span>
+            <button
+              onClick={() => {
+                setEditingMenuItemId(null);
+                setMenuName('');
+                setMenuNameAmharic('');
+                setMenuPrice(100);
+                setMenuCategory(categories[0]?.id || 'cat_burgers');
+                setMenuRouting('KITCHEN');
+                setMenuDesc('');
+                setMenuPhoto('');
+                setShowMenuModal(true);
+              }}
+              className="btn btn-primary"
+              style={{ padding: '6px 12px', fontSize: 12 }}
+            >
+              <Plus size={14} /> Add Menu Item
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+            {menuItems.map(item => (
+              <div
+                key={item.id}
+                style={{
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 14,
+                  padding: 12,
+                  display: 'flex',
+                  gap: 12,
+                  alignItems: 'center',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+              >
+                {/* Thumbnail */}
+                <div style={{ width: 64, height: 64, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: 'linear-gradient(135deg, #f97316, #ea580c)' }}>
+                  {item.photo_url ? (
+                    <img src={item.photo_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 20 }}>
+                      {item.name.charAt(0)}
+                    </div>
+                  )}
+                </div>
+
+                {/* Details */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
+                    <h5 style={{ fontSize: 13, fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{item.name}</h5>
+                    <span style={{ fontSize: 9, fontWeight: 800, padding: '1px 6px', borderRadius: 4, background: item.routing_destination === 'KITCHEN' ? '#fef3c7' : '#e0f2fe', color: item.routing_destination === 'KITCHEN' ? '#b45309' : '#0284c7' }}>
+                      {item.routing_destination}
+                    </span>
+                    {item.category_name && (
+                      <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>
+                        {item.category_name}
+                      </span>
+                    )}
+                  </div>
+                  {item.name_amharic && (
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block' }}>{item.name_amharic}</span>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary)' }}>
+                      {item.price} {t('currency')}
+                    </span>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => openEditMenuItem(item)} className="btn btn-secondary" style={{ padding: '3px 8px', fontSize: 11 }}>
+                        <Edit2 size={12} /> Edit
+                      </button>
+                      <button onClick={() => handleDeleteMenuItem(item.id, item.name)} className="btn btn-danger" style={{ padding: '3px 8px', fontSize: 11 }}>
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* MODAL: ADD STAFF */}
       {showStaffModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 60 }}>
@@ -822,6 +1005,74 @@ export const AdminView: React.FC = () => {
 
               <button type="submit" disabled={loading} className="btn btn-primary btn-block" style={{ height: 46, marginTop: 6 }}>
                 {loading ? 'Saving Table...' : editingTableId ? 'Save Table Changes' : 'Create Table & Section'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CREATE / EDIT MENU ITEM */}
+      {showMenuModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 60 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 20, width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--border)' }} className="animate-fade-in">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-main)' }}>{editingMenuItemId ? 'Edit Menu Item' : 'Add New Menu Item'}</h3>
+              <button onClick={() => setShowMenuModal(false)} style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)' }}>✕</button>
+            </div>
+
+            <form onSubmit={handleSaveMenuItem} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Item Name (English)</label>
+                <input type="text" required placeholder="e.g. Gourmet Double Beef Burger" value={menuName} onChange={e => setMenuName(e.target.value)} style={{ width: '100%' }} />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Item Name (Amharic - Optional)</label>
+                <input type="text" placeholder="e.g. ዳብል የበሬ በርገር" value={menuNameAmharic} onChange={e => setMenuNameAmharic(e.target.value)} style={{ width: '100%' }} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Category</label>
+                  <select value={menuCategory} onChange={e => setMenuCategory(e.target.value)} style={{ width: '100%' }}>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Price ({t('currency')})</label>
+                  <input type="number" min="0" step="0.5" required value={menuPrice} onChange={e => setMenuPrice(Number(e.target.value))} style={{ width: '100%' }} />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Preparation Routing</label>
+                <select value={menuRouting} onChange={e => setMenuRouting(e.target.value as any)} style={{ width: '100%' }}>
+                  <option value="KITCHEN">🍳 KITCHEN (Main Cooking Station)</option>
+                  <option value="BAR">☕ BAR (Drinks & Coffee Station)</option>
+                  <option value="BOTH">⚡ BOTH (Split Stations)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Photo URL (Image link)</label>
+                <input type="url" placeholder="https://images.unsplash.com/..." value={menuPhoto} onChange={e => setMenuPhoto(e.target.value)} style={{ width: '100%' }} />
+                {menuPhoto ? (
+                  <div style={{ marginTop: 8, width: '100%', height: 100, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                    <img src={menuPhoto} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                ) : null}
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Description</label>
+                <textarea rows={2} placeholder="Ingredients, recipe notes, allergens..." value={menuDesc} onChange={e => setMenuDesc(e.target.value)} style={{ width: '100%' }} />
+              </div>
+
+              <button type="submit" disabled={loading} className="btn btn-primary btn-block" style={{ height: 46, marginTop: 6 }}>
+                {loading ? 'Saving Item...' : editingMenuItemId ? 'Save Changes' : 'Create Menu Item'}
               </button>
             </form>
           </div>

@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
-import { Plus, Minus, Send, CheckCircle2, Clock, UtensilsCrossed, AlertCircle } from 'lucide-react';
+import { Plus, Minus, Send, CheckCircle2, Clock, UtensilsCrossed, AlertCircle, ShoppingBag } from 'lucide-react';
+import { OrderProgressStepper } from '../../components/OrderProgressStepper';
+
+const CATEGORY_EMOJIS: Record<string, string> = {
+  cat_burgers: '🍔',
+  cat_pizza: '🍕',
+  cat_coffee: '☕',
+  cat_cold_drinks: '🧃',
+  cat_dessert: '🍰',
+  cat_traditional: '🍲'
+};
 
 export const WaiterView: React.FC = () => {
   const { currentBranchId, t, user } = useApp();
@@ -223,10 +233,13 @@ export const WaiterView: React.FC = () => {
                 fontWeight: 700,
                 whiteSpace: 'nowrap',
                 background: selectedCategory === 'all' ? 'var(--primary)' : 'var(--bg-subtle)',
-                color: selectedCategory === 'all' ? '#ffffff' : 'var(--text-main)'
+                color: selectedCategory === 'all' ? '#ffffff' : 'var(--text-main)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6
               }}
             >
-              All Items
+              <span>🍽️</span> All Items
             </button>
             {categories.map(c => (
               <button
@@ -239,10 +252,14 @@ export const WaiterView: React.FC = () => {
                   fontWeight: 700,
                   whiteSpace: 'nowrap',
                   background: selectedCategory === c.id ? 'var(--primary)' : 'var(--bg-subtle)',
-                  color: selectedCategory === c.id ? '#ffffff' : 'var(--text-main)'
+                  color: selectedCategory === c.id ? '#ffffff' : 'var(--text-main)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6
                 }}
               >
-                {c.name}
+                <span>{CATEGORY_EMOJIS[c.id] || '🍴'}</span>
+                <span>{c.name}</span>
               </button>
             ))}
           </div>
@@ -255,54 +272,100 @@ export const WaiterView: React.FC = () => {
                 <div
                   key={m.id}
                   style={{
-                    background: '#ffffff',
+                    background: 'var(--bg-card)',
                     border: '1px solid var(--border)',
                     borderRadius: 14,
-                    padding: 12,
+                    overflow: 'hidden',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
                     boxShadow: 'var(--shadow-sm)'
                   }}
                 >
-                  <div>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: m.routing_destination === 'KITCHEN' ? '#b45309' : '#0284c7', background: m.routing_destination === 'KITCHEN' ? '#fef3c7' : '#e0f2fe', padding: '2px 6px', borderRadius: 4 }}>
+                  {/* Photo or Gradient Avatar Banner */}
+                  <div style={{ position: 'relative', width: '100%', height: 120, background: 'linear-gradient(135deg, #f97316, #ea580c)', overflow: 'hidden' }}>
+                    {m.photo_url ? (
+                      <img
+                        src={m.photo_url}
+                        alt={m.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    ) : null}
+                    {/* Fallback initial if no photo */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        display: m.photo_url ? 'none' : 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#ffffff',
+                        fontSize: 32,
+                        fontWeight: 800
+                      }}
+                    >
+                      {m.name.charAt(0)}
+                    </div>
+
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: 8,
+                        left: 8,
+                        fontSize: 9,
+                        fontWeight: 800,
+                        color: m.routing_destination === 'KITCHEN' ? '#b45309' : '#0284c7',
+                        background: m.routing_destination === 'KITCHEN' ? 'rgba(254, 243, 199, 0.95)' : 'rgba(224, 242, 254, 0.95)',
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        backdropFilter: 'blur(4px)'
+                      }}
+                    >
                       {m.routing_destination}
                     </span>
-                    <h4 style={{ fontSize: 13, fontWeight: 700, marginTop: 6, lineHeight: 1.3 }}>{m.name}</h4>
-                    <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 8px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                      {m.description}
-                    </p>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary)' }}>
-                      {m.price} {t('currency')}
-                    </span>
+                  <div style={{ padding: 10, display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
+                    <div>
+                      <h4 style={{ fontSize: 13, fontWeight: 700, margin: '2px 0 4px', lineHeight: 1.3, color: 'var(--text-main)' }}>{m.name}</h4>
+                      <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 8px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {m.description}
+                      </p>
+                    </div>
 
-                    {inCart > 0 ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--primary-light)', borderRadius: 20, padding: '2px 6px' }}>
-                        <button onClick={() => removeFromCart(m.id)} style={{ color: 'var(--primary)' }}><Minus size={14} /></button>
-                        <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--primary)' }}>{inCart}</span>
-                        <button onClick={() => addToCart(m)} style={{ color: 'var(--primary)' }}><Plus size={14} /></button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => addToCart(m)}
-                        style={{
-                          background: 'var(--primary)',
-                          color: '#ffffff',
-                          borderRadius: '50%',
-                          width: 28,
-                          height: 28,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                      >
-                        <Plus size={16} />
-                      </button>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary)' }}>
+                        {m.price} {t('currency')}
+                      </span>
+
+                      {inCart > 0 ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--primary-light)', borderRadius: 20, padding: '2px 6px' }}>
+                          <button onClick={() => removeFromCart(m.id)} style={{ color: 'var(--primary)' }}><Minus size={14} /></button>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--primary)' }}>{inCart}</span>
+                          <button onClick={() => addToCart(m)} style={{ color: 'var(--primary)' }}><Plus size={14} /></button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => addToCart(m)}
+                          style={{
+                            background: 'var(--primary)',
+                            color: '#ffffff',
+                            borderRadius: '50%',
+                            width: 28,
+                            height: 28,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)'
+                          }}
+                        >
+                          <Plus size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -410,7 +473,7 @@ export const WaiterView: React.FC = () => {
             </div>
           ) : (
             activeOrders.map(o => (
-              <div key={o.id} style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: 14, padding: 14, boxShadow: 'var(--shadow-sm)' }}>
+              <div key={o.id} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 14, boxShadow: 'var(--shadow-sm)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <span style={{ fontSize: 14, fontWeight: 800 }}>Order #{o.order_number}</span>
                   <span className={`badge badge-${o.status.toLowerCase().replace('_', '-')}`}>
@@ -420,7 +483,11 @@ export const WaiterView: React.FC = () => {
                 <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>
                   {o.table_number ? `Table ${o.table_number}` : o.order_type} • {o.items?.length} items
                 </span>
-                <div style={{ fontSize: 12, color: 'var(--text-main)', background: 'var(--bg-subtle)', padding: 8, borderRadius: 8 }}>
+
+                {/* Status Progression Stepper */}
+                <OrderProgressStepper status={o.status} />
+
+                <div style={{ fontSize: 12, color: 'var(--text-main)', background: 'var(--bg-subtle)', padding: 8, borderRadius: 8, marginTop: 8 }}>
                   {o.items?.map((it: any) => (
                     <div key={it.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>{it.quantity}x {it.name}</span>
@@ -434,6 +501,40 @@ export const WaiterView: React.FC = () => {
             ))
           )}
         </div>
+      )}
+
+      {/* Floating Action Button for Cart Review */}
+      {activeTab === 'create' && cartList.length > 0 && (
+        <button
+          className="fab-button"
+          onClick={() => {
+            const drawer = document.querySelector('.view-body');
+            drawer?.scrollTo({ top: drawer.scrollHeight, behavior: 'smooth' });
+          }}
+          title="Review Order"
+        >
+          <div style={{ position: 'relative' }}>
+            <ShoppingBag size={22} />
+            <span style={{
+              position: 'absolute',
+              top: -8,
+              right: -10,
+              background: '#ffffff',
+              color: 'var(--primary)',
+              borderRadius: '50%',
+              width: 18,
+              height: 18,
+              fontSize: 11,
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+            }}>
+              {cartList.reduce((acc, curr) => acc + curr.quantity, 0)}
+            </span>
+          </div>
+        </button>
       )}
     </div>
   );

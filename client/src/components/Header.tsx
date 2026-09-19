@@ -8,7 +8,7 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
   const logoInitial = settings?.restaurant_name?.charAt(0)?.toUpperCase() || 'G';
 
   return (
-    <header className="app-header">
+    <header className="app-header animated-gradient">
       {/* Branch Selector or Logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{

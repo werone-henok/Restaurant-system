@@ -4,6 +4,17 @@ import { hashSecretSync } from '../utils/security.js';
 export function seedDatabase() {
   initDatabase();
 
+  // Auto-backfill photo_urls for existing menu items if missing or empty
+  try {
+    const updatePhoto = db.prepare(`UPDATE menu_items SET photo_url = ? WHERE id = ? AND (photo_url IS NULL OR photo_url = '')`);
+    updatePhoto.run('https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&q=80', 'menu_burger');
+    updatePhoto.run('https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=500&q=80', 'menu_pizza');
+    updatePhoto.run('https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=500&q=80', 'menu_macchiato');
+    updatePhoto.run('https://images.unsplash.com/photo-1546173159-315724a31696?w=500&q=80', 'menu_mango_juice');
+  } catch (e) {
+    console.warn('Could not backfill photo_urls:', e);
+  }
+
   // Check if already seeded
   const branchCount = db.prepare('SELECT COUNT(*) as count FROM branches').get() as { count: number };
   if (branchCount.count > 0) {
@@ -164,6 +175,7 @@ export function seedDatabase() {
         name_amharic: 'ዳብል የበሬ በርገር',
         description: 'Juicy prime beef patty, melted cheddar, caramelized onions, house special sauce on a brioche bun',
         price: 450.0,
+        photo_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&q=80',
         prep_time_minutes: 15,
         routing_destination: 'KITCHEN'
       },
@@ -174,6 +186,7 @@ export function seedDatabase() {
         name_amharic: 'ማርገሪታ ፒዛ',
         description: 'San Marzano style tomato base, fresh mozzarella, aromatic basil on slow-fermented crust',
         price: 600.0,
+        photo_url: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=500&q=80',
         prep_time_minutes: 20,
         routing_destination: 'KITCHEN'
       },
@@ -184,6 +197,7 @@ export function seedDatabase() {
         name_amharic: 'የኢትዮጵያ ባህላዊ ማኪያቶ',
         description: 'Rich dark espresso topped with velvety steamed milk foam',
         price: 90.0,
+        photo_url: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=500&q=80',
         prep_time_minutes: 5,
         routing_destination: 'BAR'
       },
@@ -194,17 +208,18 @@ export function seedDatabase() {
         name_amharic: 'ልዩ የማንጎ እና አቮካዶ ስፕሪስ',
         description: 'Layered fresh organic mango and creamy avocado smoothie with lime hint',
         price: 180.0,
+        photo_url: 'https://images.unsplash.com/photo-1546173159-315724a31696?w=500&q=80',
         prep_time_minutes: 7,
         routing_destination: 'BAR'
       }
     ];
 
     const insertMenuItem = db.prepare(`
-      INSERT INTO menu_items (id, category_id, name, name_amharic, description, price, prep_time_minutes, routing_destination)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO menu_items (id, category_id, name, name_amharic, description, price, photo_url, prep_time_minutes, routing_destination)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     for (const m of menuItems) {
-      insertMenuItem.run(m.id, m.category_id, m.name, m.name_amharic, m.description, m.price, m.prep_time_minutes, m.routing_destination);
+      insertMenuItem.run(m.id, m.category_id, m.name, m.name_amharic, m.description, m.price, m.photo_url, m.prep_time_minutes, m.routing_destination);
     }
 
     // 9. Recipes / Bill of Materials (BOM)

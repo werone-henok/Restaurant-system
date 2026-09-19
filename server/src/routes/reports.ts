@@ -8,21 +8,46 @@ export const reportRouter = Router();
 reportRouter.get('/dashboard', authenticate, authorizeRole(['admin', 'owner']), (req: AuthenticatedRequest, res) => {
   const branchId = req.query.branchId as string; // if not provided or 'ALL', consolidated across all branches (Owner)
   const isConsolidated = !branchId || branchId === 'ALL';
+  const range = (req.query.range as string) || 'today';
+  const from = req.query.from as string;
+  const to = req.query.to as string;
+
+  // Date filters
+  let orderDateClause = "date(o.created_at) = date('now')";
+  let expenseDateClause = "date(expense_date) = date('now')";
+  let dateParamsOrders: any[] = [];
+  let dateParamsExpenses: any[] = [];
+
+  if (from && to) {
+    orderDateClause = "date(o.created_at) BETWEEN date(?) AND date(?)";
+    expenseDateClause = "date(expense_date) BETWEEN date(?) AND date(?)";
+    dateParamsOrders = [from, to];
+    dateParamsExpenses = [from, to];
+  } else if (range === 'yesterday') {
+    orderDateClause = "date(o.created_at) = date('now', '-1 day')";
+    expenseDateClause = "date(expense_date) = date('now', '-1 day')";
+  } else if (range === 'week') {
+    orderDateClause = "date(o.created_at) >= date('now', '-7 days')";
+    expenseDateClause = "date(expense_date) >= date('now', '-7 days')";
+  } else if (range === 'month') {
+    orderDateClause = "date(o.created_at) >= date('now', '-30 days')";
+    expenseDateClause = "date(expense_date) >= date('now', '-30 days')";
+  }
 
   let branchFilterOrders = '';
   let branchFilterExpenses = '';
-  let paramsOrders: any[] = [];
-  let paramsExpenses: any[] = [];
+  const branchParamsOrders: any[] = [];
+  const branchParamsExpenses: any[] = [];
 
   if (!isConsolidated) {
     branchFilterOrders = 'AND o.branch_id = ?';
-    paramsOrders.push(branchId);
+    branchParamsOrders.push(branchId);
     branchFilterExpenses = 'AND branch_id = ?';
-    paramsExpenses.push(branchId);
+    branchParamsExpenses.push(branchId);
   }
 
-  // 1. Sales & Order Stats Today
-  const salesToday = db.prepare(`
+  // 1. Sales & Order Stats in Date Range
+  const salesStats = db.prepare(`
     SELECT 
       COUNT(*) as total_orders,
       SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) as completed_orders,
@@ -30,15 +55,15 @@ reportRouter.get('/dashboard', authenticate, authorizeRole(['admin', 'owner']), 
       COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN total_amount ELSE 0 END), 0) as total_sales,
       COALESCE(AVG(CASE WHEN status = 'COMPLETED' THEN total_amount ELSE NULL END), 0) as avg_order_value
     FROM orders o
-    WHERE date(created_at) = date('now') ${branchFilterOrders}
-  `).get(...paramsOrders) as any;
+    WHERE ${orderDateClause} ${branchFilterOrders}
+  `).get(...dateParamsOrders, ...branchParamsOrders) as any;
 
-  // 2. Expenses Today
-  const expensesToday = db.prepare(`
+  // 2. Expenses in Date Range
+  const expenseStats = db.prepare(`
     SELECT COALESCE(SUM(amount), 0) as total_expenses
     FROM expenses
-    WHERE date(expense_date) = date('now') ${branchFilterExpenses}
-  `).get(...paramsExpenses) as any;
+    WHERE ${expenseDateClause} ${branchFilterExpenses}
+  `).get(...dateParamsExpenses, ...branchParamsExpenses) as any;
 
   // 3. Top Selling Menu Items
   const topSellers = db.prepare(`
@@ -46,58 +71,73 @@ reportRouter.get('/dashboard', authenticate, authorizeRole(['admin', 'owner']), 
     FROM order_items oi
     JOIN orders o ON oi.order_id = o.id
     JOIN menu_items mi ON oi.menu_item_id = mi.id
-    WHERE o.status = 'COMPLETED' ${branchFilterOrders}
+    WHERE o.status = 'COMPLETED' AND ${orderDateClause} ${branchFilterOrders}
     GROUP BY mi.id
     ORDER BY quantity_sold DESC LIMIT 5
-  `).all(...paramsOrders);
+  `).all(...dateParamsOrders, ...branchParamsOrders);
 
-  // 4. Waiter Performance
+  // 4. Waiter Performance in Date Range
   const waiterStats = db.prepare(`
     SELECT u.full_name as waiter_name, COUNT(o.id) as orders_count, COALESCE(SUM(o.total_amount), 0) as sales_total
     FROM orders o
     JOIN users u ON o.waiter_id = u.id
-    WHERE o.status = 'COMPLETED' ${branchFilterOrders}
+    WHERE o.status = 'COMPLETED' AND ${orderDateClause} ${branchFilterOrders}
     GROUP BY u.id
     ORDER BY sales_total DESC LIMIT 5
-  `).all(...paramsOrders);
+  `).all(...dateParamsOrders, ...branchParamsOrders);
 
-  // 5. Low Stock Count
+  // 5. Daily Trend for Visual Charts
+  const dailyTrend = db.prepare(`
+    SELECT date(o.created_at) as date,
+           COALESCE(SUM(CASE WHEN o.status = 'COMPLETED' THEN o.total_amount ELSE 0 END), 0) as sales,
+           COUNT(CASE WHEN o.status = 'COMPLETED' THEN 1 ELSE NULL END) as orders
+    FROM orders o
+    WHERE ${orderDateClause} ${branchFilterOrders}
+    GROUP BY date(o.created_at)
+    ORDER BY date ASC
+  `).all(...dateParamsOrders, ...branchParamsOrders);
+
+  // 6. Low Stock Count
   let lowStockQuery = `
     SELECT COUNT(*) as count 
     FROM inventory_stock s
     JOIN ingredients i ON s.ingredient_id = i.id
     WHERE s.current_quantity <= i.min_stock_level
   `;
+  const lowStockParams: any[] = [];
   if (!isConsolidated) {
-    lowStockQuery += ` AND s.branch_id = '${branchId}'`;
+    lowStockQuery += ` AND s.branch_id = ?`;
+    lowStockParams.push(branchId);
   }
-  const lowStockCount = (db.prepare(lowStockQuery).get() as any)?.count || 0;
+  const lowStockCount = (db.prepare(lowStockQuery).get(...lowStockParams) as any)?.count || 0;
 
-  // 6. Branch Comparison (Consolidated view for Owner)
+  // 7. Branch Comparison (Consolidated view for Owner)
   const branchComparison = db.prepare(`
     SELECT b.id, b.name, b.city,
       COALESCE(SUM(CASE WHEN o.status = 'COMPLETED' THEN o.total_amount ELSE 0 END), 0) as sales,
-      COUNT(o.id) as orders_count
+      COUNT(CASE WHEN o.status = 'COMPLETED' THEN 1 ELSE NULL END) as orders_count
     FROM branches b
-    LEFT JOIN orders o ON b.id = o.branch_id AND date(o.created_at) = date('now')
+    LEFT JOIN orders o ON b.id = o.branch_id AND ${orderDateClause}
     GROUP BY b.id
-  `).all();
+  `).all(...dateParamsOrders);
 
-  const netProfit = +(salesToday.total_sales - expensesToday.total_expenses).toFixed(2);
+  const netProfit = +(salesStats.total_sales - expenseStats.total_expenses).toFixed(2);
 
   res.json({
     isConsolidated,
     selectedBranch: branchId || 'ALL',
+    range,
     kpis: {
-      totalSales: salesToday.total_sales,
-      totalExpenses: expensesToday.total_expenses,
+      totalSales: salesStats.total_sales,
+      totalExpenses: expenseStats.total_expenses,
       netProfit,
-      totalOrders: salesToday.total_orders,
-      completedOrders: salesToday.completed_orders,
-      cancelledOrders: salesToday.cancelled_orders,
-      avgOrderValue: +salesToday.avg_order_value.toFixed(2),
+      totalOrders: salesStats.total_orders,
+      completedOrders: salesStats.completed_orders,
+      cancelledOrders: salesStats.cancelled_orders,
+      avgOrderValue: +salesStats.avg_order_value.toFixed(2),
       lowStockCount
     },
+    dailyTrend,
     topSellers,
     waiterStats,
     branchComparison
