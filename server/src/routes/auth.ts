@@ -1,40 +1,38 @@
 import { Router } from 'express';
-import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../database/schema.js';
 import { CONFIG } from '../config/env.js';
-import { authenticate, authorizeRole, type AuthenticatedRequest } from '../middleware/auth.js';
+import { authenticate, type AuthenticatedRequest } from '../middleware/auth.js';
 import { logAudit } from '../services/auditService.js';
 import { broadcastEvent } from '../services/websocket.js';
+import { hashSecret, verifySecret } from '../utils/security.js';
+import { validate } from '../middleware/validate.js';
+import { loginSchema, registerSchema, verifyPinSchema } from '../schemas/api.schemas.js';
 
 export const authRouter = Router();
 
-function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(password).digest('hex');
-}
-
 // 1. User Login
-authRouter.post('/login', (req, res) => {
+authRouter.post('/login', validate(loginSchema), async (req, res) => {
   const { username, password, pin } = req.body;
-
-  if (!username) {
-    return res.status(400).json({ error: 'Username is required.' });
-  }
 
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username) as any;
   if (!user) {
     return res.status(401).json({ error: 'Invalid username or password.' });
   }
 
-  // If logging in with password
+  // Verify credential (bcrypt-aware, SHA-256 backward-compatible)
   if (password) {
-    if (user.password_hash !== hashPassword(password)) {
+    const valid = await verifySecret(password, user.password_hash);
+    if (!valid) {
       return res.status(401).json({ error: 'Invalid username or password.' });
     }
   } else if (pin) {
-    // PIN quick login
-    if (!user.pin_hash || user.pin_hash !== hashPassword(pin)) {
+    if (!user.pin_hash) {
+      return res.status(401).json({ error: 'Invalid PIN.' });
+    }
+    const valid = await verifySecret(pin, user.pin_hash);
+    if (!valid) {
       return res.status(401).json({ error: 'Invalid PIN.' });
     }
   } else {
@@ -60,7 +58,6 @@ authRouter.post('/login', (req, res) => {
     { expiresIn: '7d' }
   );
 
-  // Get user custom permissions
   const permissions = db.prepare('SELECT permission, is_granted FROM user_permissions WHERE user_id = ?').all(user.id);
 
   logAudit({
@@ -90,12 +87,8 @@ authRouter.post('/login', (req, res) => {
 });
 
 // 2. User Self-Registration
-authRouter.post('/register', (req, res) => {
+authRouter.post('/register', validate(registerSchema), async (req, res) => {
   const { full_name, username, password, pin, phone, employee_id, requested_role, branch_id, profile_photo } = req.body;
-
-  if (!full_name || !username || !password || !requested_role || !branch_id) {
-    return res.status(400).json({ error: 'Full name, username, password, requested role and branch are required.' });
-  }
 
   const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
   if (existing) {
@@ -103,15 +96,14 @@ authRouter.post('/register', (req, res) => {
   }
 
   const id = uuidv4();
-  const password_hash = hashPassword(password);
-  const pin_hash = pin ? hashPassword(pin) : null;
+  const password_hash = await hashSecret(password);
+  const pin_hash = pin ? await hashSecret(pin) : null;
 
   db.prepare(`
     INSERT INTO users (id, full_name, username, password_hash, pin_hash, phone, employee_id, role, branch_id, profile_photo, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING_APPROVAL')
   `).run(id, full_name, username, password_hash, pin_hash, phone || null, employee_id || null, requested_role, branch_id, profile_photo || null);
 
-  // Notify admins and owner
   broadcastEvent({
     type: 'NEW_USER_REGISTRATION',
     branchId: branch_id,
@@ -142,11 +134,8 @@ authRouter.get('/me', authenticate, (req: AuthenticatedRequest, res) => {
 });
 
 // 4. Verify PIN for Sensitive Actions (Manager Override)
-authRouter.post('/verify-pin', authenticate, (req: AuthenticatedRequest, res) => {
+authRouter.post('/verify-pin', authenticate, validate(verifyPinSchema), async (req: AuthenticatedRequest, res) => {
   const { pin, userId } = req.body;
-  if (!pin) {
-    return res.status(400).json({ error: 'PIN is required' });
-  }
 
   const targetUserId = userId || req.user!.id;
   const targetUser = db.prepare('SELECT pin_hash, role, full_name FROM users WHERE id = ?').get(targetUserId) as any;
@@ -155,7 +144,8 @@ authRouter.post('/verify-pin', authenticate, (req: AuthenticatedRequest, res) =>
     return res.status(400).json({ error: 'User does not have a configured authorization PIN' });
   }
 
-  if (targetUser.pin_hash !== hashPassword(pin)) {
+  const valid = await verifySecret(pin, targetUser.pin_hash);
+  if (!valid) {
     return res.status(401).json({ error: 'Invalid authorization PIN' });
   }
 

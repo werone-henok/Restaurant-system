@@ -1,0 +1,153 @@
+import { db } from '../database/schema.js';
+import { v4 as uuidv4 } from 'uuid';
+import { broadcastEvent } from './websocket.js';
+
+/**
+ * Represents one ingredient line resolved from a BOM query.
+ */
+interface BomLine {
+  ingredient_id: string;
+  ingredient_name: string;
+  unit: string;
+  quantity_required: number; // per 1 portion of the menu item
+  quantity_to_deduct: number; // quantity_required × order item quantity
+  current_quantity: number;
+  unit_cost: number;
+  min_stock_level: number;
+}
+
+/**
+ * Deducts stock for all BOM-linked ingredients when a confirmed order is sent
+ * to production. Runs as a single SQLite transaction so it's all-or-nothing.
+ *
+ * @param orderId    The order that was just confirmed
+ * @param branchId   Branch whose stock to deduct
+ * @param cashierId  The cashier who triggered the confirmation (for movement logs)
+ * @returns          Array of low-stock alerts (ingredients that dropped below min)
+ */
+export function deductBomStock(
+  orderId: string,
+  branchId: string,
+  cashierId: string
+): { lowStockAlerts: { ingredient_id: string; name: string; unit: string; current: number; min: number }[] } {
+  // 1. Fetch all order items
+  const orderItems = db
+    .prepare('SELECT menu_item_id, quantity FROM order_items WHERE order_id = ?')
+    .all(orderId) as { menu_item_id: string; quantity: number }[];
+
+  if (orderItems.length === 0) {
+    return { lowStockAlerts: [] };
+  }
+
+  // 2. Resolve BOM for each order item, joining recipe → recipe_items → ingredients → stock
+  const getBomStmt = db.prepare(`
+    SELECT
+      ri.ingredient_id,
+      i.name        AS ingredient_name,
+      i.unit,
+      i.unit_cost,
+      i.min_stock_level,
+      ri.quantity_required,
+      COALESCE(s.current_quantity, 0) AS current_quantity
+    FROM recipes r
+    JOIN recipe_items ri ON ri.recipe_id = r.id
+    JOIN ingredients  i  ON i.id = ri.ingredient_id
+    LEFT JOIN inventory_stock s
+      ON s.ingredient_id = ri.ingredient_id AND s.branch_id = ?
+    WHERE r.menu_item_id = ?
+      AND i.is_active = 1
+  `);
+
+  // Accumulate total deduction per ingredient (multiple items may share ingredients)
+  const totals = new Map<string, BomLine>();
+
+  for (const oi of orderItems) {
+    const bomRows = getBomStmt.all(branchId, oi.menu_item_id) as Array<Omit<BomLine, 'quantity_to_deduct'>>;
+    for (const row of bomRows) {
+      const deduct = row.quantity_required * oi.quantity;
+      if (totals.has(row.ingredient_id)) {
+        totals.get(row.ingredient_id)!.quantity_to_deduct += deduct;
+      } else {
+        totals.set(row.ingredient_id, { ...row, quantity_to_deduct: deduct });
+      }
+    }
+  }
+
+  if (totals.size === 0) {
+    // No recipes defined — nothing to deduct (graceful degradation)
+    return { lowStockAlerts: [] };
+  }
+
+  const updateStockStmt = db.prepare(`
+    UPDATE inventory_stock
+    SET current_quantity = MAX(0, current_quantity - ?),
+        updated_at       = CURRENT_TIMESTAMP
+    WHERE branch_id = ? AND ingredient_id = ?
+  `);
+
+  const insertMovStmt = db.prepare(`
+    INSERT INTO inventory_movements
+      (id, branch_id, ingredient_id, user_id, movement_type, quantity_change, resulting_quantity, reference_id, notes)
+    VALUES
+      (?, ?, ?, ?, 'ORDER_CONSUMPTION', ?, ?, ?, ?)
+  `);
+
+  const getResultingQtyStmt = db.prepare(`
+    SELECT COALESCE(current_quantity, 0) AS qty
+    FROM inventory_stock
+    WHERE branch_id = ? AND ingredient_id = ?
+  `);
+
+  const lowStockAlerts: { ingredient_id: string; name: string; unit: string; current: number; min: number }[] = [];
+
+  // 3. Execute all deductions inside a single transaction
+  const tx = db.transaction(() => {
+    for (const line of totals.values()) {
+      updateStockStmt.run(line.quantity_to_deduct, branchId, line.ingredient_id);
+
+      const resulting = (getResultingQtyStmt.get(branchId, line.ingredient_id) as { qty: number } | undefined)?.qty ?? 0;
+
+      insertMovStmt.run(
+        `mov_${uuidv4().substring(0, 8)}`,
+        branchId,
+        line.ingredient_id,
+        cashierId,
+        -line.quantity_to_deduct,
+        resulting,
+        orderId,
+        `Order #${orderId} consumption`
+      );
+
+      if (resulting <= line.min_stock_level) {
+        lowStockAlerts.push({
+          ingredient_id: line.ingredient_id,
+          name: line.ingredient_name,
+          unit: line.unit,
+          current: resulting,
+          min: line.min_stock_level
+        });
+      }
+    }
+  });
+
+  tx();
+
+  // 4. Broadcast low-stock alerts (non-blocking, outside transaction)
+  for (const alert of lowStockAlerts) {
+    broadcastEvent({
+      type: 'LOW_STOCK_ALERT',
+      branchId,
+      targetRole: ['storekeeper', 'admin', 'owner'],
+      payload: {
+        ingredient_id: alert.ingredient_id,
+        name: alert.name,
+        unit: alert.unit,
+        current_quantity: alert.current,
+        min_stock_level: alert.min,
+        triggered_by_order: orderId
+      }
+    });
+  }
+
+  return { lowStockAlerts };
+}

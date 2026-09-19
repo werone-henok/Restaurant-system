@@ -44,6 +44,8 @@ interface AppContextType {
   language: Language;
   isOnline: boolean;
   offlineCount: number;
+  darkMode: boolean;
+  toggleDarkMode: () => void;
   login: (user: User, token: string) => void;
   logout: () => void;
   switchBranch: (branchId: string) => void;
@@ -70,6 +72,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [offlineCount, setOfflineCount] = useState<number>(api.getQueueCount());
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('dark_mode');
+    return saved ? saved === 'true' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  // Apply dark class to <html> whenever darkMode changes
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('dark_mode', String(darkMode));
+  }, [darkMode]);
+
+  const toggleDarkMode = () => setDarkMode(prev => !prev);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -160,6 +178,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         language,
         isOnline,
         offlineCount,
+        darkMode,
+        toggleDarkMode,
         login,
         logout,
         switchBranch,

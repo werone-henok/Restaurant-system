@@ -4,6 +4,7 @@ import { authenticate, authorizeRole, type AuthenticatedRequest } from '../middl
 import { logAudit } from '../services/auditService.js';
 import { broadcastEvent } from '../services/websocket.js';
 import { v4 as uuidv4 } from 'uuid';
+import { deductBomStock } from '../services/inventoryService.js';
 
 export const orderRouter = Router();
 
@@ -263,13 +264,18 @@ orderRouter.post('/:id/confirm', authenticate, authorizeRole(['cashier', 'admin'
 
   tx();
 
+  // ── BOM Stock Deduction ────────────────────────────────────────────
+  // Runs outside the order-status transaction so a missing recipe doesn't
+  // block order confirmation — it degrades gracefully (no recipe = no deduction).
+  const { lowStockAlerts } = deductBomStock(String(orderId), String(order.branch_id), String(req.user!.id));
+
   logAudit({
     branchId: order.branch_id,
     userId: req.user!.id,
     action: 'ORDER_CONFIRMED',
     entityType: 'ORDER',
     entityId: orderId,
-    details: { orderNumber: order.order_number, cashier: req.user!.full_name }
+    details: { orderNumber: order.order_number, cashier: req.user!.full_name, stockDeducted: true }
   });
 
   // Get items to route
@@ -304,7 +310,11 @@ orderRouter.post('/:id/confirm', authenticate, authorizeRole(['cashier', 'admin'
     payload: { orderId, orderNumber: order.order_number, status: 'CONFIRMED' }
   });
 
-  res.json({ message: 'Order confirmed and routed to production', status: 'CONFIRMED' });
+  res.json({
+    message: 'Order confirmed and routed to production',
+    status: 'CONFIRMED',
+    lowStockAlerts: lowStockAlerts.length > 0 ? lowStockAlerts : undefined
+  });
 });
 
 // 6. Update Item Status (Chef / Barista marks item PREPARING or READY)

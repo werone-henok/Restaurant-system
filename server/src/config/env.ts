@@ -7,10 +7,18 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  console.error('FATAL: JWT_SECRET environment variable is missing in production!');
+  process.exit(1);
+}
+
 export const CONFIG = {
   PORT: parseInt(process.env.PORT || '4000', 10),
-  JWT_SECRET: process.env.JWT_SECRET || 'gourmet-os-super-secret-key-production-mvr-2026',
-  JWT_EXPIRES_IN: '7d',
+  JWT_SECRET: process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'gourmet-os-dev-secret-change-in-production'),
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
+  CORS_ORIGINS: process.env.CLIENT_ORIGIN
+    ? process.env.CLIENT_ORIGIN.split(',').map(s => s.trim())
+    : ['http://localhost:5173', 'http://localhost:4000', 'http://127.0.0.1:5173'],
   DB_PATH: process.env.DB_PATH || path.resolve(__dirname, '../../restaurant.db'),
   UPLOAD_DIR: path.resolve(__dirname, '../../uploads'),
   DEFAULT_CURRENCY: 'ETB',

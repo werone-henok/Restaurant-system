@@ -2,13 +2,11 @@ import { Router } from 'express';
 import { db } from '../database/schema.js';
 import { authenticate, authorizeRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import { logAudit } from '../services/auditService.js';
-import crypto from 'crypto';
+import { hashSecretSync } from '../utils/security.js';
+import { validate } from '../middleware/validate.js';
+import { createStaffSchema, updateUserStatusSchema } from '../schemas/api.schemas.js';
 
 export const adminRouter = Router();
-
-function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(password).digest('hex');
-}
 
 // 1. Get All Users (with branch name)
 adminRouter.get('/users', authenticate, authorizeRole(['admin', 'owner']), (_req, res) => {
@@ -22,12 +20,8 @@ adminRouter.get('/users', authenticate, authorizeRole(['admin', 'owner']), (_req
 });
 
 // Create new staff member directly (Admin & Owner)
-adminRouter.post('/users', authenticate, authorizeRole(['admin', 'owner']), (req: AuthenticatedRequest, res) => {
+adminRouter.post('/users', authenticate, authorizeRole(['admin', 'owner']), validate(createStaffSchema), (req: AuthenticatedRequest, res) => {
   const { full_name, username, password, phone, employee_id, role, branch_id, pin } = req.body;
-
-  if (!full_name || !username || !password || !role || !branch_id) {
-    return res.status(400).json({ error: 'Full name, username, password, role and branch are required' });
-  }
 
   const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
   if (existing) {
@@ -35,8 +29,8 @@ adminRouter.post('/users', authenticate, authorizeRole(['admin', 'owner']), (req
   }
 
   const id = `usr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-  const password_hash = hashPassword(password);
-  const pin_hash = pin ? hashPassword(pin) : null;
+  const password_hash = hashSecretSync(password);
+  const pin_hash = pin ? hashSecretSync(pin) : null;
 
   db.prepare(`
     INSERT INTO users (id, full_name, username, password_hash, pin_hash, phone, employee_id, role, branch_id, status)
@@ -56,13 +50,9 @@ adminRouter.post('/users', authenticate, authorizeRole(['admin', 'owner']), (req
 });
 
 // 2. Approve or Reject User Registration
-adminRouter.patch('/users/:id/status', authenticate, authorizeRole(['admin', 'owner']), (req: AuthenticatedRequest, res) => {
+adminRouter.patch('/users/:id/status', authenticate, authorizeRole(['admin', 'owner']), validate(updateUserStatusSchema), (req: AuthenticatedRequest, res) => {
   const { status, role, branch_id } = req.body;
   const targetId = req.params.id;
-
-  if (!['ACTIVE', 'PENDING_APPROVAL', 'SUSPENDED', 'DEACTIVATED'].includes(status)) {
-    return res.status(400).json({ error: 'Invalid user status' });
-  }
 
   db.prepare(`
     UPDATE users

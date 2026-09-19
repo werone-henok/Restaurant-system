@@ -1,9 +1,5 @@
 import { db, initDatabase } from './schema.js';
-import crypto from 'crypto';
-
-function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(password).digest('hex');
-}
+import { hashSecretSync } from '../utils/security.js';
 
 export function seedDatabase() {
   initDatabase();
@@ -69,8 +65,8 @@ export function seedDatabase() {
     }
 
     // 4. Default Seed Users (1 for each role + owner + admin)
-    const defaultPasswordHash = hashPassword('password123');
-    const defaultPinHash = hashPassword('1234');
+    const defaultPasswordHash = hashSecretSync('password123');
+    const defaultPinHash = hashSecretSync('1234');
 
     const users = [
       { id: 'usr_owner', name: 'Abebe Bikila (Owner)', username: 'owner', role: 'owner', branch_id: 'branch_addis' },

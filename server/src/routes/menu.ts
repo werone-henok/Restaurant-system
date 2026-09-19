@@ -93,3 +93,101 @@ menuRouter.post('/items', authenticate, authorizeRole(['admin', 'owner', 'chef']
 
   res.status(201).json({ id: itemId, message: 'Menu item created successfully' });
 });
+
+// Get single menu item with full BOM recipe
+menuRouter.get('/items/:id', authenticate, (req, res) => {
+  const item = db.prepare(`
+    SELECT m.*, c.name as category_name
+    FROM menu_items m
+    JOIN menu_categories c ON m.category_id = c.id
+    WHERE m.id = ?
+  `).get(req.params.id) as any;
+
+  if (!item) return res.status(404).json({ error: 'Menu item not found' });
+
+  const recipeRows = db.prepare(`
+    SELECT r.id as recipe_id, r.instructions, r.yield_portions,
+           ri.id as recipe_item_id, ri.ingredient_id, ri.quantity_required,
+           i.name as ingredient_name, i.unit, i.unit_cost
+    FROM recipes r
+    JOIN recipe_items ri ON r.id = ri.recipe_id
+    JOIN ingredients  i  ON ri.ingredient_id = i.id
+    WHERE r.menu_item_id = ?
+  `).all(req.params.id) as any[];
+
+  res.json({
+    ...item,
+    recipe: recipeRows.length > 0 ? {
+      recipe_id: recipeRows[0].recipe_id,
+      instructions: recipeRows[0].instructions,
+      yield_portions: recipeRows[0].yield_portions,
+      ingredients: recipeRows.map(r => ({
+        recipe_item_id: r.recipe_item_id,
+        ingredient_id: r.ingredient_id,
+        name: r.ingredient_name,
+        quantity_required: r.quantity_required,
+        unit: r.unit,
+        unit_cost: r.unit_cost
+      }))
+    } : null
+  });
+});
+
+// Upsert (replace) a menu item's full recipe / BOM
+menuRouter.put('/items/:id/recipe', authenticate, authorizeRole(['admin', 'owner', 'chef']), (req: AuthenticatedRequest, res) => {
+  const menuItemId = req.params.id;
+  const { instructions, yield_portions, ingredients } = req.body;
+  // ingredients: Array<{ ingredient_id: string; quantity_required: number }>
+
+  if (!ingredients || !Array.isArray(ingredients) || ingredients.length === 0) {
+    return res.status(400).json({ error: 'At least one ingredient is required for a recipe' });
+  }
+
+  const menuItem = db.prepare('SELECT id FROM menu_items WHERE id = ?').get(menuItemId);
+  if (!menuItem) return res.status(404).json({ error: 'Menu item not found' });
+
+  const tx = db.transaction(() => {
+    // Check for existing recipe
+    const existing = db.prepare('SELECT id FROM recipes WHERE menu_item_id = ?').get(menuItemId) as any;
+
+    let recipeId: string;
+    if (existing) {
+      recipeId = existing.id;
+      // Update recipe header
+      db.prepare(`
+        UPDATE recipes SET instructions = ?, yield_portions = ? WHERE id = ?
+      `).run(instructions || null, yield_portions || 1, recipeId);
+      // Delete old BOM lines
+      db.prepare('DELETE FROM recipe_items WHERE recipe_id = ?').run(recipeId);
+    } else {
+      recipeId = `rcp_${uuidv4().substring(0, 8)}`;
+      db.prepare(`
+        INSERT INTO recipes (id, menu_item_id, instructions, yield_portions)
+        VALUES (?, ?, ?, ?)
+      `).run(recipeId, menuItemId, instructions || null, yield_portions || 1);
+    }
+
+    // Insert new BOM lines
+    const insertLine = db.prepare(`
+      INSERT INTO recipe_items (id, recipe_id, ingredient_id, quantity_required)
+      VALUES (?, ?, ?, ?)
+    `);
+    for (const ing of ingredients) {
+      insertLine.run(`ri_${uuidv4().substring(0, 8)}`, recipeId, ing.ingredient_id, ing.quantity_required);
+    }
+  });
+
+  tx();
+
+  logAudit({
+    branchId: req.user!.branch_id,
+    userId: req.user!.id,
+    action: 'RECIPE_UPDATED',
+    entityType: 'MENU_ITEM',
+    entityId: menuItemId,
+    details: { ingredientCount: ingredients.length }
+  });
+
+  res.json({ message: 'Recipe updated successfully', menuItemId });
+});
+

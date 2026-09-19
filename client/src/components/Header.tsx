@@ -1,9 +1,9 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Building2, Globe, Wifi, WifiOff, RefreshCw, LogOut, User as UserIcon } from 'lucide-react';
+import { Building2, Globe, Wifi, WifiOff, RefreshCw, Moon, Sun } from 'lucide-react';
 
 export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile }) => {
-  const { user, branches, currentBranchId, switchBranch, settings, language, setLanguage, isOnline, offlineCount, logout, t } = useApp();
+  const { user, branches, currentBranchId, switchBranch, settings, language, setLanguage, isOnline, offlineCount, darkMode, toggleDarkMode, t } = useApp();
 
   const logoInitial = settings?.restaurant_name?.charAt(0)?.toUpperCase() || 'G';
 
@@ -86,11 +86,21 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
             borderRadius: 6,
             background: 'var(--bg-subtle)',
             fontSize: 12,
-            fontWeight: 700
+            fontWeight: 700,
+            color: 'var(--text-main)'
           }}
         >
           <Globe size={13} />
           {language === 'en' ? 'አማርኛ' : 'EN'}
+        </button>
+
+        {/* Dark Mode Toggle */}
+        <button
+          onClick={toggleDarkMode}
+          className="dark-toggle"
+          title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        >
+          {darkMode ? <Sun size={15} /> : <Moon size={15} />}
         </button>
 
         {/* User Role Indicator */}

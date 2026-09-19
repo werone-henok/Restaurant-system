@@ -1,6 +1,7 @@
 import http from 'http';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { WebSocketServer } from 'ws';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -9,6 +10,8 @@ import { CONFIG } from './config/env.js';
 import { getDatabase } from './database/connection.js';
 import { seedDatabase } from './database/seed.js';
 import { setupWebSocket } from './services/websocket.js';
+import { authRateLimiter, globalRateLimiter } from './middleware/rateLimiter.js';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 import { authRouter } from './routes/auth.js';
 import { branchRouter } from './routes/branches.js';
@@ -36,17 +39,28 @@ async function bootstrap() {
   const wss = new WebSocketServer({ server, path: '/ws' });
   setupWebSocket(wss);
 
-  // Middleware
-  app.use(cors());
+  // ── Security headers ──────────────────────────────────────────────
+  app.use(helmet());
+
+  // ── CORS ──────────────────────────────────────────────────────────
+  // CONFIG.CORS_ORIGINS is already a string[] from env.ts
+  app.use(cors({ origin: CONFIG.CORS_ORIGINS, credentials: true }));
+
+  // ── Body parsers ──────────────────────────────────────────────────
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-  // Static uploads (for camera photos, receipt images)
-  // Root Route: Serve client build or redirect to client app
+  // ── Global rate limiting ──────────────────────────────────────────
+  app.use(globalRateLimiter);
+
+  // ── Auth-specific rate limiting (tighter) ─────────────────────────
+  app.use('/api/auth', authRateLimiter);
+
+  // ── Static client build ───────────────────────────────────────────
   const clientDist = path.resolve(__dirname, '../../client/dist');
   app.use(express.static(clientDist));
 
-  // Health check
+  // ── Health check ──────────────────────────────────────────────────
   app.get('/api/health', (_req, res) => {
     res.json({
       status: 'HEALTHY',
@@ -63,7 +77,7 @@ async function bootstrap() {
     });
   });
 
-  // Mount Routes
+  // ── API Routes ────────────────────────────────────────────────────
   app.use('/api/auth', authRouter);
   app.use('/api/branches', branchRouter);
   app.use('/api/tables', tableRouter);
@@ -75,6 +89,12 @@ async function bootstrap() {
   app.use('/api/attendance', attendanceRouter);
   app.use('/api/reports', reportRouter);
   app.use('/api/admin', adminRouter);
+
+  // ── 404 catch-all for unmatched API routes ─────────────────────────
+  app.all('/api/*', notFoundHandler);
+
+  // ── Centralized error handler (must be last middleware) ────────────
+  app.use(errorHandler);
 
   server.listen(CONFIG.PORT, () => {
     console.log(`====================================================`);
