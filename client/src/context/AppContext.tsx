@@ -144,6 +144,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCurrentBranchId(newUser.branch_id);
       localStorage.setItem('selected_branch', newUser.branch_id);
     }
+    // Auto-default operational staff (waiter, cashier, chef, barista, storekeeper) to Amharic
+    const operationalRoles = ['waiter', 'cashier', 'chef', 'barista', 'storekeeper'];
+    if (operationalRoles.includes(newUser.role) && !localStorage.getItem('language_explicitly_set')) {
+      setLanguageState('am');
+      localStorage.setItem('language', 'am');
+    }
   };
 
   const logout = () => {
@@ -161,6 +167,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
     localStorage.setItem('language', lang);
+    localStorage.setItem('language_explicitly_set', 'true');
   };
 
   const t = (key: string): string => {

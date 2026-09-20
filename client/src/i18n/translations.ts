@@ -95,13 +95,31 @@ export const translations: Record<Language, Record<string, string>> = {
     capture_photo: 'Capture Shelf / Item Photo',
 
     // Owner / Admin Dashboard
+    // Owner / Admin Dashboard
     today_sales: "Today's Total Sales",
     today_expenses: "Today's Expenses",
     estimated_profit: 'Net Gross Profit',
     total_orders: 'Total Orders',
     top_selling_items: 'Top Selling Items',
     waiter_performance: 'Waiter Performance',
-    branch_comparison: 'Branch Comparison'
+    branch_comparison: 'Branch Comparison',
+
+    // Operational & Visual Keys
+    table_available: 'Available',
+    table_occupied: 'Occupied',
+    all_items: 'All Items',
+    items_count: 'Items',
+    send_order_now: 'Send Order Now',
+    quick_note_no_spice: 'No Spice',
+    quick_note_well_done: 'Well Done',
+    quick_note_takeaway: 'Takeaway Package',
+    order_sent_success: 'Order sent to cashier successfully!',
+    payment_success: 'Payment settled successfully!',
+    start_prep_btn: 'Start Cooking',
+    ready_btn: 'Ready to Serve',
+    delivered_btn: 'Mark Delivered',
+    guest_count: 'Guests',
+    select_table_first: 'Please select a table first!'
   },
   am: {
     // App Header & Common
@@ -203,6 +221,23 @@ export const translations: Record<Language, Record<string, string>> = {
     total_orders: 'አጠቃላይ ትዕዛዞች',
     top_selling_items: 'በብዛት የተሸጡ ምግቦች',
     waiter_performance: 'የአስተናጋጆች አፈጻጸም',
-    branch_comparison: 'የቅርንጫፎች ንፅፅር'
+    branch_comparison: 'የቅርንጫፎች ንፅፅር',
+
+    // Operational & Visual Keys
+    table_available: 'ነፃ ጠረጴዛ',
+    table_occupied: 'የተያዘ',
+    all_items: 'ሁሉም ምግቦች',
+    items_count: 'ምግቦች',
+    send_order_now: 'ትዕዛዙን ላክ',
+    quick_note_no_spice: 'ያለ በርበሬ',
+    quick_note_well_done: 'በደንብ የበሰለ',
+    quick_note_takeaway: 'በፓኬት/ይዞ መሄድ',
+    order_sent_success: 'ትዕዛዙ ወደ ካሺየር በተሳካ ሁኔታ ተልኳል!',
+    payment_success: 'ክፍያው ተጠናቋል!',
+    start_prep_btn: 'ማዘጋጀት ጀምር',
+    ready_btn: 'ተዘጋጅቶ አልቋል',
+    delivered_btn: 'ለደንበኛው ደርሷል',
+    guest_count: 'ሰው',
+    select_table_first: 'እባክዎ መጀመሪያ ጠረጴዛ ይምረጡ!'
   }
 };

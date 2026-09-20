@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
-import { Plus, Minus, Send, CheckCircle2, Clock, UtensilsCrossed, AlertCircle, ShoppingBag } from 'lucide-react';
+import { Plus, Minus, Send, CheckCircle2, Clock, UtensilsCrossed, AlertCircle, ShoppingBag, Check } from 'lucide-react';
 import { OrderProgressStepper } from '../../components/OrderProgressStepper';
+import { gToast } from '../../utils/toast';
 
 const CATEGORY_EMOJIS: Record<string, string> = {
   cat_burgers: '🍔',
@@ -13,8 +14,17 @@ const CATEGORY_EMOJIS: Record<string, string> = {
   cat_traditional: '🍲'
 };
 
+const CATEGORY_NAMES_AM: Record<string, string> = {
+  cat_burgers: 'በርገር',
+  cat_pizza: 'ፒዛ',
+  cat_coffee: 'ቡናና ሻይ',
+  cat_cold_drinks: 'ቀዝቃዛ መጠጦች',
+  cat_dessert: 'ጣፋጭ',
+  cat_traditional: 'ባህላዊ ምግቦች'
+};
+
 export const WaiterView: React.FC = () => {
-  const { currentBranchId, t, user } = useApp();
+  const { currentBranchId, t, user, language } = useApp();
   const [activeTab, setActiveTab] = useState<'create' | 'active' | 'ready'>('create');
   const [tables, setTables] = useState<any[]>([]);
   const [menuItems, setMenuItems] = useState<any[]>([]);
@@ -83,6 +93,11 @@ export const WaiterView: React.FC = () => {
       return;
     }
 
+    if (orderType === 'DINE_IN' && !selectedTable) {
+      gToast.error(t('select_table_first'));
+      return;
+    }
+
     setLoading(true);
     try {
       const itemsPayload = cartList.map(c => ({
@@ -106,13 +121,14 @@ export const WaiterView: React.FC = () => {
         })
       });
 
-      setSuccessBanner(`Order #${res.orderNumber || ''} sent to Cashier for confirmation!`);
+      gToast.success(t('order_sent_success'));
+      setSuccessBanner(`Order #${res.orderNumber || ''} sent to Cashier!`);
       setCart({});
       setSpecialNotes('');
       loadData();
       setTimeout(() => setSuccessBanner(null), 5000);
     } catch (err: any) {
-      alert(err.message || 'Failed to submit order');
+      gToast.error(err.message || 'Failed to submit order');
     } finally {
       setLoading(false);
     }
@@ -121,9 +137,10 @@ export const WaiterView: React.FC = () => {
   const handleDeliver = async (orderId: string) => {
     try {
       await api.request(`/orders/${orderId}/deliver`, { method: 'POST' });
+      gToast.success(t('delivered_btn'));
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Error delivering order');
+      gToast.error(err.message || 'Error delivering order');
     }
   };
 
@@ -194,43 +211,64 @@ export const WaiterView: React.FC = () => {
 
             {orderType === 'DINE_IN' && (
               <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-                  {t('select_table')}
+                <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)', display: 'block', marginBottom: 8 }}>
+                  📍 {t('select_table')} {selectedTable && <span style={{ color: 'var(--primary)', fontWeight: 800 }}>({tables.find(tb => tb.id === selectedTable)?.table_number || ''})</span>}
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-                  {tables.map(t => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => setSelectedTable(t.id)}
-                      style={{
-                        padding: '10px 4px',
-                        borderRadius: 10,
-                        textAlign: 'center',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        border: selectedTable === t.id ? '2px solid var(--primary)' : '1px solid var(--border)',
-                        background: selectedTable === t.id ? 'var(--primary-light)' : t.status === 'OCCUPIED' ? '#fef2f2' : '#ffffff',
-                        color: selectedTable === t.id ? 'var(--primary)' : t.status === 'OCCUPIED' ? '#ef4444' : 'var(--text-main)'
-                      }}
-                    >
-                      {t.table_number}
-                    </button>
-                  ))}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  {tables.map(tbl => {
+                    const isSelected = selectedTable === tbl.id;
+                    const isOccupied = tbl.status === 'OCCUPIED';
+                    return (
+                      <button
+                        key={tbl.id}
+                        type="button"
+                        onClick={() => setSelectedTable(tbl.id)}
+                        style={{
+                          padding: '10px 4px',
+                          borderRadius: 12,
+                          textAlign: 'center',
+                          border: isSelected ? '2.5px solid var(--primary)' : '1px solid var(--border)',
+                          background: isSelected ? 'var(--primary-light)' : isOccupied ? '#fef2f2' : 'var(--bg-card)',
+                          color: isSelected ? 'var(--primary)' : 'var(--text-main)',
+                          boxShadow: isSelected ? '0 0 0 2px var(--primary)' : 'var(--shadow-sm)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 3,
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <span style={{ fontSize: 15, fontWeight: 800 }}>
+                          {tbl.table_number}
+                        </span>
+                        <span style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          background: isOccupied ? '#ef4444' : '#10b981',
+                          color: '#ffffff'
+                        }}>
+                          {isOccupied ? (language === 'am' ? 'የተያዘ' : 'Occupied') : (language === 'am' ? 'ነፃ' : 'Available')}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
           </div>
 
-          {/* Menu Categories Horizontal Scroller */}
+          {/* Menu Categories Horizontal Scroller with Amharic Labels */}
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 10, marginBottom: 12 }}>
             <button
               onClick={() => setSelectedCategory('all')}
               style={{
-                padding: '6px 14px',
+                padding: '8px 16px',
                 borderRadius: 20,
-                fontSize: 12,
-                fontWeight: 700,
+                fontSize: 13,
+                fontWeight: 800,
                 whiteSpace: 'nowrap',
                 background: selectedCategory === 'all' ? 'var(--primary)' : 'var(--bg-subtle)',
                 color: selectedCategory === 'all' ? '#ffffff' : 'var(--text-main)',
@@ -239,17 +277,17 @@ export const WaiterView: React.FC = () => {
                 gap: 6
               }}
             >
-              <span>🍽️</span> All Items
+              <span>🍽️</span> {language === 'am' ? 'ሁሉም' : 'All Items'}
             </button>
             {categories.map(c => (
               <button
                 key={c.id}
                 onClick={() => setSelectedCategory(c.id)}
                 style={{
-                  padding: '6px 14px',
+                  padding: '8px 16px',
                   borderRadius: 20,
-                  fontSize: 12,
-                  fontWeight: 700,
+                  fontSize: 13,
+                  fontWeight: 800,
                   whiteSpace: 'nowrap',
                   background: selectedCategory === c.id ? 'var(--primary)' : 'var(--bg-subtle)',
                   color: selectedCategory === c.id ? '#ffffff' : 'var(--text-main)',
@@ -259,7 +297,7 @@ export const WaiterView: React.FC = () => {
                 }}
               >
                 <span>{CATEGORY_EMOJIS[c.id] || '🍴'}</span>
-                <span>{c.name}</span>
+                <span>{language === 'am' ? (c.name_amharic || CATEGORY_NAMES_AM[c.id] || c.name) : c.name}</span>
               </button>
             ))}
           </div>
@@ -330,22 +368,30 @@ export const WaiterView: React.FC = () => {
 
                   <div style={{ padding: 10, display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
                     <div>
-                      <h4 style={{ fontSize: 13, fontWeight: 700, margin: '2px 0 4px', lineHeight: 1.3, color: 'var(--text-main)' }}>{m.name}</h4>
+                      {/* Amharic name primary, English subtitle secondary */}
+                      <h4 style={{ fontSize: 15, fontWeight: 800, margin: '2px 0 2px', lineHeight: 1.3, color: 'var(--text-main)' }}>
+                        {m.name_amharic || m.name}
+                      </h4>
+                      {m.name_amharic && (
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                          {m.name}
+                        </span>
+                      )}
                       <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 8px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {m.description}
                       </p>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary)' }}>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--primary)' }}>
                         {m.price} {t('currency')}
                       </span>
 
                       {inCart > 0 ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--primary-light)', borderRadius: 20, padding: '2px 6px' }}>
-                          <button onClick={() => removeFromCart(m.id)} style={{ color: 'var(--primary)' }}><Minus size={14} /></button>
-                          <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--primary)' }}>{inCart}</span>
-                          <button onClick={() => addToCart(m)} style={{ color: 'var(--primary)' }}><Plus size={14} /></button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--primary-light)', borderRadius: 20, padding: '3px 8px' }}>
+                          <button onClick={() => removeFromCart(m.id)} style={{ color: 'var(--primary)', padding: 4 }}><Minus size={16} strokeWidth={3} /></button>
+                          <span style={{ fontSize: 14, fontWeight: 900, color: 'var(--primary)', minWidth: 16, textAlign: 'center' }}>{inCart}</span>
+                          <button onClick={() => addToCart(m)} style={{ color: 'var(--primary)', padding: 4 }}><Plus size={16} strokeWidth={3} /></button>
                         </div>
                       ) : (
                         <button
@@ -354,15 +400,15 @@ export const WaiterView: React.FC = () => {
                             background: 'var(--primary)',
                             color: '#ffffff',
                             borderRadius: '50%',
-                            width: 28,
-                            height: 28,
+                            width: 32,
+                            height: 32,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)'
+                            boxShadow: '0 2px 8px rgba(249, 115, 22, 0.4)'
                           }}
                         >
-                          <Plus size={16} />
+                          <Plus size={18} strokeWidth={3} />
                         </button>
                       )}
                     </div>
@@ -389,6 +435,38 @@ export const WaiterView: React.FC = () => {
                     <span style={{ fontWeight: 700 }}>{line.item.price * line.quantity} {t('currency')}</span>
                   </div>
                 ))}
+              </div>
+
+              {/* Quick Preset Note Chips */}
+              <div style={{ marginBottom: 10 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                  {language === 'am' ? 'ፈጣን ማስታወሻ (ለመምረጥ ይንኩ):' : 'Quick Notes (Tap to add):'}
+                </span>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {[
+                    { label: language === 'am' ? '🌶️ ያለ በርበሬ' : '🌶️ No Spice', val: 'ያለ በርበሬ' },
+                    { label: language === 'am' ? '🥩 በደንብ የበሰለ' : '🥩 Well Done', val: 'በደንብ የበሰለ' },
+                    { label: language === 'am' ? '📦 በፓኬት' : '📦 Packaged', val: 'በፓኬት' },
+                    { label: language === 'am' ? '⚡ በአስቸኳይ' : '⚡ Urgent', val: 'በአስቸኳይ' }
+                  ].map(chip => (
+                    <button
+                      key={chip.val}
+                      type="button"
+                      onClick={() => setSpecialNotes(prev => prev ? `${prev}, ${chip.val}` : chip.val)}
+                      style={{
+                        padding: '4px 8px',
+                        borderRadius: 8,
+                        background: 'var(--bg-subtle)',
+                        border: '1px solid var(--border)',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: 'var(--text-main)'
+                      }}
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <textarea

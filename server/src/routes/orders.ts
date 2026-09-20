@@ -41,7 +41,7 @@ orderRouter.get('/', authenticate, (req: AuthenticatedRequest, res) => {
 
   // Fetch items for these orders
   const getItemStmt = db.prepare(`
-    SELECT oi.*, mi.name as menu_name, mi.photo_url
+    SELECT oi.*, mi.name as menu_name, mi.name_amharic, mi.photo_url
     FROM order_items oi
     JOIN menu_items mi ON oi.menu_item_id = mi.id
     WHERE oi.order_id = ?
@@ -72,8 +72,9 @@ orderRouter.get('/queue/kitchen', authenticate, authorizeRole(['chef', 'admin', 
   `).all(branchId) as any[];
 
   const getKitchenItems = db.prepare(`
-    SELECT oi.*
+    SELECT oi.*, mi.name_amharic
     FROM order_items oi
+    LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
     WHERE oi.order_id = ? AND oi.routing_destination IN ('KITCHEN', 'BOTH')
   `);
 
@@ -102,8 +103,9 @@ orderRouter.get('/queue/bar', authenticate, authorizeRole(['barista', 'admin', '
   `).all(branchId) as any[];
 
   const getBarItems = db.prepare(`
-    SELECT oi.*
+    SELECT oi.*, mi.name_amharic
     FROM order_items oi
+    LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
     WHERE oi.order_id = ? AND oi.routing_destination IN ('BAR', 'BOTH')
   `);
 
