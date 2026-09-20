@@ -3,13 +3,14 @@ import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
 import { CameraCapture } from '../../components/CameraCapture';
 import { ImageUploadCompressor } from '../../components/ImageUploadCompressor';
+import { DetailedReportsDashboard } from '../../components/DetailedReportsDashboard';
 import { resolveImageUrl } from '../../utils/imageUrl';
-import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils } from 'lucide-react';
+import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils, BarChart3 } from 'lucide-react';
 import { gToast } from '../../utils/toast';
 
 export const AdminView: React.FC = () => {
   const { currentBranchId, branches, refreshBranches, settings, refreshSettings, t, language } = useApp();
-  const [activeTab, setActiveTab] = useState<'employees' | 'branches' | 'tables' | 'settings' | 'expenses' | 'audit' | 'menu'>('employees');
+  const [activeTab, setActiveTab] = useState<'employees' | 'branches' | 'tables' | 'settings' | 'expenses' | 'audit' | 'menu' | 'analytics'>('employees');
   const [users, setUsers] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -431,6 +432,12 @@ export const AdminView: React.FC = () => {
         >
           Menu ({menuItems.length})
         </button>
+        <button
+          onClick={() => setActiveTab('analytics')}
+          style={{ flex: 1, minWidth: 70, padding: '8px 4px', fontSize: 11, fontWeight: 700, borderRadius: 8, background: activeTab === 'analytics' ? '#ffffff' : 'transparent', color: activeTab === 'analytics' ? 'var(--primary)' : 'var(--text-muted)' }}
+        >
+          {language === 'am' ? 'ሪፖርቶች' : 'Analytics'}
+        </button>
       </div>
 
       {/* 1. STAFF MANAGEMENT TAB */}
@@ -832,6 +839,13 @@ export const AdminView: React.FC = () => {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* 7. ANALYTICS & DEEP REPORTS TAB */}
+      {activeTab === 'analytics' && (
+        <div style={{ marginTop: 10 }}>
+          <DetailedReportsDashboard branchId={currentBranchId} isEmbedded />
         </div>
       )}
 

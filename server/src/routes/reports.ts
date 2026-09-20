@@ -97,7 +97,93 @@ reportRouter.get('/dashboard', authenticate, authorizeRole(['admin', 'owner']), 
     ORDER BY date ASC
   `).all(...dateParamsOrders, ...branchParamsOrders);
 
-  // 6. Low Stock Count
+  // 6. Hourly Sales & Rush-Hour Peak Heatmap
+  const hourlyTrend = db.prepare(`
+    SELECT strftime('%H:00', o.created_at) as hour,
+           COALESCE(SUM(CASE WHEN o.status = 'COMPLETED' THEN o.total_amount ELSE 0 END), 0) as sales,
+           COUNT(CASE WHEN o.status = 'COMPLETED' THEN 1 ELSE NULL END) as orders
+    FROM orders o
+    WHERE ${orderDateClause} ${branchFilterOrders}
+    GROUP BY strftime('%H:00', o.created_at)
+    ORDER BY hour ASC
+  `).all(...dateParamsOrders, ...branchParamsOrders);
+
+  // 7. Payment Methods Breakdown (Cash, Telebirr, CBE Birr, Card)
+  let paymentDateClause = "date(p.created_at) = date('now')";
+  let paymentDateParams: any[] = [];
+  if (from && to) {
+    paymentDateClause = "date(p.created_at) BETWEEN date(?) AND date(?)";
+    paymentDateParams = [from, to];
+  } else if (range === 'yesterday') {
+    paymentDateClause = "date(p.created_at) = date('now', '-1 day')";
+  } else if (range === 'week') {
+    paymentDateClause = "date(p.created_at) >= date('now', '-7 days')";
+  } else if (range === 'month') {
+    paymentDateClause = "date(p.created_at) >= date('now', '-30 days')";
+  }
+
+  let branchFilterPayments = '';
+  const branchParamsPayments: any[] = [];
+  if (!isConsolidated) {
+    branchFilterPayments = 'AND p.branch_id = ?';
+    branchParamsPayments.push(branchId);
+  }
+
+  const paymentMethods = db.prepare(`
+    SELECT 
+      p.method,
+      COUNT(*) as tx_count,
+      COALESCE(SUM(p.amount), 0) as total_amount
+    FROM payments p
+    WHERE ${paymentDateClause} ${branchFilterPayments}
+    GROUP BY p.method
+    ORDER BY total_amount DESC
+  `).all(...paymentDateParams, ...branchParamsPayments);
+
+  // 8. BOM Cost & Gross Profit Margin per Menu Item
+  const menuProfitMargins = db.prepare(`
+    SELECT 
+      mi.id,
+      mi.name,
+      mi.name_amharic,
+      mi.price,
+      ROUND(COALESCE(bom.cost, 0), 2) as cogs_cost,
+      ROUND(mi.price - COALESCE(bom.cost, 0), 2) as profit_per_unit,
+      ROUND(((mi.price - COALESCE(bom.cost, 0)) / MAX(mi.price, 1)) * 100, 1) as margin_percent,
+      COALESCE(sales.units_sold, 0) as units_sold,
+      ROUND(COALESCE(sales.total_revenue, 0), 2) as total_revenue,
+      ROUND(COALESCE(sales.units_sold, 0) * (mi.price - COALESCE(bom.cost, 0)), 2) as total_gross_profit
+    FROM menu_items mi
+    LEFT JOIN (
+      SELECT r.menu_item_id, SUM(ri.quantity_required * ing.unit_cost) / MAX(COALESCE(r.yield_portions, 1)) as cost
+      FROM recipes r
+      JOIN recipe_items ri ON r.id = ri.recipe_id
+      JOIN ingredients ing ON ri.ingredient_id = ing.id
+      GROUP BY r.menu_item_id
+    ) bom ON mi.id = bom.menu_item_id
+    LEFT JOIN (
+      SELECT oi.menu_item_id, SUM(oi.quantity) as units_sold, SUM(oi.quantity * oi.price) as total_revenue
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.id
+      WHERE o.status = 'COMPLETED' AND ${orderDateClause} ${branchFilterOrders}
+      GROUP BY oi.menu_item_id
+    ) sales ON mi.id = sales.menu_item_id
+    GROUP BY mi.id
+    ORDER BY total_revenue DESC LIMIT 20
+  `).all(...dateParamsOrders, ...branchParamsOrders);
+
+  // 9. Voids, Cancellations & Discounts Audit
+  const auditLosses = db.prepare(`
+    SELECT 
+      COUNT(CASE WHEN o.status = 'CANCELLED' THEN 1 END) as cancelled_count,
+      COALESCE(SUM(CASE WHEN o.status = 'CANCELLED' THEN o.total_amount ELSE 0 END), 0) as cancelled_loss,
+      COUNT(CASE WHEN o.discount_amount > 0 THEN 1 END) as discounted_count,
+      COALESCE(SUM(o.discount_amount), 0) as total_discounts
+    FROM orders o
+    WHERE ${orderDateClause} ${branchFilterOrders}
+  `).get(...dateParamsOrders, ...branchParamsOrders) as any;
+
+  // 10. Low Stock Count
   let lowStockQuery = `
     SELECT COUNT(*) as count 
     FROM inventory_stock s
@@ -111,7 +197,7 @@ reportRouter.get('/dashboard', authenticate, authorizeRole(['admin', 'owner']), 
   }
   const lowStockCount = (db.prepare(lowStockQuery).get(...lowStockParams) as any)?.count || 0;
 
-  // 7. Branch Comparison (Consolidated view for Owner)
+  // 11. Branch Comparison (Consolidated view for Owner)
   const branchComparison = db.prepare(`
     SELECT b.id, b.name, b.city,
       COALESCE(SUM(CASE WHEN o.status = 'COMPLETED' THEN o.total_amount ELSE 0 END), 0) as sales,
@@ -122,6 +208,9 @@ reportRouter.get('/dashboard', authenticate, authorizeRole(['admin', 'owner']), 
   `).all(...dateParamsOrders);
 
   const netProfit = +(salesStats.total_sales - expenseStats.total_expenses).toFixed(2);
+  const grossProfitMargin = salesStats.total_sales > 0 
+    ? Math.round(((salesStats.total_sales - expenseStats.total_expenses) / salesStats.total_sales) * 100) 
+    : 0;
 
   res.json({
     isConsolidated,
@@ -131,13 +220,20 @@ reportRouter.get('/dashboard', authenticate, authorizeRole(['admin', 'owner']), 
       totalSales: salesStats.total_sales,
       totalExpenses: expenseStats.total_expenses,
       netProfit,
+      grossProfitMargin,
       totalOrders: salesStats.total_orders,
       completedOrders: salesStats.completed_orders,
       cancelledOrders: salesStats.cancelled_orders,
       avgOrderValue: +salesStats.avg_order_value.toFixed(2),
-      lowStockCount
+      lowStockCount,
+      totalDiscounts: auditLosses?.total_discounts || 0,
+      cancelledLoss: auditLosses?.cancelled_loss || 0
     },
     dailyTrend,
+    hourlyTrend,
+    paymentMethods,
+    menuProfitMargins,
+    auditLosses,
     topSellers,
     waiterStats,
     branchComparison
