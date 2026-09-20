@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
 import { CameraCapture } from '../../components/CameraCapture';
+import { ImageUploadCompressor } from '../../components/ImageUploadCompressor';
+import { resolveImageUrl } from '../../utils/imageUrl';
 import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils } from 'lucide-react';
 import { gToast } from '../../utils/toast';
 
 export const AdminView: React.FC = () => {
-  const { currentBranchId, branches, refreshBranches, settings, refreshSettings, t } = useApp();
+  const { currentBranchId, branches, refreshBranches, settings, refreshSettings, t, language } = useApp();
   const [activeTab, setActiveTab] = useState<'employees' | 'branches' | 'tables' | 'settings' | 'expenses' | 'audit' | 'menu'>('employees');
   const [users, setUsers] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
@@ -789,7 +791,7 @@ export const AdminView: React.FC = () => {
                 {/* Thumbnail */}
                 <div style={{ width: 64, height: 64, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: 'linear-gradient(135deg, #f97316, #ea580c)' }}>
                   {item.photo_url ? (
-                    <img src={item.photo_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                    <img src={resolveImageUrl(item.photo_url)} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
                   ) : (
                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 20 }}>
                       {item.name.charAt(0)}
@@ -1056,15 +1058,11 @@ export const AdminView: React.FC = () => {
                 </select>
               </div>
 
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Photo URL (Image link)</label>
-                <input type="url" placeholder="https://images.unsplash.com/..." value={menuPhoto} onChange={e => setMenuPhoto(e.target.value)} style={{ width: '100%' }} />
-                {menuPhoto ? (
-                  <div style={{ marginTop: 8, width: '100%', height: 100, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
-                    <img src={menuPhoto} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                ) : null}
-              </div>
+              <ImageUploadCompressor
+                value={menuPhoto}
+                onChange={setMenuPhoto}
+                label={language === 'am' ? 'የምግብ ፎቶ (ከተንቀሳቃሽ ስልክ ወይም ፋይል)' : 'Dish Photo (Mobile Camera or Upload)'}
+              />
 
               <div>
                 <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Description</label>

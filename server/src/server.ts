@@ -24,6 +24,7 @@ import { expenseRouter } from './routes/expenses.js';
 import { attendanceRouter } from './routes/attendance.js';
 import { reportRouter } from './routes/reports.js';
 import { adminRouter } from './routes/admin.js';
+import { uploadRouter } from './routes/upload.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -77,9 +78,12 @@ async function bootstrap() {
   // ── Auth-specific rate limiting (tighter) ─────────────────────────
   app.use('/api/auth', authRateLimiter);
 
-  // ── Static client build ───────────────────────────────────────────
+  // ── Static client build & Uploads directory ───────────────────────
   const clientDist = path.resolve(__dirname, '../../client/dist');
   app.use(express.static(clientDist));
+
+  const uploadsDir = path.resolve(__dirname, '../../uploads');
+  app.use('/uploads', express.static(uploadsDir));
 
   // ── Health check ──────────────────────────────────────────────────
   app.get('/api/health', (_req, res) => {
@@ -110,6 +114,7 @@ async function bootstrap() {
   app.use('/api/attendance', attendanceRouter);
   app.use('/api/reports', reportRouter);
   app.use('/api/admin', adminRouter);
+  app.use('/api/upload', uploadRouter);
 
   // ── 404 catch-all for unmatched API routes ─────────────────────────
   app.all('/api/*', notFoundHandler);

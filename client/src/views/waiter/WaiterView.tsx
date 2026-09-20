@@ -4,6 +4,7 @@ import { api } from '../../api/client';
 import { Plus, Minus, Send, CheckCircle2, Clock, UtensilsCrossed, AlertCircle, ShoppingBag, Check } from 'lucide-react';
 import { OrderProgressStepper } from '../../components/OrderProgressStepper';
 import { gToast } from '../../utils/toast';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 const CATEGORY_EMOJIS: Record<string, string> = {
   cat_burgers: '🍔',
@@ -324,7 +325,7 @@ export const WaiterView: React.FC = () => {
                   <div style={{ position: 'relative', width: '100%', height: 120, background: 'linear-gradient(135deg, #f97316, #ea580c)', overflow: 'hidden' }}>
                     {m.photo_url ? (
                       <img
-                        src={m.photo_url}
+                        src={resolveImageUrl(m.photo_url)}
                         alt={m.name}
                         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                         onError={(e) => {
