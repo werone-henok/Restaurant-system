@@ -93,6 +93,14 @@ export const translations: Record<Language, Record<string, string>> = {
     current_stock: 'Current Stock',
     low_stock_warning: 'LOW STOCK ALERT',
     capture_photo: 'Capture Shelf / Item Photo',
+    add_ingredient: 'Add New Ingredient',
+    edit_ingredient: 'Edit Ingredient',
+    delete_ingredient: 'Delete Ingredient',
+    ingredient_name: 'Ingredient Name (English)',
+    ingredient_name_am: 'Ingredient Name (Amharic)',
+    shelf_location: 'Shelf / Storage Location',
+    delete_confirm_msg: 'Are you sure you want to delete this ingredient? It will be deactivated from the catalog.',
+    confirm_delete: 'Yes, Delete',
 
     // Owner / Admin Dashboard
     // Owner / Admin Dashboard
@@ -217,6 +225,14 @@ export const translations: Record<Language, Record<string, string>> = {
     current_stock: 'አሁን ያለ ክምችት',
     low_stock_warning: 'ክምችቱ ሊያልቅ ተቃርቧል!',
     capture_photo: 'የመደርደሪያ / የዕቃ ፎቶ አንሳ',
+    add_ingredient: 'አዲስ ግብዓት መዝግብ',
+    edit_ingredient: 'ግብዓት አሻሽል',
+    delete_ingredient: 'ግብዓት ሰርዝ',
+    ingredient_name: 'የግብዓቱ ስም (እንግሊዝኛ)',
+    ingredient_name_am: 'የግብዓቱ ስም (አማርኛ)',
+    shelf_location: 'መደርደሪያ / መቀመጫ ቦታ',
+    delete_confirm_msg: 'ይህን ግብዓት በእርግጥ መሰረዝ ይፈልጋሉ? ከክምችት ዝርዝር ውስጥ ይወገዳል።',
+    confirm_delete: 'አዎ ሰርዝ',
 
     // Owner / Admin Dashboard
     today_sales: 'የዛሬ አጠቃላይ ሽያጭ',

@@ -115,7 +115,35 @@ export const logWasteSchema = z.object({
   quantity: z.number().positive('Quantity must be positive'),
   unit: z.string().default('g'),
   reason: z.string().min(1, 'Reason is required'),
-  photo_url: z.string().url().optional().nullable()
+  photo_url: z.string().optional().nullable()
+});
+
+export const createIngredientSchema = z.object({
+  name: z.string().min(1, 'Ingredient name is required').trim(),
+  name_amharic: z.string().optional().nullable(),
+  category: z.string().min(1, 'Category is required'),
+  sku: z.string().optional().nullable(),
+  unit: z.string().min(1, 'Unit is required'),
+  unit_cost: z.number().min(0).default(0),
+  min_stock_level: z.number().min(0).default(5),
+  max_stock_level: z.number().min(0).default(100),
+  shelf_location: z.string().optional().nullable(),
+  photo_url: z.string().optional().nullable(),
+  expiration_date: z.string().optional().nullable()
+});
+
+export const updateIngredientSchema = z.object({
+  name: z.string().min(1, 'Ingredient name is required').trim().optional(),
+  name_amharic: z.string().optional().nullable(),
+  category: z.string().min(1).optional(),
+  sku: z.string().optional().nullable(),
+  unit: z.string().min(1).optional(),
+  unit_cost: z.number().min(0).optional(),
+  min_stock_level: z.number().min(0).optional(),
+  max_stock_level: z.number().min(0).optional(),
+  shelf_location: z.string().optional().nullable(),
+  photo_url: z.string().optional().nullable(),
+  expiration_date: z.string().optional().nullable()
 });
 
 // ─── Menu / Recipe Schemas ───────────────────────────────────────────

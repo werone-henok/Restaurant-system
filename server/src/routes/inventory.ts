@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { db } from '../database/schema.js';
 import { authenticate, authorizeRole, type AuthenticatedRequest } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
+import { createIngredientSchema, updateIngredientSchema } from '../schemas/api.schemas.js';
 import { logAudit } from '../services/auditService.js';
 import { broadcastEvent } from '../services/websocket.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -167,29 +169,131 @@ inventoryRouter.get('/movements', authenticate, (req: AuthenticatedRequest, res)
   res.json(movements);
 });
 
-// 5. Add / Update Ingredient Master with Camera Photo & Shelf Location
-inventoryRouter.post('/ingredients', authenticate, authorizeRole(['storekeeper', 'admin', 'owner']), (req: AuthenticatedRequest, res) => {
-  const { name, name_amharic, category, unit, unit_cost, min_stock_level, shelf_location, photo_url, expiration_date } = req.body;
-
-  if (!name || !category || !unit) {
-    return res.status(400).json({ error: 'Name, category, and unit are required' });
-  }
+// 5. Create Ingredient (Storekeeper, Admin, Owner)
+inventoryRouter.post('/ingredients', authenticate, authorizeRole(['storekeeper', 'admin', 'owner']), validate(createIngredientSchema), (req: AuthenticatedRequest, res) => {
+  const { name, name_amharic, category, sku, unit, unit_cost, min_stock_level, max_stock_level, shelf_location, photo_url, expiration_date } = req.body;
 
   const id = `ing_${uuidv4().substring(0, 8)}`;
   db.prepare(`
-    INSERT INTO ingredients (id, name, name_amharic, category, unit, unit_cost, min_stock_level, shelf_location, photo_url, expiration_date)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO ingredients (id, name, name_amharic, category, sku, unit, unit_cost, min_stock_level, max_stock_level, shelf_location, photo_url, expiration_date)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    id, name, name_amharic || null, category, unit,
-    unit_cost || 0, min_stock_level || 5, shelf_location || 'Main Store',
+    id, name, name_amharic || null, category, sku || null, unit,
+    unit_cost ?? 0, min_stock_level ?? 5, max_stock_level ?? 100, shelf_location || 'Main Store',
     photo_url || null, expiration_date || null
   );
 
-  // Initialize 0 stock for branch
-  db.prepare(`
+  // Initialize stock for all active branches
+  const branches = db.prepare('SELECT id FROM branches WHERE is_active = 1').all() as any[];
+  const insertStock = db.prepare(`
     INSERT INTO inventory_stock (id, branch_id, ingredient_id, current_quantity)
     VALUES (?, ?, ?, 0)
-  `).run(`stk_${uuidv4().substring(0, 8)}`, req.user!.branch_id, id);
+    ON CONFLICT(branch_id, ingredient_id) DO NOTHING
+  `);
+  for (const b of branches) {
+    insertStock.run(`stk_${uuidv4().substring(0, 8)}`, b.id, id);
+  }
+
+  logAudit({
+    branchId: req.user!.branch_id,
+    userId: req.user!.id,
+    action: 'INGREDIENT_CREATED',
+    entityType: 'INGREDIENT',
+    entityId: id,
+    details: { name, category, unit, unit_cost, min_stock_level }
+  });
+
+  broadcastEvent({
+    type: 'STOCK_UPDATED',
+    branchId: req.user!.branch_id,
+    payload: { ingredientId: id, name, action: 'CREATED' }
+  });
 
   res.status(201).json({ id, message: 'Ingredient added to master catalog' });
+});
+
+// 6. Update Ingredient (Storekeeper, Admin, Owner)
+inventoryRouter.put('/ingredients/:id', authenticate, authorizeRole(['storekeeper', 'admin', 'owner']), validate(updateIngredientSchema), (req: AuthenticatedRequest, res) => {
+  const { id } = req.params;
+  const existing = db.prepare('SELECT * FROM ingredients WHERE id = ?').get(id) as any;
+  if (!existing) {
+    return res.status(404).json({ error: 'Ingredient not found' });
+  }
+
+  const { name, name_amharic, category, sku, unit, unit_cost, min_stock_level, max_stock_level, shelf_location, photo_url, expiration_date } = req.body;
+
+  db.prepare(`
+    UPDATE ingredients
+    SET name = COALESCE(?, name),
+        name_amharic = ?,
+        category = COALESCE(?, category),
+        sku = ?,
+        unit = COALESCE(?, unit),
+        unit_cost = COALESCE(?, unit_cost),
+        min_stock_level = COALESCE(?, min_stock_level),
+        max_stock_level = COALESCE(?, max_stock_level),
+        shelf_location = COALESCE(?, shelf_location),
+        photo_url = COALESCE(?, photo_url),
+        expiration_date = ?
+    WHERE id = ?
+  `).run(
+    name ?? existing.name,
+    name_amharic !== undefined ? name_amharic : existing.name_amharic,
+    category ?? existing.category,
+    sku !== undefined ? sku : existing.sku,
+    unit ?? existing.unit,
+    unit_cost !== undefined ? unit_cost : existing.unit_cost,
+    min_stock_level !== undefined ? min_stock_level : existing.min_stock_level,
+    max_stock_level !== undefined ? max_stock_level : existing.max_stock_level,
+    shelf_location ?? existing.shelf_location,
+    photo_url !== undefined ? photo_url : existing.photo_url,
+    expiration_date !== undefined ? expiration_date : existing.expiration_date,
+    id
+  );
+
+  logAudit({
+    branchId: req.user!.branch_id,
+    userId: req.user!.id,
+    action: 'INGREDIENT_UPDATED',
+    entityType: 'INGREDIENT',
+    entityId: id,
+    details: { name: name ?? existing.name, category: category ?? existing.category }
+  });
+
+  broadcastEvent({
+    type: 'STOCK_UPDATED',
+    branchId: req.user!.branch_id,
+    payload: { ingredientId: id, action: 'UPDATED' }
+  });
+
+  res.json({ message: 'Ingredient updated successfully', id });
+});
+
+// 7. Delete Ingredient (Admin and Owner ONLY - Storekeeper is forbidden)
+inventoryRouter.delete('/ingredients/:id', authenticate, authorizeRole(['admin', 'owner']), (req: AuthenticatedRequest, res) => {
+  const { id } = req.params;
+  const existing = db.prepare('SELECT id, name FROM ingredients WHERE id = ?').get(id) as any;
+  if (!existing) {
+    return res.status(404).json({ error: 'Ingredient not found' });
+  }
+
+  // Soft delete by marking is_active = 0
+  db.prepare('UPDATE ingredients SET is_active = 0 WHERE id = ?').run(id);
+
+  logAudit({
+    branchId: req.user!.branch_id,
+    userId: req.user!.id,
+    action: 'INGREDIENT_DELETED',
+    entityType: 'INGREDIENT',
+    entityId: id,
+    details: { name: existing.name }
+  });
+
+  broadcastEvent({
+    type: 'STOCK_UPDATED',
+    branchId: req.user!.branch_id,
+    payload: { ingredientId: id, action: 'DELETED' }
+  });
+
+  res.json({ message: 'Ingredient removed from active catalog', id });
 });
