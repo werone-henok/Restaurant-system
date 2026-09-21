@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { api } from '../api/client';
 import { 
@@ -35,6 +35,15 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
   const [activeReportTab, setActiveReportTab] = useState<'overview' | 'hourly' | 'margins' | 'payments' | 'staff'>('overview');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(api.isConnected);
+
+  // Auto-refresh fallback every 30 seconds
+  const loadTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const loadCallbackRef = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    loadCallbackRef.current = loadData;
+  });
 
   const loadData = () => {
     setLoading(true);
@@ -55,12 +64,27 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
 
   useEffect(() => {
     loadData();
+    setIsConnected(api.isConnected);
+
     const unsub = api.onEvent((event) => {
       if (['ORDER_COMPLETED', 'ORDER_CONFIRMED', 'STOCK_UPDATED'].includes(event.type)) {
-        loadData();
+        loadCallbackRef.current();
       }
     });
-    return unsub;
+
+    // Auto-refresh every 30 seconds
+    loadTimerRef.current = setInterval(() => {
+      loadCallbackRef.current();
+    }, 30000);
+
+    // Listen for live WebSocket connection status changes
+    const unsubStatus = api.onStatusChange(setIsConnected);
+
+    return () => {
+      unsub();
+      unsubStatus();
+      if (loadTimerRef.current) clearInterval(loadTimerRef.current);
+    };
   }, [effectiveBranchId, range, customFrom, customTo]);
 
   const handleExportCsv = () => {
@@ -162,7 +186,7 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
-            {language === 'am' ? 'የንግድ ትንታኔ እና ዝርዝር ሪፖርት' : 'Business Intelligence & Deep Analytics'}
+            {language === 'am' ? 'የንግድ ትንታኔ እንትዕዛዝ ሪፖርት' : 'Business Intelligence & Deep Analytics'}
           </h2>
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
             {dashboard.isConsolidated 
@@ -171,7 +195,16 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
           </span>
         </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            padding: '3px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700,
+            background: isConnected ? '#ecfdf5' : '#fef2f2',
+            color: isConnected ? '#065f46' : '#991b1b',
+            border: `1px solid ${isConnected ? '#a7f3d0' : '#fca5a5'}`
+          }}>
+            {isConnected ? '🟢 Live' : '🔴 Offline'}
+          </div>
           <button
             onClick={handleExportCsv}
             className="btn btn-secondary"

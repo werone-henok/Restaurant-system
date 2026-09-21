@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
 import { Plus, Minus, Send, CheckCircle2, Clock, UtensilsCrossed, AlertCircle, ShoppingBag, Check, RefreshCw } from 'lucide-react';
@@ -40,50 +40,28 @@ export const WaiterView: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [myOrders, setMyOrders] = useState<any[]>([]);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
-
-  // Pull-to-refresh state
-  const [touchStartY, setTouchStartY] = useState(0);
-  const [pullDistance, setPullDistance] = useState(0);
+  const [isConnected, setIsConnected] = useState(api.isConnected);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Auto-refresh fallback (30 seconds)
+  const loadTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const loadCallbackRef = useRef<() => void>(() => {});
+
+  // Keep the ref current
+  useEffect(() => {
+    loadCallbackRef.current = loadData;
+  });
 
   const triggerRefresh = () => {
     setIsRefreshing(true);
-    setPullDistance(50);
     if ('vibrate' in navigator) {
       try { navigator.vibrate(30); } catch (_) {}
     }
     loadData();
     setTimeout(() => {
       setIsRefreshing(false);
-      setPullDistance(0);
       gToast.success(language === 'am' ? 'መረጃዎች ታድሰዋል' : 'Data refreshed');
     }, 600);
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (window.scrollY === 0 || document.documentElement.scrollTop === 0) {
-      setTouchStartY(e.touches[0].clientY);
-    } else {
-      setTouchStartY(0);
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartY === 0 || isRefreshing) return;
-    const currentY = e.touches[0].clientY;
-    const diff = currentY - touchStartY;
-    if (diff > 0 && window.scrollY === 0) {
-      setPullDistance(Math.min(75, diff * 0.45));
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (pullDistance > 45 && !isRefreshing) {
-      triggerRefresh();
-    } else {
-      setPullDistance(0);
-    }
-    setTouchStartY(0);
   };
 
   const loadData = () => {
@@ -95,12 +73,32 @@ export const WaiterView: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    setIsConnected(api.isConnected);
+
     const unsub = api.onEvent((event) => {
-      if (['ORDER_CONFIRMED', 'ORDER_READY', 'ORDER_DELIVERED'].includes(event.type)) {
-        loadData();
+      if (['ORDER_CONFIRMED', 'ORDER_READY', 'ORDER_DELIVERED', 'ORDER_PENDING_CASHIER'].includes(event.type)) {
+        setTimeout(() => {
+          loadCallbackRef.current();
+          if (event.type === 'ORDER_READY') {
+            gToast.success(`🔔 Order #${event.payload?.orderNumber} is ready for delivery!`);
+          }
+        }, 300);
       }
     });
-    return unsub;
+
+    // Auto-refresh fallback every 30 seconds
+    loadTimerRef.current = setInterval(() => {
+      loadCallbackRef.current();
+    }, 30000);
+
+    // Live WebSocket connection status
+    const unsubStatus = api.onStatusChange(setIsConnected);
+
+    return () => {
+      unsub();
+      unsubStatus();
+      if (loadTimerRef.current) clearInterval(loadTimerRef.current);
+    };
   }, [currentBranchId]);
 
   const addToCart = (item: any) => {
@@ -206,55 +204,16 @@ export const WaiterView: React.FC = () => {
   const activeOrders = myOrders.filter(o => ['PENDING_CASHIER', 'CONFIRMED', 'PREPARING', 'PARTIALLY_READY'].includes(o.status));
 
   return (
-    <div
-      className="view-body animate-fade-in"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
-      {/* Pull-to-refresh indicator */}
-      {pullDistance > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: pullDistance,
-            transition: touchStartY !== 0 ? 'none' : 'height 0.25s ease',
-            overflow: 'hidden',
-            marginBottom: 8
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              background: 'var(--bg-card)',
-              padding: '4px 12px',
-              borderRadius: 20,
-              border: '1px solid var(--border)',
-              boxShadow: 'var(--shadow-sm)',
-              fontSize: 12,
-              fontWeight: 700,
-              color: 'var(--primary)'
-            }}
-          >
-            <RefreshCw
-              size={13}
-              className={isRefreshing || pullDistance > 45 ? 'animate-spin' : ''}
-              style={{ transform: `rotate(${pullDistance * 5}deg)` }}
-            />
-            <span>
-              {isRefreshing
-                ? (language === 'am' ? 'እያደሰ ነው...' : 'Refreshing...')
-                : (pullDistance > 45
-                  ? (language === 'am' ? 'ለመታደስ ይልቀቁ' : 'Release to refresh')
-                  : (language === 'am' ? 'ለማደስ ይጎትቱ' : 'Pull down to refresh'))}
-            </span>
-          </div>
+    <div className="view-body animate-fade-in">
+      {/* Connection Status + Refresh */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: isConnected ? '#065f46' : '#991b1b', background: isConnected ? '#ecfdf5' : '#fef2f2', padding: '3px 8px', borderRadius: 12 }}>
+          {isConnected ? '🟢' : '🔴'} {isConnected ? 'Live' : 'Offline'}
         </div>
-      )}
+        <button onClick={triggerRefresh} disabled={isRefreshing} style={{ padding: '4px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12 }}>
+          <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
+        </button>
+      </div>
 
       {/* Tab Switcher */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-subtle)', borderRadius: 10, padding: 4, marginBottom: 16 }}>
@@ -277,6 +236,16 @@ export const WaiterView: React.FC = () => {
         >
           Active ({activeOrders.length})
         </button>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          padding: '4px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+          background: isConnected ? '#ecfdf5' : '#fef2f2',
+          color: isConnected ? '#065f46' : '#991b1b',
+          border: `1px solid ${isConnected ? '#a7f3d0' : '#fca5a5'}`
+        }}>
+          <span>{isConnected ? '🟢' : '🔴'}</span>
+          <span style={{ display: 'inline-block' }}>{isConnected ? 'Live' : 'Offline'}</span>
+        </div>
         <button
           type="button"
           onClick={triggerRefresh}

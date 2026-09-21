@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
 import { Check, Printer, DollarSign, Tag, ShieldAlert, ArrowRight, CreditCard, Banknote, Smartphone } from 'lucide-react';
@@ -16,6 +16,15 @@ export const CashierView: React.FC = () => {
   const [receipt, setReceipt] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [showCustomSplit, setShowCustomSplit] = useState(false);
+  const [isConnected, setIsConnected] = useState(api.isConnected);
+
+  // Auto-refresh fallback
+  const loadTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const loadCallbackRef = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    loadCallbackRef.current = loadOrders;
+  }, []);
 
   const loadOrders = () => {
     api.request<any[]>(`/orders?branchId=${currentBranchId}`)
@@ -25,12 +34,32 @@ export const CashierView: React.FC = () => {
 
   useEffect(() => {
     loadOrders();
+    setIsConnected(api.isConnected);
+
     const unsub = api.onEvent((event) => {
       if (['ORDER_PENDING_CASHIER', 'ORDER_CONFIRMED', 'ORDER_DELIVERED', 'ORDER_COMPLETED'].includes(event.type)) {
-        loadOrders();
+        setTimeout(() => {
+          loadCallbackRef.current();
+          if (event.type === 'ORDER_PENDING_CASHIER') {
+            gToast.info(`📋 New order #${event.payload?.orderNumber} from waiter!`);
+          }
+        }, 300);
       }
     });
-    return unsub;
+
+    // Auto-refresh fallback every 30 seconds
+    loadTimerRef.current = setInterval(() => {
+      loadCallbackRef.current();
+    }, 30000);
+
+    // Listen for live WebSocket connection status changes
+    const unsubStatus = api.onStatusChange(setIsConnected);
+
+    return () => {
+      unsub();
+      unsubStatus();
+      if (loadTimerRef.current) clearInterval(loadTimerRef.current);
+    };
   }, [currentBranchId]);
 
   const openOrderModal = (order: any) => {
@@ -89,9 +118,21 @@ export const CashierView: React.FC = () => {
 
   return (
     <div className="view-body animate-fade-in">
-      <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 14 }}>
-        {language === 'am' ? 'የካሸር የክፍያ እና ትዕዛዝ መስኮት' : 'Cashier Operations'}
-      </h2>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800 }}>
+          {language === 'am' ? 'የካሸር የክፍያ እንትዕዛዝ መስኮት' : 'Cashier Operations'}
+        </h2>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          padding: '3px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700,
+          background: isConnected ? '#ecfdf5' : '#fef2f2',
+          color: isConnected ? '#065f46' : '#991b1b',
+          border: `1px solid ${isConnected ? '#a7f3d0' : '#fca5a5'}`
+        }}>
+          {isConnected ? '🟢 Live' : '🔴 Offline'}
+        </div>
+      </div>
 
       {/* Pending Confirmation Alert Section */}
       <div style={{ marginBottom: 20 }}>
