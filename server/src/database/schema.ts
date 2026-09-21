@@ -364,4 +364,9 @@ export function initDatabase() {
   `;
 
   db.exec(schema);
+
+  // Soft delete column migrations for existing databases
+  try { db.exec("ALTER TABLE users ADD COLUMN deleted_at DATETIME"); } catch (_) {}
+  try { db.exec("ALTER TABLE restaurant_tables ADD COLUMN deleted_at DATETIME"); } catch (_) {}
+  try { db.exec("ALTER TABLE menu_items ADD COLUMN deleted_at DATETIME"); } catch (_) {}
 }

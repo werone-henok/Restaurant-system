@@ -119,7 +119,11 @@ export const translations: Record<Language, Record<string, string>> = {
     ready_btn: 'Ready to Serve',
     delivered_btn: 'Mark Delivered',
     guest_count: 'Guests',
-    select_table_first: 'Please select a table first!'
+    select_table_first: 'Please select a table first!',
+    notifications: 'Notifications',
+    mark_all_read: 'Mark all as read',
+    no_notifications: 'No notifications',
+    unread: 'unread'
   },
   am: {
     // App Header & Common
@@ -238,6 +242,10 @@ export const translations: Record<Language, Record<string, string>> = {
     ready_btn: 'ተዘጋጅቶ አልቋል',
     delivered_btn: 'ለደንበኛው ደርሷል',
     guest_count: 'ሰው',
-    select_table_first: 'እባክዎ መጀመሪያ ጠረጴዛ ይምረጡ!'
+    select_table_first: 'እባክዎ መጀመሪያ ጠረጴዛ ይምረጡ!',
+    notifications: 'ማሳወቂያዎች',
+    mark_all_read: 'ሁሉንም አንብብ',
+    no_notifications: 'ምንም ማሳወቂያዎች የሉም',
+    unread: 'ያልተነበቡ'
   }
 };

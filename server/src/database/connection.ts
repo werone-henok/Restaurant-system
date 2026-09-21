@@ -1,99 +1,60 @@
-import initSqlJs from 'sql.js';
+import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 import { CONFIG } from '../config/env.js';
 
-let rawDb: any = null;
+let dbInstance: Database.Database | null = null;
 
-export async function getDatabase() {
-  if (rawDb) return dbWrapper;
-
-  const SQL = await initSqlJs();
-  if (fs.existsSync(CONFIG.DB_PATH)) {
-    try {
-      const filebuffer = fs.readFileSync(CONFIG.DB_PATH);
-      rawDb = new SQL.Database(filebuffer);
-    } catch (e) {
-      rawDb = new SQL.Database();
-    }
-  } else {
-    rawDb = new SQL.Database();
-  }
-
-  return dbWrapper;
+function sanitizeParams(params: any[]) {
+  return params.map(p => (p === undefined ? null : p));
 }
 
-export function saveDbToFile() {
-  if (!rawDb) return;
-  try {
-    const data = rawDb.export();
-    const buffer = Buffer.from(data);
+export function getNativeDb(): Database.Database {
+  if (!dbInstance) {
     const dir = path.dirname(CONFIG.DB_PATH);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(CONFIG.DB_PATH, buffer);
-  } catch (e) {
-    console.error('Error saving db to disk:', e);
+
+    dbInstance = new Database(CONFIG.DB_PATH);
+    dbInstance.pragma('journal_mode = WAL');
+    dbInstance.pragma('foreign_keys = ON');
+    dbInstance.pragma('synchronous = NORMAL');
   }
+  return dbInstance;
+}
+
+export async function getDatabase() {
+  return getNativeDb();
+}
+
+export function saveDbToFile() {
+  // No-op: better-sqlite3 writes directly to disk with WAL journaling
 }
 
 export const dbWrapper = {
   exec(sql: string) {
-    rawDb.run(sql);
-    saveDbToFile();
+    return getNativeDb().exec(sql);
   },
   prepare(sql: string) {
+    const stmt = getNativeDb().prepare(sql);
     return {
       run(...params: any[]) {
-        const flatParams = params.map(p => (p === undefined ? null : p));
-        rawDb.run(sql, flatParams);
-        saveDbToFile();
-        return { changes: rawDb.getRowsModified() };
+        return stmt.run(...sanitizeParams(params));
       },
       get(...params: any[]) {
-        const flatParams = params.map(p => (p === undefined ? null : p));
-        const stmt = rawDb.prepare(sql);
-        try {
-          if (flatParams.length > 0) {
-            stmt.bind(flatParams);
-          }
-          if (stmt.step()) {
-            return stmt.getAsObject();
-          }
-          return undefined;
-        } finally {
-          stmt.free();
-        }
+        return stmt.get(...sanitizeParams(params));
       },
       all(...params: any[]) {
-        const flatParams = params.map(p => (p === undefined ? null : p));
-        const stmt = rawDb.prepare(sql);
-        const results: any[] = [];
-        try {
-          if (flatParams.length > 0) {
-            stmt.bind(flatParams);
-          }
-          while (stmt.step()) {
-            results.push(stmt.getAsObject());
-          }
-          return results;
-        } finally {
-          stmt.free();
-        }
+        return stmt.all(...sanitizeParams(params));
       }
     };
   },
-  transaction(fn: () => any) {
-    return () => {
-      try {
-        const res = fn();
-        saveDbToFile();
-        return res;
-      } catch (err) {
-        console.error('Transaction failed:', err);
-        throw err;
-      }
-    };
+  transaction(fn: (...args: any[]) => any) {
+    const nativeTx = getNativeDb().transaction(fn);
+    return (...args: any[]) => nativeTx(...args);
+  },
+  pragma(sql: string) {
+    return getNativeDb().pragma(sql);
   }
 };

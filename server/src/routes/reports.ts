@@ -266,3 +266,46 @@ reportRouter.get('/waiters', authenticate, authorizeRole(['admin', 'owner']), (r
   const rows = db.prepare(query).all(...params);
   res.json(rows);
 });
+
+// CSV Export for Sales
+reportRouter.get('/export/sales', authenticate, authorizeRole(['admin', 'owner']), (req: AuthenticatedRequest, res) => {
+  const { from, to, branchId } = req.query as { from?: string; to?: string; branchId?: string };
+
+  let sql = `
+    SELECT o.order_number, COALESCE(b.name, 'Unknown') as branch, o.created_at, o.total_amount, o.status,
+           COALESCE(GROUP_CONCAT(mi.name || ' x' || oi.quantity, '; '), '') as items
+    FROM orders o
+    LEFT JOIN branches b ON o.branch_id = b.id
+    LEFT JOIN order_items oi ON o.id = oi.order_id
+    LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+    WHERE 1=1
+  `;
+  const params: any[] = [];
+  if (from) { sql += ' AND date(o.created_at) >= date(?)'; params.push(from); }
+  if (to) { sql += ' AND date(o.created_at) <= date(?)'; params.push(to); }
+  if (branchId && branchId !== 'ALL') { sql += ' AND o.branch_id = ?'; params.push(branchId); }
+  sql += ' GROUP BY o.id ORDER BY o.created_at DESC';
+
+  const rows = db.prepare(sql).all(...params) as any[];
+
+  const filename = `sales_${from || 'start'}_to_${to || 'now'}.csv`;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+  // Write UTF-8 BOM for Excel compatibility
+  res.write('\uFEFF');
+  res.write('Order Number,Branch,Date,Total Amount (ETB),Status,Items\n');
+
+  for (const row of rows) {
+    const orderNumber = `"${String(row.order_number || '').replace(/"/g, '""')}"`;
+    const branch = `"${String(row.branch || '').replace(/"/g, '""')}"`;
+    const createdAt = `"${String(row.created_at || '').replace(/"/g, '""')}"`;
+    const totalAmount = Number(row.total_amount || 0).toFixed(2);
+    const status = `"${String(row.status || '').replace(/"/g, '""')}"`;
+    const items = `"${String(row.items || '').replace(/"/g, '""')}"`;
+
+    res.write(`${orderNumber},${branch},${createdAt},${totalAmount},${status},${items}\n`);
+  }
+  res.end();
+});
+

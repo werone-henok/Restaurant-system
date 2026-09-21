@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { Building2, Globe, Wifi, WifiOff, RefreshCw, Moon, Sun } from 'lucide-react';
+import { NotificationCenter } from './NotificationCenter';
 
 export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile }) => {
   const { user, branches, currentBranchId, switchBranch, settings, language, setLanguage, isOnline, offlineCount, darkMode, toggleDarkMode, t } = useApp();
@@ -102,6 +103,9 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
         >
           {darkMode ? <Sun size={15} /> : <Moon size={15} />}
         </button>
+
+        {/* System Notifications */}
+        {user && <NotificationCenter />}
 
         {/* User Role Indicator */}
         {user && (

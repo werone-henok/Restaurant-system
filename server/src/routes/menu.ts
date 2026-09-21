@@ -12,10 +12,30 @@ menuRouter.get('/categories', authenticate, (_req, res) => {
   res.json(categories);
 });
 
+// Search menu items (by English or Amharic name)
+menuRouter.get('/items/search', authenticate, (req, res) => {
+  const q = ((req.query.q as string) || '').trim();
+  if (!q) {
+    return res.json([]);
+  }
+  const searchTerm = `%${q}%`;
+  const items = db.prepare(`
+    SELECT m.*, c.name as category_name
+    FROM menu_items m
+    JOIN menu_categories c ON m.category_id = c.id
+    WHERE m.deleted_at IS NULL
+      AND (m.name LIKE ? OR m.name_amharic LIKE ? OR m.description LIKE ?)
+    ORDER BY m.name ASC LIMIT 25
+  `).all(searchTerm, searchTerm, searchTerm);
+  res.json(items);
+});
+
 // Get menu items with recipes
 menuRouter.get('/items', authenticate, (req, res) => {
   const includeAll = req.query.all === 'true';
-  const whereClause = includeAll ? '' : 'WHERE m.is_available = 1';
+  const whereClause = includeAll 
+    ? 'WHERE m.deleted_at IS NULL' 
+    : 'WHERE m.is_available = 1 AND m.deleted_at IS NULL';
   const items = db.prepare(`
     SELECT m.*, c.name as category_name 
     FROM menu_items m
@@ -236,12 +256,12 @@ menuRouter.put('/items/:id', authenticate, authorizeRole(['admin', 'owner', 'che
   res.json({ message: 'Menu item updated successfully', id: req.params.id });
 });
 
-// Delete menu item (Admin, Owner)
-menuRouter.delete('/items/:id', authenticate, authorizeRole(['admin', 'owner']), (req: AuthenticatedRequest, res) => {
-  const item = db.prepare('SELECT * FROM menu_items WHERE id = ?').get(req.params.id) as any;
+// Delete menu item (Soft delete: Admin, Owner, Chef)
+menuRouter.delete('/items/:id', authenticate, authorizeRole(['admin', 'owner', 'chef']), (req: AuthenticatedRequest, res) => {
+  const item = db.prepare('SELECT * FROM menu_items WHERE id = ? AND deleted_at IS NULL').get(req.params.id) as any;
   if (!item) return res.status(404).json({ error: 'Menu item not found' });
 
-  db.prepare('DELETE FROM menu_items WHERE id = ?').run(req.params.id);
+  db.prepare('UPDATE menu_items SET deleted_at = CURRENT_TIMESTAMP, is_available = 0 WHERE id = ?').run(req.params.id);
 
   logAudit({
     branchId: req.user!.branch_id,

@@ -25,6 +25,8 @@ import { attendanceRouter } from './routes/attendance.js';
 import { reportRouter } from './routes/reports.js';
 import { adminRouter } from './routes/admin.js';
 import { uploadRouter } from './routes/upload.js';
+import { notificationRouter } from './routes/notifications.js';
+import { initBackupScheduler } from './services/backupService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,6 +34,7 @@ const __dirname = path.dirname(__filename);
 async function bootstrap() {
   await getDatabase();
   seedDatabase();
+  initBackupScheduler();
 
   const app = express();
   const server = http.createServer(app);
@@ -115,6 +118,7 @@ async function bootstrap() {
   app.use('/api/reports', reportRouter);
   app.use('/api/admin', adminRouter);
   app.use('/api/upload', uploadRouter);
+  app.use('/api/notifications', notificationRouter);
 
   // ── 404 catch-all for unmatched API routes ─────────────────────────
   app.all('/api/*', notFoundHandler);

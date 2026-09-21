@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
-import { Plus, Minus, Send, CheckCircle2, Clock, UtensilsCrossed, AlertCircle, ShoppingBag, Check } from 'lucide-react';
+import { Plus, Minus, Send, CheckCircle2, Clock, UtensilsCrossed, AlertCircle, ShoppingBag, Check, RefreshCw } from 'lucide-react';
 import { OrderProgressStepper } from '../../components/OrderProgressStepper';
 import { gToast } from '../../utils/toast';
 import { resolveImageUrl } from '../../utils/imageUrl';
@@ -38,6 +38,51 @@ export const WaiterView: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [myOrders, setMyOrders] = useState<any[]>([]);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
+
+  // Pull-to-refresh state
+  const [touchStartY, setTouchStartY] = useState(0);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const triggerRefresh = () => {
+    setIsRefreshing(true);
+    setPullDistance(50);
+    if ('vibrate' in navigator) {
+      try { navigator.vibrate(30); } catch (_) {}
+    }
+    loadData();
+    setTimeout(() => {
+      setIsRefreshing(false);
+      setPullDistance(0);
+      gToast.success(language === 'am' ? 'መረጃዎች ታድሰዋል' : 'Data refreshed');
+    }, 600);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (window.scrollY === 0 || document.documentElement.scrollTop === 0) {
+      setTouchStartY(e.touches[0].clientY);
+    } else {
+      setTouchStartY(0);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartY === 0 || isRefreshing) return;
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - touchStartY;
+    if (diff > 0 && window.scrollY === 0) {
+      setPullDistance(Math.min(75, diff * 0.45));
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (pullDistance > 45 && !isRefreshing) {
+      triggerRefresh();
+    } else {
+      setPullDistance(0);
+    }
+    setTouchStartY(0);
+  };
 
   const loadData = () => {
     api.request<any[]>(`/tables?branchId=${currentBranchId}`).then(setTables).catch(() => {});
@@ -153,9 +198,58 @@ export const WaiterView: React.FC = () => {
   const activeOrders = myOrders.filter(o => ['PENDING_CASHIER', 'CONFIRMED', 'PREPARING', 'PARTIALLY_READY'].includes(o.status));
 
   return (
-    <div className="view-body animate-fade-in">
+    <div
+      className="view-body animate-fade-in"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      {pullDistance > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: pullDistance,
+            transition: touchStartY !== 0 ? 'none' : 'height 0.25s ease',
+            overflow: 'hidden',
+            marginBottom: 8
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'var(--bg-card)',
+              padding: '4px 12px',
+              borderRadius: 20,
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-sm)',
+              fontSize: 12,
+              fontWeight: 700,
+              color: 'var(--primary)'
+            }}
+          >
+            <RefreshCw
+              size={13}
+              className={isRefreshing || pullDistance > 45 ? 'animate-spin' : ''}
+              style={{ transform: `rotate(${pullDistance * 5}deg)` }}
+            />
+            <span>
+              {isRefreshing
+                ? (language === 'am' ? 'እያደሰ ነው...' : 'Refreshing...')
+                : (pullDistance > 45
+                  ? (language === 'am' ? 'ለመታደስ ይልቀቁ' : 'Release to refresh')
+                  : (language === 'am' ? 'ለማደስ ይጎትቱ' : 'Pull down to refresh'))}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Tab Switcher */}
-      <div style={{ display: 'flex', background: 'var(--bg-subtle)', borderRadius: 10, padding: 4, marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-subtle)', borderRadius: 10, padding: 4, marginBottom: 16 }}>
         <button
           onClick={() => setActiveTab('create')}
           style={{ flex: 1, padding: '8px 0', fontSize: 13, fontWeight: 700, borderRadius: 8, background: activeTab === 'create' ? '#ffffff' : 'transparent', color: activeTab === 'create' ? 'var(--primary)' : 'var(--text-muted)', boxShadow: activeTab === 'create' ? 'var(--shadow-sm)' : 'none' }}
@@ -174,6 +268,24 @@ export const WaiterView: React.FC = () => {
           style={{ flex: 1, padding: '8px 0', fontSize: 13, fontWeight: 700, borderRadius: 8, background: activeTab === 'active' ? '#ffffff' : 'transparent', color: activeTab === 'active' ? 'var(--primary)' : 'var(--text-muted)' }}
         >
           Active ({activeOrders.length})
+        </button>
+        <button
+          type="button"
+          onClick={triggerRefresh}
+          title={language === 'am' ? 'አድስ' : 'Refresh'}
+          style={{
+            padding: '8px',
+            borderRadius: 8,
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
         </button>
       </div>
 

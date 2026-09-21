@@ -132,13 +132,31 @@ export function deductBomStock(
 
   tx();
 
-  // 4. Broadcast low-stock alerts (non-blocking, outside transaction)
+  // 4. Persist and Broadcast low-stock alerts
+  const insertNotif = db.prepare(`
+    INSERT INTO notifications (id, branch_id, target_role, title, title_amharic, message, message_amharic, type, link_ref)
+    VALUES (?, ?, 'storekeeper', ?, ?, ?, ?, 'LOW_STOCK', ?)
+  `);
+
   for (const alert of lowStockAlerts) {
+    const notifId = `notif_${uuidv4().substring(0, 8)}`;
+    const title = 'Low Stock Alert';
+    const titleAmharic = 'ዝቅተኛ የዕቃ ክምችት ማስጠንቀቂያ';
+    const msg = `⚠️ ${alert.name} is low on stock (${alert.current} ${alert.unit} remaining, minimum is ${alert.min})`;
+    const msgAmharic = `⚠️ ${alert.name} ክምችቱ ዝቅ ብሏል (${alert.current} ${alert.unit} ቀርቷል፣ ዝቅተኛው ወለል ${alert.min} ነው)`;
+
+    try {
+      insertNotif.run(notifId, branchId, title, titleAmharic, msg, msgAmharic, orderId);
+    } catch (e) {
+      console.error('Failed to insert notification:', e);
+    }
+
     broadcastEvent({
       type: 'LOW_STOCK_ALERT',
       branchId,
       targetRole: ['storekeeper', 'admin', 'owner'],
       payload: {
+        id: notifId,
         ingredient_id: alert.ingredient_id,
         name: alert.name,
         unit: alert.unit,
