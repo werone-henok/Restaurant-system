@@ -79,6 +79,7 @@ export function initDatabase() {
       routing_destination TEXT NOT NULL, -- 'KITCHEN', 'BAR', 'BOTH'
       is_tax_inclusive INTEGER DEFAULT 1,
       is_available INTEGER DEFAULT 1,
+      deleted_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 

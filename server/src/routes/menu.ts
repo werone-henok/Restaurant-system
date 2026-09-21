@@ -258,8 +258,8 @@ menuRouter.put('/items/:id', authenticate, authorizeRole(['admin', 'owner', 'che
 
 // Delete menu item (Soft delete: Admin, Owner, Chef)
 menuRouter.delete('/items/:id', authenticate, authorizeRole(['admin', 'owner', 'chef']), (req: AuthenticatedRequest, res) => {
-  const item = db.prepare('SELECT * FROM menu_items WHERE id = ? AND deleted_at IS NULL').get(req.params.id) as any;
-  if (!item) return res.status(404).json({ error: 'Menu item not found' });
+  const item = db.prepare('SELECT * FROM menu_items WHERE id = ?').get(req.params.id) as any;
+  if (!item || item.deleted_at) return res.status(404).json({ error: 'Menu item not found' });
 
   db.prepare('UPDATE menu_items SET deleted_at = CURRENT_TIMESTAMP, is_available = 0 WHERE id = ?').run(req.params.id);
 

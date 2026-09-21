@@ -1,9 +1,11 @@
 {
   "name": "restaurant-system",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "GourmetOS Restaurant Platform",
+  "main": "server/dist/server.js",
   "scripts": {
+    "build": "cd server && npm install && npm run build",
+    "start": "cd server && npm start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
