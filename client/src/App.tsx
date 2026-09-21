@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from './context/AppContext';
+import { api } from './api/client';
+import { tactileFeedback } from './utils/feedback';
 import { Header } from './components/Header';
 import { OnboardingSlider } from './views/onboarding/OnboardingSlider';
 import { AuthView } from './views/auth/AuthView';
@@ -20,7 +22,9 @@ import {
   Shield,
   BarChart3,
   LogOut,
-  User as UserIcon
+  User as UserIcon,
+  Flame,
+  Building2
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -45,43 +49,44 @@ export const App: React.FC = () => {
   const currentTab = activeTabOverride || role;
 
   // Bottom navigation items adapt automatically based on role permissions
+  // Designed with large 56px touch targets and prominent icons for illiterate/low-literacy staff
   const renderNav = () => {
     const navItems = [];
 
     if (role === 'owner') {
       navItems.push(
-        { id: 'owner', label: 'Executive', icon: <BarChart3 size={20} /> },
-        { id: 'cashier', label: 'Cashier', icon: <DollarSign size={20} /> },
-        { id: 'chef', label: 'Kitchen', icon: <ChefHat size={20} /> },
-        { id: 'storekeeper', label: 'Inventory', icon: <Store size={20} /> },
-        { id: 'admin', label: 'Admin', icon: <Shield size={20} /> }
+        { id: 'owner', label: 'Executive', emoji: '👑', icon: <Building2 size={24} /> },
+        { id: 'cashier', label: 'Cashier', emoji: '💵', icon: <DollarSign size={24} /> },
+        { id: 'chef', label: 'Kitchen', emoji: '🔥', icon: <Flame size={24} /> },
+        { id: 'storekeeper', label: 'Inventory', emoji: '📦', icon: <Store size={24} /> },
+        { id: 'admin', label: 'Admin', emoji: '🛡️', icon: <Shield size={24} /> }
       );
     } else if (role === 'admin') {
       navItems.push(
-        { id: 'admin', label: 'Admin', icon: <Shield size={20} /> },
-        { id: 'cashier', label: 'Cashier', icon: <DollarSign size={20} /> },
-        { id: 'storekeeper', label: 'Inventory', icon: <Store size={20} /> },
-        { id: 'owner', label: 'Reports', icon: <BarChart3 size={20} /> }
+        { id: 'admin', label: 'Admin', emoji: '🛡️', icon: <Shield size={24} /> },
+        { id: 'cashier', label: 'Cashier', emoji: '💵', icon: <DollarSign size={24} /> },
+        { id: 'storekeeper', label: 'Inventory', emoji: '📦', icon: <Store size={24} /> },
+        { id: 'owner', label: 'Reports', emoji: '📊', icon: <BarChart3 size={24} /> }
       );
     } else if (role === 'waiter') {
       navItems.push(
-        { id: 'waiter', label: 'Orders', icon: <UtensilsCrossed size={20} /> }
+        { id: 'waiter', label: 'Orders', emoji: '🍽️', icon: <UtensilsCrossed size={26} /> }
       );
     } else if (role === 'cashier') {
       navItems.push(
-        { id: 'cashier', label: 'Cashier', icon: <DollarSign size={20} /> }
+        { id: 'cashier', label: 'Cashier', emoji: '💵', icon: <DollarSign size={26} /> }
       );
     } else if (role === 'chef') {
       navItems.push(
-        { id: 'chef', label: 'Kitchen', icon: <ChefHat size={20} /> }
+        { id: 'chef', label: 'Kitchen', emoji: '🔥', icon: <Flame size={26} /> }
       );
     } else if (role === 'barista') {
       navItems.push(
-        { id: 'barista', label: 'Bar', icon: <Coffee size={20} /> }
+        { id: 'barista', label: 'Bar', emoji: '☕', icon: <Coffee size={26} /> }
       );
     } else if (role === 'storekeeper') {
       navItems.push(
-        { id: 'storekeeper', label: 'Inventory', icon: <Store size={20} /> }
+        { id: 'storekeeper', label: 'Inventory', emoji: '📦', icon: <Store size={26} /> }
       );
     }
 
@@ -89,16 +94,35 @@ export const App: React.FC = () => {
 
     return (
       <nav className="bottom-nav">
-        {navItems.map(item => (
-          <button
-            key={item.id}
-            onClick={() => setActiveTabOverride(item.id)}
-            className={`nav-item ${currentTab === item.id ? 'active' : ''}`}
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </button>
-        ))}
+        {navItems.map(item => {
+          const isActive = currentTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => {
+                tactileFeedback('click');
+                setActiveTabOverride(item.id);
+              }}
+              className={`nav-item ${isActive ? 'active' : ''}`}
+              title={item.label}
+              style={{
+                minWidth: 56,
+                minHeight: 56,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 2,
+                borderRadius: 14,
+                transition: 'all 0.15s ease',
+                background: isActive ? 'var(--primary-light)' : 'transparent'
+              }}
+            >
+              {item.icon}
+              <span style={{ fontSize: 10, fontWeight: 700 }}>{item.label}</span>
+            </button>
+          );
+        })}
       </nav>
     );
   };
@@ -172,7 +196,10 @@ export const App: React.FC = () => {
             </div>
 
             <button
-              onClick={() => {
+              onClick={async () => {
+                try {
+                  await api.request('/auth/logout', { method: 'POST' });
+                } catch (_) {}
                 setShowProfile(false);
                 logout();
               }}

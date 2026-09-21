@@ -361,6 +361,27 @@ export function initDatabase() {
       default_currency TEXT DEFAULT 'ETB',
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    -- Atomic Order Number Generation Counter
+    CREATE TABLE IF NOT EXISTS order_counters (
+      branch_id TEXT NOT NULL,
+      counter_date DATE NOT NULL,
+      last_number INTEGER DEFAULT 100,
+      PRIMARY KEY (branch_id, counter_date)
+    );
+
+    -- Performance Indexes
+    CREATE INDEX IF NOT EXISTS idx_orders_branch ON orders(branch_id);
+    CREATE INDEX IF NOT EXISTS idx_orders_waiter ON orders(waiter_id);
+    CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+    CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
+    CREATE INDEX IF NOT EXISTS idx_inventory_branch ON inventory_stock(branch_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_ingredient ON inventory_stock(ingredient_id);
+    CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_branch ON audit_logs(branch_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);
+    CREATE INDEX IF NOT EXISTS idx_payments_order ON payments(order_id);
+    CREATE INDEX IF NOT EXISTS idx_movements_branch ON inventory_movements(branch_id);
   `;
 
   db.exec(schema);
@@ -369,4 +390,10 @@ export function initDatabase() {
   try { db.exec("ALTER TABLE users ADD COLUMN deleted_at DATETIME"); } catch (_) {}
   try { db.exec("ALTER TABLE restaurant_tables ADD COLUMN deleted_at DATETIME"); } catch (_) {}
   try { db.exec("ALTER TABLE menu_items ADD COLUMN deleted_at DATETIME"); } catch (_) {}
+
+  // Security and auth migrations
+  try { db.exec("ALTER TABLE users ADD COLUMN pin_attempts INTEGER DEFAULT 0"); } catch (_) {}
+  try { db.exec("ALTER TABLE users ADD COLUMN pin_locked_until DATETIME"); } catch (_) {}
+  try { db.exec("ALTER TABLE users ADD COLUMN reset_token TEXT"); } catch (_) {}
+  try { db.exec("ALTER TABLE users ADD COLUMN reset_expiry DATETIME"); } catch (_) {}
 }

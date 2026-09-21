@@ -14,6 +14,17 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
+// In-memory token blacklist for immediate session invalidation on logout
+const tokenBlacklist = new Set<string>();
+
+export function blacklistToken(token: string) {
+  tokenBlacklist.add(token);
+}
+
+export function isTokenBlacklisted(token: string): boolean {
+  return tokenBlacklist.has(token);
+}
+
 export function authenticate(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -21,6 +32,11 @@ export function authenticate(req: AuthenticatedRequest, res: Response, next: Nex
   }
 
   const token = authHeader.split(' ')[1];
+
+  if (tokenBlacklist.has(token)) {
+    return res.status(401).json({ error: 'Token has been revoked. Please sign in again.' });
+  }
+
   try {
     const decoded = jwt.verify(token, CONFIG.JWT_SECRET) as any;
 

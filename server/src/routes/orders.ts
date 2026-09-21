@@ -135,14 +135,6 @@ orderRouter.post('/', authenticate, (req: AuthenticatedRequest, res) => {
     }
   }
 
-  // Get next sequential order number for today
-  const orderNumRow = db.prepare(`
-    SELECT COALESCE(MAX(order_number), 100) + 1 as next_num
-    FROM orders
-    WHERE branch_id = ? AND date(created_at) = date('now')
-  `).get(targetBranch) as { next_num: number };
-
-  const orderNumber = orderNumRow.next_num;
   const orderId = `ord_${uuidv4().substring(0, 8)}`;
 
   // Calculate totals
@@ -158,6 +150,25 @@ orderRouter.post('/', authenticate, (req: AuthenticatedRequest, res) => {
   const totalAmount = +(subtotal + taxAmount).toFixed(2);
 
   const tx = db.transaction(() => {
+    // Atomic sequential order number increment for today
+    const existingMax = db.prepare(`
+      SELECT COALESCE(MAX(order_number), 100) as max_num FROM orders
+      WHERE branch_id = ? AND date(created_at) = date('now')
+    `).get(targetBranch) as { max_num: number };
+
+    db.prepare(`
+      INSERT INTO order_counters (branch_id, counter_date, last_number)
+      VALUES (?, date('now'), ?)
+      ON CONFLICT(branch_id, counter_date) DO UPDATE SET last_number = MAX(last_number + 1, excluded.last_number)
+    `).run(targetBranch, existingMax.max_num + 1);
+
+    const counterRow = db.prepare(`
+      SELECT last_number FROM order_counters
+      WHERE branch_id = ? AND counter_date = date('now')
+    `).get(targetBranch) as { last_number: number };
+
+    const orderNumber = counterRow.last_number;
+
     db.prepare(`
       INSERT INTO orders (
         id, order_number, client_tx_id, branch_id, table_id, waiter_id, order_type,
@@ -196,9 +207,11 @@ orderRouter.post('/', authenticate, (req: AuthenticatedRequest, res) => {
       INSERT INTO order_status_history (id, order_id, user_id, previous_status, new_status, notes)
       VALUES (?, ?, ?, 'DRAFT', 'PENDING_CASHIER', 'Waiter created order')
     `).run(uuidv4(), orderId, req.user!.id);
+
+    return orderNumber;
   });
 
-  tx();
+  const orderNumber = tx();
 
   logAudit({
     branchId: targetBranch,

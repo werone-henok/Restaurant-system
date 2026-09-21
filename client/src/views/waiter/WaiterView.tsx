@@ -3,6 +3,8 @@ import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
 import { Plus, Minus, Send, CheckCircle2, Clock, UtensilsCrossed, AlertCircle, ShoppingBag, Check, RefreshCw } from 'lucide-react';
 import { OrderProgressStepper } from '../../components/OrderProgressStepper';
+import { UniversalStatusBadge } from '../../components/UniversalStatusBadge';
+import { tactileFeedback, speak } from '../../utils/feedback';
 import { gToast } from '../../utils/toast';
 import { resolveImageUrl } from '../../utils/imageUrl';
 
@@ -131,16 +133,15 @@ export const WaiterView: React.FC = () => {
 
   const handleSubmitOrder = async () => {
     if (orderType === 'DINE_IN' && !selectedTable) {
-      alert('Please select a table for Dine-In order');
+      tactileFeedback('warning');
+      gToast.error(t('select_table_first'));
+      speak(language === 'am' ? 'እባክዎ መጀመሪያ ጠረጴዛ ይምረጡ' : 'Please select a table first', language);
       return;
     }
     if (cartList.length === 0) {
-      alert('Cart is empty');
-      return;
-    }
-
-    if (orderType === 'DINE_IN' && !selectedTable) {
-      gToast.error(t('select_table_first'));
+      tactileFeedback('warning');
+      gToast.error(t('cart_empty'));
+      speak(language === 'am' ? 'ትዕዛዝ አልተመረጠም' : 'Order is empty', language);
       return;
     }
 
@@ -167,6 +168,9 @@ export const WaiterView: React.FC = () => {
         })
       });
 
+      tactileFeedback('success');
+      speak(language === 'am' ? `ትዕዛዝ ቁጥር ${res.orderNumber || ''} ተልኳል` : `Order ${res.orderNumber || ''} sent to cashier`, language);
+
       gToast.success(t('order_sent_success'));
       setSuccessBanner(`Order #${res.orderNumber || ''} sent to Cashier!`);
       setCart({});
@@ -174,6 +178,7 @@ export const WaiterView: React.FC = () => {
       loadData();
       setTimeout(() => setSuccessBanner(null), 5000);
     } catch (err: any) {
+      tactileFeedback('error');
       gToast.error(err.message || 'Failed to submit order');
     } finally {
       setLoading(false);
@@ -183,9 +188,12 @@ export const WaiterView: React.FC = () => {
   const handleDeliver = async (orderId: string) => {
     try {
       await api.request(`/orders/${orderId}/deliver`, { method: 'POST' });
+      tactileFeedback('success');
+      speak(language === 'am' ? 'ትዕዛዙ ለደንበኛው ደርሷል' : 'Order delivered to table', language);
       gToast.success(t('delivered_btn'));
       loadData();
     } catch (err: any) {
+      tactileFeedback('error');
       gToast.error(err.message || 'Error delivering order');
     }
   };
@@ -495,33 +503,65 @@ export const WaiterView: React.FC = () => {
                       </p>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--primary)' }}>
-                        {m.price} {t('currency')}
-                      </span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+                      <div>
+                        <span style={{ fontSize: 16, fontWeight: 900, color: 'var(--primary)' }}>
+                          {m.price}
+                        </span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginLeft: 3 }}>
+                          {t('currency')}
+                        </span>
+                      </div>
 
                       {inCart > 0 ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--primary-light)', borderRadius: 20, padding: '3px 8px' }}>
-                          <button onClick={() => removeFromCart(m.id)} style={{ color: 'var(--primary)', padding: 4 }}><Minus size={16} strokeWidth={3} /></button>
-                          <span style={{ fontSize: 14, fontWeight: 900, color: 'var(--primary)', minWidth: 16, textAlign: 'center' }}>{inCart}</span>
-                          <button onClick={() => addToCart(m)} style={{ color: 'var(--primary)', padding: 4 }}><Plus size={16} strokeWidth={3} /></button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--primary-light)', borderRadius: 20, padding: '4px 8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              tactileFeedback('click');
+                              removeFromCart(m.id);
+                            }}
+                            style={{ color: 'var(--primary)', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <Minus size={16} strokeWidth={3} />
+                          </button>
+                          <span style={{ fontSize: 15, fontWeight: 900, color: 'var(--primary)', minWidth: 18, textAlign: 'center' }}>
+                            {inCart}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              tactileFeedback('pop');
+                              addToCart(m);
+                            }}
+                            style={{ color: 'var(--primary)', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <Plus size={16} strokeWidth={3} />
+                          </button>
                         </div>
                       ) : (
                         <button
-                          onClick={() => addToCart(m)}
+                          type="button"
+                          onClick={() => {
+                            tactileFeedback('pop');
+                            addToCart(m);
+                          }}
                           style={{
                             background: 'var(--primary)',
                             color: '#ffffff',
-                            borderRadius: '50%',
-                            width: 32,
-                            height: 32,
+                            borderRadius: 12,
+                            width: 44,
+                            height: 40,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            boxShadow: '0 2px 8px rgba(249, 115, 22, 0.4)'
+                            boxShadow: '0 2px 8px rgba(249, 115, 22, 0.35)',
+                            border: 'none',
+                            cursor: 'pointer'
                           }}
+                          title="Add item"
                         >
-                          <Plus size={18} strokeWidth={3} />
+                          <Plus size={22} strokeWidth={3} />
                         </button>
                       )}
                     </div>
@@ -630,7 +670,10 @@ export const WaiterView: React.FC = () => {
             readyOrders.map(o => (
               <div key={o.id} style={{ background: '#ecfdf5', border: '1.5px solid #10b981', borderRadius: 14, padding: 16, boxShadow: 'var(--shadow-sm)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <span style={{ fontSize: 16, fontWeight: 800, color: '#047857' }}>Order #{o.order_number}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <UniversalStatusBadge status="READY" size="sm" />
+                    <span style={{ fontSize: 16, fontWeight: 800, color: '#047857' }}>Order #{o.order_number}</span>
+                  </div>
                   <span className="badge badge-ready">{t('status_READY')}</span>
                 </div>
                 <p style={{ fontSize: 13, fontWeight: 600, color: '#065f46', marginBottom: 12 }}>
@@ -666,7 +709,10 @@ export const WaiterView: React.FC = () => {
             activeOrders.map(o => (
               <div key={o.id} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 14, boxShadow: 'var(--shadow-sm)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ fontSize: 14, fontWeight: 800 }}>Order #{o.order_number}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <UniversalStatusBadge status={o.status} size="sm" />
+                    <span style={{ fontSize: 14, fontWeight: 800 }}>Order #{o.order_number}</span>
+                  </div>
                   <span className={`badge badge-${o.status.toLowerCase().replace('_', '-')}`}>
                     {t(`status_${o.status}`) || o.status}
                   </span>
