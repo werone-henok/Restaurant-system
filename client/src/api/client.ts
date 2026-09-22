@@ -1,5 +1,38 @@
-const API_BASE_URL = 'https://restaurant-system-ipd2.onrender.com/api';
-const WS_BASE = API_BASE_URL.replace(/^http/, 'ws').replace(/\/api$/, '/ws');
+export function getApiBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('gourmet_api_url');
+    if (saved && saved.trim()) return saved.trim();
+
+    const host = window.location.hostname;
+    // Localhost development
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:4000/api';
+    }
+    // LAN Wi-Fi development (e.g. tablet/phone connected to host IP on port 5173)
+    if (window.location.port === '5173' && (host.startsWith('192.168.') || host.startsWith('10.') || host.startsWith('172.'))) {
+      return `http://${host}:4000/api`;
+    }
+  }
+
+  const envUrl = (import.meta as any).env?.VITE_API_URL;
+  if (envUrl && envUrl.trim()) return envUrl.trim();
+
+  return 'https://restaurant-system-ipd2.onrender.com/api';
+}
+
+export function getWsBaseUrl(): string {
+  const apiBase = getApiBaseUrl();
+  return apiBase.replace(/^http/, 'ws').replace(/\/api$/, '/ws');
+}
+
+export function setCustomApiUrl(url: string | null) {
+  if (url && url.trim()) {
+    localStorage.setItem('gourmet_api_url', url.trim());
+  } else {
+    localStorage.removeItem('gourmet_api_url');
+  }
+  window.location.reload();
+}
 
 export interface SyncItem {
   id: string;
@@ -72,7 +105,8 @@ class ApiClient {
       this.reconnectTimer = null;
     }
 
-    const url = this.token ? `${WS_BASE}?token=${this.token}` : WS_BASE;
+    const wsBase = getWsBaseUrl();
+    const url = this.token ? `${wsBase}?token=${this.token}` : wsBase;
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
@@ -176,7 +210,7 @@ class ApiClient {
     const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method?.toUpperCase() || 'GET');
 
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const response = await fetch(`${getApiBaseUrl()}${endpoint}`, {
         ...options,
         headers
       });

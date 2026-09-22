@@ -5,6 +5,8 @@
  * - relative uploaded paths (/uploads/...)
  */
 
+import { getApiBaseUrl } from '../api/client';
+
 export function resolveImageUrl(url: string | null | undefined): string | undefined {
   if (!url || !url.trim()) return undefined;
   const trimmed = url.trim();
@@ -14,7 +16,7 @@ export function resolveImageUrl(url: string | null | undefined): string | undefi
   }
 
   if (trimmed.startsWith('/uploads')) {
-    const apiBase = (import.meta as any).env?.VITE_API_URL || 'https://restaurant-system-ipd2.onrender.com/api';
+    const apiBase = getApiBaseUrl();
     const serverHost = apiBase.replace(/\/api$/, '');
     return `${serverHost}${trimmed}`;
   }

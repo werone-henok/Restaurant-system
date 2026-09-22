@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { api } from '../../api/client';
+import { api, getApiBaseUrl, setCustomApiUrl } from '../../api/client';
 import { CameraCapture } from '../../components/CameraCapture';
 import { tactileFeedback } from '../../utils/feedback';
-import { Lock, User as UserIcon, Building2, KeyRound, Phone, Sparkles, HelpCircle, ArrowLeft } from 'lucide-react';
+import { Lock, User as UserIcon, Building2, KeyRound, Phone, Sparkles, HelpCircle, ArrowLeft, Server, Globe, Check, Settings2, X } from 'lucide-react';
 
 const ROLE_OPTIONS = [
   { id: 'waiter', label: 'Waiter', labelAm: 'አስተናጋጅ', emoji: '🍽️', bg: '#ffedd5', color: '#c2410c' },
@@ -38,6 +38,11 @@ export const AuthView: React.FC = () => {
   const [branchId, setBranchId] = useState('branch_addis');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [forgotUsername, setForgotUsername] = useState('');
+
+  // Server Switcher State
+  const [showServerModal, setShowServerModal] = useState(false);
+  const [apiUrl, setApiUrl] = useState(getApiBaseUrl());
+  const [customInput, setCustomInput] = useState(getApiBaseUrl());
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -410,6 +415,158 @@ export const AuthView: React.FC = () => {
             </div>
           </div>
         </form>
+      )}
+
+      {/* Server Endpoint Indicator & Switcher */}
+      <div style={{ marginTop: 14, textAlign: 'center' }}>
+        <button
+          type="button"
+          onClick={() => setShowServerModal(true)}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-muted)',
+            fontSize: 11,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '4px 10px',
+            borderRadius: 6
+          }}
+        >
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: apiUrl.includes('localhost') ? '#10b981' : '#f59e0b', display: 'inline-block' }} />
+          <span>Server: <strong>{apiUrl.includes('localhost') ? 'Local Persistent DB (Laptop)' : 'Render Cloud'}</strong></span>
+          <Settings2 size={12} />
+        </button>
+      </div>
+
+      {/* Server Connection Modal */}
+      {showServerModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: 16
+        }}>
+          <div style={{
+            background: 'var(--surface, #ffffff)',
+            borderRadius: 16,
+            padding: 24,
+            maxWidth: 440,
+            width: '100%',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Server size={20} color="var(--primary)" />
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Server Connection</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowServerModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              Choose which backend server this app communicates with. Localhost saves data permanently to your laptop's SQLite database.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Option 1: Local Laptop */}
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomApiUrl('http://localhost:4000/api');
+                }}
+                style={{
+                  padding: 12,
+                  borderRadius: 10,
+                  border: apiUrl.includes('localhost') ? '2px solid var(--primary)' : '1px solid var(--border)',
+                  background: apiUrl.includes('localhost') ? 'rgba(249, 115, 22, 0.08)' : 'var(--bg-subtle, #f8fafc)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  textAlign: 'left'
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-main)' }}>💻 Localhost (Laptop Persistent DB)</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>http://localhost:4000/api (Never loses data)</div>
+                </div>
+                {apiUrl.includes('localhost') && <Check size={18} color="var(--primary)" />}
+              </button>
+
+              {/* Option 2: Render Cloud */}
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomApiUrl('https://restaurant-system-ipd2.onrender.com/api');
+                }}
+                style={{
+                  padding: 12,
+                  borderRadius: 10,
+                  border: apiUrl.includes('onrender.com') ? '2px solid var(--primary)' : '1px solid var(--border)',
+                  background: apiUrl.includes('onrender.com') ? 'rgba(249, 115, 22, 0.08)' : 'var(--bg-subtle, #f8fafc)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  textAlign: 'left'
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-main)' }}>☁️ Render Cloud API</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>https://restaurant-system-ipd2.onrender.com/api</div>
+                </div>
+                {apiUrl.includes('onrender.com') && <Check size={18} color="var(--primary)" />}
+              </button>
+            </div>
+
+            {/* Custom URL */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Or Custom IP / Wi-Fi URL:</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="text"
+                  value={customInput}
+                  onChange={(e) => setCustomInput(e.target.value)}
+                  placeholder="http://192.168.1.X:4000/api"
+                  style={{
+                    flex: 1,
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    fontSize: 12
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setCustomApiUrl(customInput)}
+                  className="btn btn-primary"
+                  style={{ padding: '8px 14px', fontSize: 12 }}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

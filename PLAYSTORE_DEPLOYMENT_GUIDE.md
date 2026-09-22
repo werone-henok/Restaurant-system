@@ -39,6 +39,20 @@ Right now, your database and server run on your personal laptop at `localhost:40
 7. Render will build and deploy your API. Once ready, copy your public URL:
    `https://gourmetos-api.onrender.com`
 
+### ⚠️ CRITICAL: Attach a Persistent Disk (Never Lose Data!)
+By default, free cloud containers on Render have **ephemeral storage**, meaning the SQLite database resets when the server sleeps or restarts!
+To make your database permanent:
+1. In your Render Dashboard, click your `gourmetos-api` service.
+2. In the left menu, click **Disks** ➔ **Add Disk**:
+   - **Name**: `restaurant-data`
+   - **Mount Path**: `/data`
+   - **Size**: `1 GB`
+3. Click **Environment Variables** tab and add:
+   - `DB_PATH`: `/data/restaurant.db`
+   - `UPLOAD_DIR`: `/data/uploads`
+4. Click **Save Changes**.
+Now all orders, inventory, staff, and settings are saved permanently to your dedicated SSD volume and will never be lost!
+
 ---
 
 ## Phase 2: Point Mobile App to Live Backend
