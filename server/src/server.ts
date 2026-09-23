@@ -118,7 +118,15 @@ async function bootstrap() {
   const clientDist = possibleClientDirs.find(d => fs.existsSync(path.join(d, 'index.html'))) || possibleClientDirs[0];
   console.log(`[Static] Serving web client from: ${clientDist} (index.html exists: ${fs.existsSync(path.join(clientDist, 'index.html'))})`);
 
-  app.use(express.static(clientDist));
+  app.use(express.static(clientDist, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('index.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      }
+    }
+  }));
 
   // ── Uploads handling (Local filesystem cache + Cloud persistence fallback) ──
   if (!fs.existsSync(CONFIG.UPLOAD_DIR)) {
@@ -204,6 +212,9 @@ async function bootstrap() {
     }
     const indexPath = path.join(clientDist, 'index.html');
     if (fs.existsSync(indexPath)) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       res.sendFile(indexPath);
     } else {
       res.status(503).send(`

@@ -231,59 +231,95 @@ export const WaiterView: React.FC = () => {
       </div>
 
       {/* Tab Switcher */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-subtle)', borderRadius: 10, padding: 4, marginBottom: 16 }}>
-        <button
-          onClick={() => setActiveTab('create')}
-          style={{ flex: 1, padding: '8px 0', fontSize: 13, fontWeight: 700, borderRadius: 8, background: activeTab === 'create' ? '#ffffff' : 'transparent', color: activeTab === 'create' ? 'var(--primary)' : 'var(--text-muted)', boxShadow: activeTab === 'create' ? 'var(--shadow-sm)' : 'none' }}
-        >
-          Take Order
-        </button>
-        <button
-          onClick={() => setActiveTab('ready')}
-          style={{ flex: 1, padding: '8px 0', fontSize: 13, fontWeight: 700, borderRadius: 8, background: activeTab === 'ready' ? '#ffffff' : 'transparent', color: activeTab === 'ready' ? 'var(--accent)' : 'var(--text-muted)', position: 'relative' }}
-        >
-          Ready ({readyOrders.length})
-          {readyOrders.length > 0 && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', position: 'absolute', top: 6, right: 14 }} />}
-        </button>
-        <button
-          onClick={() => setActiveTab('active')}
-          style={{ flex: 1, padding: '8px 0', fontSize: 13, fontWeight: 700, borderRadius: 8, background: activeTab === 'active' ? '#ffffff' : 'transparent', color: activeTab === 'active' ? 'var(--primary)' : 'var(--text-muted)' }}
-        >
-          Active ({activeOrders.length})
-        </button>
-        <button
-          onClick={() => { setActiveTab('history'); loadHistory(); }}
-          style={{ flex: 1, padding: '8px 0', fontSize: 13, fontWeight: 700, borderRadius: 8, background: activeTab === 'history' ? '#ffffff' : 'transparent', color: activeTab === 'history' ? 'var(--primary)' : 'var(--text-muted)', boxShadow: activeTab === 'history' ? 'var(--shadow-sm)' : 'none' }}
-        >
-          {language === 'am' ? 'ታሪክ' : 'History'}
-        </button>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 4,
-          padding: '4px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-          background: isConnected ? '#ecfdf5' : '#fef2f2',
-          color: isConnected ? '#065f46' : '#991b1b',
-          border: `1px solid ${isConnected ? '#a7f3d0' : '#fca5a5'}`
-        }}>
-          <span>{isConnected ? '🟢' : '🔴'}</span>
-          <span style={{ display: 'inline-block' }}>{isConnected ? 'Live' : 'Offline'}</span>
-        </div>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        background: 'var(--bg-subtle, #f1f5f9)',
+        borderRadius: 12,
+        padding: 4,
+        marginBottom: 16
+      }}>
         <button
           type="button"
-          onClick={triggerRefresh}
-          title={language === 'am' ? 'አድስ' : 'Refresh'}
+          onClick={() => setActiveTab('create')}
           style={{
-            padding: '8px',
+            flex: 1,
+            padding: '10px 4px',
+            fontSize: 13,
+            fontWeight: 700,
             borderRadius: 8,
-            background: 'transparent',
+            background: activeTab === 'create' ? '#ffffff' : 'transparent',
+            color: activeTab === 'create' ? 'var(--primary)' : 'var(--text-muted)',
+            boxShadow: activeTab === 'create' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
             border: 'none',
-            color: 'var(--text-muted)',
+            cursor: 'pointer'
+          }}
+        >
+          {language === 'am' ? 'ትዕዛዝ መውሰጃ' : 'Take Order'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('ready')}
+          style={{
+            flex: 1,
+            padding: '10px 4px',
+            fontSize: 13,
+            fontWeight: 700,
+            borderRadius: 8,
+            background: activeTab === 'ready' ? '#ffffff' : 'transparent',
+            color: activeTab === 'ready' ? 'var(--accent)' : 'var(--text-muted)',
+            boxShadow: activeTab === 'ready' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+            border: 'none',
+            cursor: 'pointer',
+            position: 'relative'
+          }}
+        >
+          {language === 'am' ? 'የደረሱ' : 'Ready'} ({readyOrders.length})
+          {readyOrders.length > 0 && (
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', position: 'absolute', top: 6, right: 10 }} />
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('active')}
+          style={{
+            flex: 1,
+            padding: '10px 4px',
+            fontSize: 13,
+            fontWeight: 700,
+            borderRadius: 8,
+            background: activeTab === 'active' ? '#ffffff' : 'transparent',
+            color: activeTab === 'active' ? 'var(--primary)' : 'var(--text-muted)',
+            boxShadow: activeTab === 'active' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+            border: 'none',
+            cursor: 'pointer'
+          }}
+        >
+          {language === 'am' ? 'ንቁ' : 'Active'} ({activeOrders.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => { setActiveTab('history'); loadHistory(); }}
+          style={{
+            flex: 1,
+            padding: '10px 4px',
+            fontSize: 13,
+            fontWeight: 700,
+            borderRadius: 8,
+            background: activeTab === 'history' ? '#ffffff' : 'transparent',
+            color: activeTab === 'history' ? 'var(--primary)' : 'var(--text-muted)',
+            boxShadow: activeTab === 'history' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+            border: 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            gap: 4
           }}
         >
-          <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
+          <History size={14} />
+          {language === 'am' ? 'ታሪክ' : 'History'}
         </button>
       </div>
 
