@@ -6,7 +6,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "node -e \"const fs=require('fs'); if(fs.existsSync('../client/package.json')) { console.log('Building web app for desktop/mobile browsers...'); require('child_process').execSync('npm --prefix ../client run build', {stdio:'inherit'}); }\" && tsc",
+    "build": "node build-all.js",
     "start": "node dist/server.js"
   },
   "dependencies": {

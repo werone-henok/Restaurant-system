@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { WebSocketServer } from 'ws';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 import { CONFIG } from './config/env.js';
@@ -101,7 +102,17 @@ async function bootstrap() {
   app.use('/api/auth', authRateLimiter);
 
   // ── Static client build & Uploads directory ───────────────────────
-  const clientDist = path.resolve(__dirname, '../../client/dist');
+  const possibleClientDirs = [
+    path.resolve(__dirname, '../public'),
+    path.resolve(__dirname, '../../server/public'),
+    path.resolve(__dirname, '../../client/dist'),
+    path.resolve(__dirname, '../client/dist'),
+    path.resolve(__dirname, 'public')
+  ];
+
+  const clientDist = possibleClientDirs.find(d => fs.existsSync(path.join(d, 'index.html'))) || possibleClientDirs[0];
+  console.log(`[Static] Serving web client from: ${clientDist} (index.html exists: ${fs.existsSync(path.join(clientDist, 'index.html'))})`);
+
   app.use(express.static(clientDist));
 
   const uploadsDir = path.resolve(__dirname, '../../uploads');
@@ -113,19 +124,6 @@ async function bootstrap() {
       status: 'HEALTHY',
       service: 'GourmetOS Restaurant Platform Server',
       timestamp: new Date().toISOString()
-    });
-  });
-
-  // ── Web Client SPA Serving (Desktop & Mobile Browser Access) ──────
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api') || req.path.startsWith('/ws') || req.path.startsWith('/uploads')) {
-      return next();
-    }
-    const indexPath = path.join(clientDist, 'index.html');
-    res.sendFile(indexPath, (err) => {
-      if (err) {
-        res.redirect('http://localhost:5180');
-      }
     });
   });
 
@@ -146,6 +144,28 @@ async function bootstrap() {
 
   // ── 404 catch-all for unmatched API routes ─────────────────────────
   app.all('/api/*', notFoundHandler);
+
+  // ── SPA Catch-all (Serves React web app on all web routes) ────────
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/ws') || req.path.startsWith('/uploads')) {
+      return next();
+    }
+    const indexPath = path.join(clientDist, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res.status(503).send(`
+        <!DOCTYPE html>
+        <html>
+        <head><title>GourmetOS</title><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+        <body style="font-family:sans-serif;text-align:center;padding:50px 20px;">
+          <h2>GourmetOS Restaurant System</h2>
+          <p>Web application bundle is compiling or initializing. Please refresh in a moment.</p>
+        </body>
+        </html>
+      `);
+    }
+  });
 
   // ── Centralized error handler (must be last middleware) ────────────
   app.use(errorHandler);
