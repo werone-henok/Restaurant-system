@@ -11,7 +11,10 @@ const publicDir = path.resolve(__dirname, 'public');
 
 console.log('=== STARTING GOURMETOS UNIFIED BUILD ===');
 
-if (fs.existsSync(clientDir)) {
+const isRenderOrCi = Boolean(process.env.RENDER || process.env.CI);
+const hasPrebuiltPublic = fs.existsSync(path.join(publicDir, 'index.html'));
+
+if (fs.existsSync(clientDir) && (!isRenderOrCi || !hasPrebuiltPublic)) {
   console.log('1. Checking and building frontend web client...');
   try {
     const clientModules = path.join(clientDir, 'node_modules');
@@ -35,6 +38,8 @@ if (fs.existsSync(clientDir)) {
   } catch (err) {
     console.error('Frontend build notice:', err);
   }
+} else if (hasPrebuiltPublic) {
+  console.log('1. Using pre-built static client from server/public.');
 } else {
   console.log('Notice: ../client directory not present. Skipping frontend build.');
 }
