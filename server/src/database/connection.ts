@@ -16,10 +16,27 @@ export function getNativeDb(): Database.Database {
       fs.mkdirSync(dir, { recursive: true });
     }
 
-    dbInstance = new Database(CONFIG.DB_PATH);
-    dbInstance.pragma('journal_mode = WAL');
-    dbInstance.pragma('foreign_keys = ON');
-    dbInstance.pragma('synchronous = NORMAL');
+    try {
+      dbInstance = new Database(CONFIG.DB_PATH);
+      dbInstance.pragma('journal_mode = WAL');
+      dbInstance.pragma('foreign_keys = ON');
+      dbInstance.pragma('synchronous = NORMAL');
+    } catch (err: any) {
+      if (err.code === 'SQLITE_NOTADB' || err.message?.includes('not a database')) {
+        console.warn(`[Database] File at ${CONFIG.DB_PATH} is corrupted (SQLITE_NOTADB). Recreating fresh database.`);
+        try {
+          if (fs.existsSync(CONFIG.DB_PATH)) fs.unlinkSync(CONFIG.DB_PATH);
+          if (fs.existsSync(`${CONFIG.DB_PATH}-wal`)) fs.unlinkSync(`${CONFIG.DB_PATH}-wal`);
+          if (fs.existsSync(`${CONFIG.DB_PATH}-shm`)) fs.unlinkSync(`${CONFIG.DB_PATH}-shm`);
+        } catch (_) {}
+        dbInstance = new Database(CONFIG.DB_PATH);
+        dbInstance.pragma('journal_mode = WAL');
+        dbInstance.pragma('foreign_keys = ON');
+        dbInstance.pragma('synchronous = NORMAL');
+      } else {
+        throw err;
+      }
+    }
   }
   return dbInstance;
 }

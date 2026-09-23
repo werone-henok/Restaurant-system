@@ -81,6 +81,15 @@ export async function restoreLatestFromCloud(): Promise<boolean> {
       return false;
     }
 
+    const SQLITE_HEADER = 'SQLite format 3\0';
+    const fileHeader = buffer.subarray(0, 16).toString('utf-8');
+    if (fileHeader !== SQLITE_HEADER) {
+      console.warn('[CloudSync] ⚠️ Remote file in bucket is NOT a valid SQLite database (header mismatch).');
+      console.warn(`[CloudSync] Preview of remote content: "${buffer.subarray(0, 80).toString('utf-8').replace(/[^\x20-\x7E]/g, '.')}"`);
+      console.warn('[CloudSync] Skipping restore of invalid file. Initializing healthy database and will overwrite with clean backup.');
+      return false;
+    }
+
     const dir = path.dirname(CONFIG.DB_PATH);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
