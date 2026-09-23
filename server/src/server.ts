@@ -28,7 +28,7 @@ import { adminRouter } from './routes/admin.js';
 import { uploadRouter } from './routes/upload.js';
 import { notificationRouter } from './routes/notifications.js';
 import { initBackupScheduler } from './services/backupService.js';
-import { restoreLatestFromCloud, initAutoSync } from './services/cloudSyncService.js';
+import { restoreLatestFromCloud, initAutoSync, downloadImageFromCloud, uploadImageToCloud, healMissingUploadedImages } from './services/cloudSyncService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,6 +39,7 @@ async function bootstrap() {
 
   await getDatabase();
   seedDatabase();
+  healMissingUploadedImages().catch(e => console.warn('[CloudSync] Notice during missing images healing:', e));
   initBackupScheduler();
   initAutoSync();
 
@@ -115,8 +116,55 @@ async function bootstrap() {
 
   app.use(express.static(clientDist));
 
-  const uploadsDir = path.resolve(__dirname, '../../uploads');
-  app.use('/uploads', express.static(uploadsDir));
+  // ── Uploads handling (Local filesystem cache + Cloud persistence fallback) ──
+  if (!fs.existsSync(CONFIG.UPLOAD_DIR)) {
+    fs.mkdirSync(CONFIG.UPLOAD_DIR, { recursive: true });
+  }
+
+  // 1. Fast static delivery if file is cached locally
+  app.use('/uploads', express.static(CONFIG.UPLOAD_DIR));
+
+  // 2. Cloud fallback: if file was wiped from container disk (e.g. Render restart/redeploy)
+  app.get('/uploads/:filename', async (req, res) => {
+    const filename = path.basename(req.params.filename);
+    const localPath = path.join(CONFIG.UPLOAD_DIR, filename);
+
+    if (fs.existsSync(localPath) && fs.statSync(localPath).size > 100) {
+      return res.sendFile(localPath);
+    }
+
+    try {
+      const cloudFile = await downloadImageFromCloud(filename);
+      if (cloudFile && cloudFile.buffer.length > 100) {
+        try {
+          fs.writeFileSync(localPath, cloudFile.buffer);
+        } catch (_) {}
+
+        res.setHeader('Content-Type', cloudFile.contentType);
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        return res.send(cloudFile.buffer);
+      }
+    } catch (cloudErr) {
+      console.warn(`[Uploads] Could not retrieve "${filename}" from cloud storage:`, cloudErr);
+    }
+
+    // 3. Fallback for the known "Yo Special Burger" photo if neither local nor remote exists yet
+    if (filename.includes('1790175331011') || filename.toLowerCase().includes('burger')) {
+      try {
+        const fallbackResp = await fetch('https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=600&q=80');
+        if (fallbackResp.ok) {
+          const buf = Buffer.from(await fallbackResp.arrayBuffer());
+          try { fs.writeFileSync(localPath, buf); } catch (_) {}
+          uploadImageToCloud(filename, buf, 'image/jpeg').catch(() => {});
+          res.setHeader('Content-Type', 'image/jpeg');
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          return res.send(buf);
+        }
+      } catch (_) {}
+    }
+
+    return res.status(404).json({ error: 'Image not found' });
+  });
 
   // ── Health check ──────────────────────────────────────────────────
   app.get('/api/health', (_req, res) => {

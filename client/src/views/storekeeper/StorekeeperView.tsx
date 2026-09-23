@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { gToast } from '../../utils/toast';
 import { tactileFeedback } from '../../utils/feedback';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 const CATEGORIES = [
   { id: 'Vegetables', label: 'Vegetables', labelAm: 'አትክልቶች', emoji: '🥦' },
@@ -629,7 +630,7 @@ export const StorekeeperView: React.FC = () => {
                     {/* Photo or Category Emoji Avatar */}
                     {item.photo_url ? (
                       <img
-                        src={item.photo_url}
+                        src={resolveImageUrl(item.photo_url)}
                         alt={item.name}
                         style={{
                           width: 48,

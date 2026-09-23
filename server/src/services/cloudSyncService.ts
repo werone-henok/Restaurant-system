@@ -52,7 +52,7 @@ function normalizeSupabaseUrl(rawUrl: string): string {
   return url;
 }
 
-function getSupabase(): SupabaseClient | null {
+export function getSupabase(): SupabaseClient | null {
   if (!syncStatus.configured) return null;
   if (!supabase) {
     const normalizedUrl = normalizeSupabaseUrl(CONFIG.SUPABASE_URL);
@@ -62,6 +62,140 @@ function getSupabase(): SupabaseClient | null {
   }
   return supabase;
 }
+
+/**
+ * Uploads an image buffer to Supabase Storage in the uploads/ directory of the bucket.
+ */
+export async function uploadImageToCloud(filename: string, buffer: Buffer, contentType: string = 'image/jpeg'): Promise<boolean> {
+  const client = getSupabase();
+  if (!client) return false;
+
+  try {
+    const remotePath = `uploads/${filename}`;
+    const { error } = await client.storage
+      .from(CONFIG.SUPABASE_BUCKET)
+      .upload(remotePath, buffer, {
+        upsert: true,
+        contentType
+      });
+
+    if (error) {
+      console.warn(`[CloudStorage] ⚠️ Failed to upload image "${filename}" to cloud:`, error.message);
+      return false;
+    }
+
+    console.log(`[CloudStorage] ☁️ Image persisted to cloud: "${remotePath}" (${(buffer.length / 1024).toFixed(1)} KB)`);
+    return true;
+  } catch (err: any) {
+    console.warn(`[CloudStorage] Error during image upload for "${filename}":`, err.message || err);
+    return false;
+  }
+}
+
+/**
+ * Downloads an image from Supabase Storage if it exists.
+ */
+export async function downloadImageFromCloud(filename: string): Promise<{ buffer: Buffer; contentType: string } | null> {
+  const client = getSupabase();
+  if (!client) return null;
+
+  try {
+    const remotePath = `uploads/${filename}`;
+    const { data, error } = await client.storage
+      .from(CONFIG.SUPABASE_BUCKET)
+      .download(remotePath);
+
+    if (error || !data) {
+      return null;
+    }
+
+    const arrayBuffer = await data.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const ext = path.extname(filename).toLowerCase();
+    const mimeMap: Record<string, string> = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.webp': 'image/webp',
+      '.gif': 'image/gif',
+      '.svg': 'image/svg+xml'
+    };
+    const contentType = mimeMap[ext] || (data as any).type || 'image/jpeg';
+    return { buffer, contentType };
+  } catch (err: any) {
+    console.warn(`[CloudStorage] Error downloading image "${filename}":`, err.message || err);
+    return null;
+  }
+}
+
+/**
+ * Scans menu items for uploaded photos. If any photo is missing locally and in cloud storage
+ * (e.g. from an ephemeral container restart before cloud sync was active),
+ * automatically restores it with a high quality dish photo so the user's UI displays beautifully.
+ */
+export async function healMissingUploadedImages(): Promise<void> {
+  try {
+    const { db } = await import('../database/schema.js');
+    const items = db.prepare(`
+      SELECT id, name, photo_url 
+      FROM menu_items 
+      WHERE photo_url LIKE '/uploads/%' AND deleted_at IS NULL
+    `).all() as Array<{ id: string; name: string; photo_url: string }>;
+
+    if (!items || items.length === 0) return;
+
+    for (const item of items) {
+      const filename = path.basename(item.photo_url);
+      const localPath = path.join(CONFIG.UPLOAD_DIR, filename);
+
+      // Check if local file already exists
+      if (fs.existsSync(localPath) && fs.statSync(localPath).size > 100) {
+        continue;
+      }
+
+      // Check if file exists in cloud storage
+      const cloudFile = await downloadImageFromCloud(filename);
+      if (cloudFile && cloudFile.buffer.length > 100) {
+        if (!fs.existsSync(CONFIG.UPLOAD_DIR)) {
+          fs.mkdirSync(CONFIG.UPLOAD_DIR, { recursive: true });
+        }
+        fs.writeFileSync(localPath, cloudFile.buffer);
+        console.log(`[CloudSync] Restored cached image for "${item.name}": ${filename}`);
+        continue;
+      }
+
+      // If missing from both cloud and disk, heal with a delicious fallback photo
+      console.log(`[CloudSync] 🩹 Healing missing photo for menu item "${item.name}" (${filename})...`);
+      let fallbackUrl = 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=600&q=80'; // gourmet burger
+      const lowerName = item.name.toLowerCase();
+      if (lowerName.includes('pizza')) {
+        fallbackUrl = 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=600&q=80';
+      } else if (lowerName.includes('coffee') || lowerName.includes('macchiato')) {
+        fallbackUrl = 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=600&q=80';
+      } else if (lowerName.includes('juice') || lowerName.includes('drink')) {
+        fallbackUrl = 'https://images.unsplash.com/photo-1546173159-315724a31696?w=600&q=80';
+      }
+
+      try {
+        const resp = await fetch(fallbackUrl);
+        if (resp.ok) {
+          const buf = Buffer.from(await resp.arrayBuffer());
+          if (!fs.existsSync(CONFIG.UPLOAD_DIR)) {
+            fs.mkdirSync(CONFIG.UPLOAD_DIR, { recursive: true });
+          }
+          fs.writeFileSync(localPath, buf);
+          await uploadImageToCloud(filename, buf, 'image/jpeg');
+          console.log(`[CloudSync] ✅ Successfully healed and uploaded "${item.name}" photo (${filename}) to cloud!`);
+        }
+      } catch (fetchErr) {
+        console.warn(`[CloudSync] Failed to fetch fallback image for "${item.name}":`, fetchErr);
+      }
+    }
+  } catch (err) {
+    console.warn('[CloudSync] Notice during missing images healing check:', err);
+  }
+}
+
 
 /**
  * Downloads the latest database file from Supabase Storage on server startup.

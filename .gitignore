@@ -42,3 +42,5 @@ desktop.ini
 *.sw?
 .next.code-workspace
 .snapshots/
+uploads/
+server/uploads/

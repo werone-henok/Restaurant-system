@@ -418,12 +418,16 @@ export const WaiterView: React.FC = () => {
                         alt={m.name}
                         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                         onError={(e) => {
-                          (e.target as HTMLElement).style.display = 'none';
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const fallback = target.parentElement?.querySelector('.waiter-item-initial') as HTMLElement;
+                          if (fallback) fallback.style.display = 'flex';
                         }}
                       />
                     ) : null}
                     {/* Fallback initial if no photo */}
                     <div
+                      className="waiter-item-initial"
                       style={{
                         position: 'absolute',
                         inset: 0,

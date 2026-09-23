@@ -2,15 +2,12 @@ import { Router } from 'express';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { fileURLToPath } from 'url';
 import { authenticate } from '../middleware/auth.js';
+import { CONFIG } from '../config/env.js';
+import { uploadImageToCloud } from '../services/cloudSyncService.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const uploadsDir = path.resolve(__dirname, '../../../uploads');
-
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+if (!fs.existsSync(CONFIG.UPLOAD_DIR)) {
+  fs.mkdirSync(CONFIG.UPLOAD_DIR, { recursive: true });
 }
 
 export const uploadRouter = Router();
@@ -43,9 +40,16 @@ uploadRouter.post('/', authenticate, async (req, res) => {
 
     const randomSuffix = crypto.randomBytes(4).toString('hex');
     const outFileName = `${safePrefix}_${Date.now()}_${randomSuffix}.${ext}`;
-    const filePath = path.join(uploadsDir, outFileName);
+    const filePath = path.join(CONFIG.UPLOAD_DIR, outFileName);
+
+    if (!fs.existsSync(CONFIG.UPLOAD_DIR)) {
+      fs.mkdirSync(CONFIG.UPLOAD_DIR, { recursive: true });
+    }
 
     fs.writeFileSync(filePath, buffer);
+
+    // Persist permanently to Supabase Storage
+    await uploadImageToCloud(outFileName, buffer, mimeType);
 
     const publicUrl = `/uploads/${outFileName}`;
     res.json({

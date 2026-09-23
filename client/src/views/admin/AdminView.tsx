@@ -796,14 +796,35 @@ export const AdminView: React.FC = () => {
                 }}
               >
                 {/* Thumbnail */}
-                <div style={{ width: 64, height: 64, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: 'linear-gradient(135deg, #f97316, #ea580c)' }}>
+                <div style={{ width: 64, height: 64, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: 'linear-gradient(135deg, #f97316, #ea580c)', position: 'relative' }}>
                   {item.photo_url ? (
-                    <img src={resolveImageUrl(item.photo_url)} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 20 }}>
-                      {item.name.charAt(0)}
-                    </div>
-                  )}
+                    <img
+                      src={resolveImageUrl(item.photo_url)}
+                      alt={item.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const fallback = target.parentElement?.querySelector('.admin-item-fallback') as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className="admin-item-fallback"
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: item.photo_url ? 'none' : 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                      fontWeight: 800,
+                      fontSize: 20
+                    }}
+                  >
+                    {item.name.charAt(0)}
+                  </div>
                 </div>
 
                 {/* Details */}
