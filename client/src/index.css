@@ -225,10 +225,52 @@ input:focus, select:focus, textarea:focus {
   overflow: hidden;
 }
 
+@media (min-width: 900px) {
+  .app-container.desktop-wide {
+    max-width: 1400px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+    border-radius: 16px;
+    margin: 16px auto;
+    min-height: calc(100vh - 32px);
+  }
+}
+
 @media (max-width: 540px) {
   .app-container {
     max-width: 100%;
     box-shadow: none;
+  }
+}
+
+/* ─── Cashier Desktop POS Layout ───────────────────────────────────────── */
+.cashier-pos-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 960px) {
+  .cashier-pos-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 24px;
+    align-items: start;
+  }
+  .cashier-orders-column {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .cashier-billing-panel {
+    background: #ffffff;
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: var(--shadow-md);
+    position: sticky;
+    top: 80px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
   }
 }
 

@@ -116,8 +116,13 @@ async function bootstrap() {
     });
   });
 
-  app.get('/', (_req, res) => {
-    res.sendFile(path.join(clientDist, 'index.html'), (err) => {
+  // ── Web Client SPA Serving (Desktop & Mobile Browser Access) ──────
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/ws') || req.path.startsWith('/uploads')) {
+      return next();
+    }
+    const indexPath = path.join(clientDist, 'index.html');
+    res.sendFile(indexPath, (err) => {
       if (err) {
         res.redirect('http://localhost:5180');
       }

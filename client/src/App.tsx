@@ -167,7 +167,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${['cashier', 'owner', 'admin', 'chef', 'storekeeper'].includes(currentTab) ? 'desktop-wide' : ''}`}>
       <Header onOpenProfile={() => setShowProfile(true)} />
 
       {renderCurrentView()}
