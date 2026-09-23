@@ -360,6 +360,9 @@ export function initDatabase() {
       receipt_footer TEXT DEFAULT 'Thank you for dining with us! Come again soon.',
       receipt_footer_amharic TEXT DEFAULT 'ስለመረጡን እናመሰግናለን! እንደገና ይምጡ።',
       default_currency TEXT DEFAULT 'ETB',
+      timezone_mode TEXT DEFAULT 'AUTO',
+      system_timezone TEXT DEFAULT 'Africa/Addis_Ababa',
+      timezone_offset_minutes INTEGER DEFAULT 180,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -398,13 +401,21 @@ export function runMigrations() {
         "ALTER TABLE users ADD COLUMN pin_locked_until DATETIME",
         "ALTER TABLE users ADD COLUMN reset_token TEXT",
         "ALTER TABLE users ADD COLUMN reset_expiry DATETIME",
+        // Audit log tamper detection: hash chain column
+        // Each row stores SHA-256(prev_hash || id || action || details || created_at)
+        "ALTER TABLE audit_logs ADD COLUMN entry_hash TEXT",
+        "ALTER TABLE audit_logs ADD COLUMN prev_hash TEXT",
         // Inventory purchase order receipt details (DATE without non-constant DEFAULT to support all SQLite versions)
         "ALTER TABLE purchase_orders ADD COLUMN receiving_date DATE",
         "ALTER TABLE purchase_orders ADD COLUMN receipt_photo_url TEXT",
         // Operational expenses columns
         "ALTER TABLE expenses ADD COLUMN receipt_photo_url TEXT",
         "ALTER TABLE expenses ADD COLUMN supplier_id TEXT",
-        "ALTER TABLE expenses ADD COLUMN reference_number TEXT"
+        "ALTER TABLE expenses ADD COLUMN reference_number TEXT",
+        // Timezone settings
+        "ALTER TABLE restaurant_settings ADD COLUMN timezone_mode TEXT DEFAULT 'AUTO'",
+        "ALTER TABLE restaurant_settings ADD COLUMN system_timezone TEXT DEFAULT 'Africa/Addis_Ababa'",
+        "ALTER TABLE restaurant_settings ADD COLUMN timezone_offset_minutes INTEGER DEFAULT 180"
     ];
     for (const sql of migrations) {
         try {
@@ -420,4 +431,26 @@ export function runMigrations() {
         db.exec("UPDATE purchase_orders SET receiving_date = date(created_at) WHERE receiving_date IS NULL");
     }
     catch (_) { }
+    // Ensure default restaurant_settings row exists
+    try {
+        const existing = db.prepare('SELECT id FROM restaurant_settings LIMIT 1').get();
+        if (!existing) {
+            db.prepare(`
+        INSERT INTO restaurant_settings (
+          id, restaurant_name, slogan, primary_color, secondary_color, 
+          vat_enabled, vat_percentage, tax_number, receipt_footer, receipt_footer_amharic, 
+          default_currency, timezone_mode, system_timezone, timezone_offset_minutes
+        ) VALUES (
+          'settings_default', 'GourmetOS Restaurant & Lounge', 'Exquisite Taste & Seamless Hospitality',
+          '#f97316', '#0f172a', 1, 15.0, 'TIN-0098471201',
+          'Thank you for dining with us! Come again soon.', 'ስለመረጡን እናመሰግናለን! እንደገና ይምጡ።',
+          'ETB', 'AUTO', 'Africa/Addis_Ababa', 180
+        )
+      `).run();
+            console.log('[Migration] ✓ Initialized default restaurant_settings row');
+        }
+    }
+    catch (e) {
+        console.error('[Migration] Failed to initialize default settings:', e);
+    }
 }

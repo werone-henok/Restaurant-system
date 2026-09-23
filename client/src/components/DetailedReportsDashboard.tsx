@@ -34,6 +34,7 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
   const [customTo, setCustomTo] = useState('');
   const [activeReportTab, setActiveReportTab] = useState<'overview' | 'hourly' | 'margins' | 'payments' | 'staff'>('overview');
   const [itemsChartMode, setItemsChartMode] = useState<'bar' | 'donut'>('bar');
+  const [trendViewMode, setTrendViewMode] = useState<'daily' | 'hourly'>('daily');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(api.isConnected);
@@ -407,38 +408,113 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
             </div>
           </div>
 
-          {/* Daily Sales Bar Chart */}
-          <div className="glass-card" style={{ padding: 14, marginBottom: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={{ fontSize: 13, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <BarChart3 size={16} color="var(--primary)" />
-                {language === 'am' ? 'የቀን የሽያጭ ሂደት' : 'Daily Sales Trend'}
-              </h3>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
-                {language === 'am' ? 'የቀን ጠቅላላ ገቢ' : 'Daily Revenue'}
-              </span>
-            </div>
-            {dailyTrend.length === 0 ? (
-              <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
-                {language === 'am' ? 'በዚህ ወቅት ምንም ሽያጭ አልተመዘገበም' : 'No sales recorded for this period'}
+          {/* Daily / Hourly Sales Trend Bar Chart */}
+          {(() => {
+            const todayLocalStr = new Date().toLocaleDateString('en-CA');
+            return (
+              <div className="glass-card" style={{ padding: 14, marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                  <div>
+                    <h3 style={{ fontSize: 13, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <BarChart3 size={16} color="var(--primary)" />
+                      {trendViewMode === 'daily'
+                        ? (range === 'today'
+                            ? (language === 'am' ? 'የ 7 ቀናት የሽያጭ ሂደት (ዛሬን ጨምሮ)' : '7-Day Sales Trend (Including Today)')
+                            : (language === 'am' ? 'የቀን የሽያጭ ሂደት' : 'Daily Sales Trend'))
+                        : (language === 'am' ? 'የዛሬ የሰዓታት የሽያጭ ሂደት' : "Today's Hourly Sales Trend")
+                      }
+                    </h3>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      {trendViewMode === 'daily'
+                        ? (language === 'am' ? 'የቀን ጠቅላላ ገቢ በብር' : 'Daily Revenue in ETB')
+                        : (language === 'am' ? 'በእያንዳንዱ ሰዓት የተሰበሰበ ገቢ' : 'Revenue collected per hour')}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', background: 'var(--bg-subtle)', borderRadius: 8, padding: 2, border: '1px solid var(--border)' }}>
+                    <button
+                      type="button"
+                      onClick={() => setTrendViewMode('daily')}
+                      style={{
+                        padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                        background: trendViewMode === 'daily' ? 'var(--primary)' : 'transparent',
+                        color: trendViewMode === 'daily' ? '#ffffff' : 'var(--text-muted)',
+                        border: 'none', cursor: 'pointer'
+                      }}
+                    >
+                      {range === 'today' ? (language === 'am' ? '7 ቀናት' : '7 Days') : (language === 'am' ? 'ቀናት' : 'Daily')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTrendViewMode('hourly')}
+                      style={{
+                        padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                        background: trendViewMode === 'hourly' ? 'var(--primary)' : 'transparent',
+                        color: trendViewMode === 'hourly' ? '#ffffff' : 'var(--text-muted)',
+                        border: 'none', cursor: 'pointer'
+                      }}
+                    >
+                      {language === 'am' ? 'በሰዓት' : 'Hourly'}
+                    </button>
+                  </div>
+                </div>
+
+                {trendViewMode === 'daily' ? (
+                  dailyTrend.length === 0 ? (
+                    <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+                      {language === 'am' ? 'በዚህ ወቅት ምንም ሽያጭ አልተመዘገበም' : 'No sales recorded for this period'}
+                    </div>
+                  ) : (
+                    <div style={{ width: '100%', height: 190 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={dailyTrend} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                          <XAxis 
+                            dataKey="date" 
+                            tick={{ fontSize: 10, fill: 'var(--text-muted)' }} 
+                            tickFormatter={d => d === todayLocalStr ? (language === 'am' ? `${d.substring(5)} (ዛሬ)` : `${d.substring(5)} (Today)`) : d.substring(5)} 
+                          />
+                          <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
+                          <Tooltip
+                            contentStyle={{ background: 'var(--bg-card)', borderColor: 'var(--border)', borderRadius: 8, fontSize: 11 }}
+                            formatter={(value: any) => [`${value} ${t('currency')}`, language === 'am' ? 'የቀን ገቢ' : 'Daily Revenue']}
+                            labelFormatter={l => `${language === 'am' ? 'ቀን' : 'Date'}: ${l}${l === todayLocalStr ? (language === 'am' ? ' (ዛሬ)' : ' (Today)') : ''}`}
+                          />
+                          <Bar dataKey="sales" radius={[4, 4, 0, 0]} maxBarSize={44}>
+                            {dailyTrend.map((entry: any, index: number) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={entry.date === todayLocalStr ? '#f97316' : '#38bdf8'} 
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )
+                ) : (
+                  hourlyTrend.length === 0 ? (
+                    <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+                      {language === 'am' ? 'ምንም የሰዓት መረጃ የለም' : 'No hourly sales recorded yet'}
+                    </div>
+                  ) : (
+                    <div style={{ width: '100%', height: 190 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={hourlyTrend} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                          <XAxis dataKey="hour" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
+                          <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
+                          <Tooltip
+                            contentStyle={{ background: 'var(--bg-card)', borderColor: 'var(--border)', borderRadius: 8, fontSize: 11 }}
+                            formatter={(val: any, name: any) => [name === 'sales' ? `${val} ${t('currency')}` : `${val} orders`, name === 'sales' ? (language === 'am' ? 'ገቢ' : 'Revenue') : (language === 'am' ? 'ትዕዛዞች' : 'Orders')]}
+                          />
+                          <Bar dataKey="sales" fill="#0284c7" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )
+                )}
               </div>
-            ) : (
-              <div style={{ width: '100%', height: 180 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dailyTrend} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} tickFormatter={d => d.substring(5)} />
-                    <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
-                    <Tooltip
-                      contentStyle={{ background: 'var(--bg-card)', borderColor: 'var(--border)', borderRadius: 8, fontSize: 11 }}
-                      formatter={(value: any) => [`${value} ${t('currency')}`, language === 'am' ? 'የቀን ገቢ' : 'Daily Revenue']}
-                      labelFormatter={l => `${language === 'am' ? 'ቀን' : 'Date'}: ${l}`}
-                    />
-                    <Bar dataKey="sales" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={44} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </div>
+            );
+          })()}
 
           {/* Top Selling Items Breakdown / Bar Graph */}
           <div className="glass-card" style={{ padding: 14, marginBottom: 16 }}>

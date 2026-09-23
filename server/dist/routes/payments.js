@@ -16,6 +16,21 @@ paymentRouter.post('/', authenticate, authorizeRole(['cashier', 'admin', 'owner'
     const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(order_id);
     if (!order)
         return res.status(404).json({ error: 'Order not found' });
+    // Prevent payment on orders that are not in a payable state
+    const PAYABLE_STATUSES = ['CONFIRMED', 'PREPARING', 'PARTIALLY_READY', 'READY', 'DELIVERED'];
+    if (!PAYABLE_STATUSES.includes(order.status)) {
+        return res.status(400).json({
+            error: `Cannot process payment for order in status "${order.status}". Order must be confirmed by cashier before payment.`
+        });
+    }
+    // Prevent double-payment: check if a receipt already exists for this order
+    const existingReceipt = db.prepare('SELECT id, receipt_number FROM receipts WHERE order_id = ?').get(order_id);
+    if (existingReceipt) {
+        return res.status(409).json({
+            error: `Payment already processed. Receipt ${existingReceipt.receipt_number} was issued for this order.`,
+            receiptNumber: existingReceipt.receipt_number
+        });
+    }
     const totalPaid = splits.reduce((sum, s) => sum + Number(s.amount), 0);
     if (Math.abs(totalPaid - order.total_amount) > 0.05) {
         return res.status(400).json({

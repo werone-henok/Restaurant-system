@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../database/schema.js';
 import { authenticate, authorizeRole } from '../middleware/auth.js';
+import { resolveTimezone, getLocalDateStr, generateDateRange } from '../utils/timezone.js';
 export const reportRouter = Router();
 // Dashboard Metrics (Today or Custom Range)
 reportRouter.get('/dashboard', authenticate, authorizeRole(['admin', 'owner']), (req, res) => {
@@ -9,28 +10,53 @@ reportRouter.get('/dashboard', authenticate, authorizeRole(['admin', 'owner']), 
     const range = req.query.range || 'today';
     const from = req.query.from;
     const to = req.query.to;
-    // Date filters
-    let orderDateClause = "date(o.created_at) = date('now')";
-    let expenseDateClause = "date(expense_date) = date('now')";
+    // Resolve active timezone from client header/param or system settings
+    const tz = resolveTimezone(req);
+    const tzMod = tz.modifier; // SQLite modifier, e.g. '+180 minutes'
+    const todayStr = getLocalDateStr(tz.offsetMinutes);
+    let trendStartDate = todayStr;
+    let trendEndDate = todayStr;
+    // Date filters using resolved timezone modifier
+    let orderDateClause = `date(o.created_at, '${tzMod}') = date('now', '${tzMod}')`;
+    let expenseDateClause = `date(expense_date) = date('now', '${tzMod}')`;
     let dateParamsOrders = [];
     let dateParamsExpenses = [];
     if (from && to) {
-        orderDateClause = "date(o.created_at) BETWEEN date(?) AND date(?)";
-        expenseDateClause = "date(expense_date) BETWEEN date(?) AND date(?)";
+        orderDateClause = `date(o.created_at, '${tzMod}') BETWEEN date(?) AND date(?)`;
+        expenseDateClause = `date(expense_date) BETWEEN date(?) AND date(?)`;
         dateParamsOrders = [from, to];
         dateParamsExpenses = [from, to];
+        trendStartDate = from;
+        trendEndDate = to;
     }
     else if (range === 'yesterday') {
-        orderDateClause = "date(o.created_at) = date('now', '-1 day')";
-        expenseDateClause = "date(expense_date) = date('now', '-1 day')";
+        orderDateClause = `date(o.created_at, '${tzMod}') = date('now', '${tzMod}', '-1 day')`;
+        expenseDateClause = `date(expense_date) = date('now', '${tzMod}', '-1 day')`;
+        const yEnd = new Date(Date.now() - 86400000);
+        const yStart = new Date(Date.now() - 7 * 86400000);
+        trendStartDate = getLocalDateStr(tz.offsetMinutes, yStart);
+        trendEndDate = getLocalDateStr(tz.offsetMinutes, yEnd);
     }
     else if (range === 'week') {
-        orderDateClause = "date(o.created_at) >= date('now', '-7 days')";
-        expenseDateClause = "date(expense_date) >= date('now', '-7 days')";
+        orderDateClause = `date(o.created_at, '${tzMod}') >= date('now', '${tzMod}', '-6 days')`;
+        expenseDateClause = `date(expense_date) >= date('now', '${tzMod}', '-6 days')`;
+        const wStart = new Date(Date.now() - 6 * 86400000);
+        trendStartDate = getLocalDateStr(tz.offsetMinutes, wStart);
+        trendEndDate = todayStr;
     }
     else if (range === 'month') {
-        orderDateClause = "date(o.created_at) >= date('now', '-30 days')";
-        expenseDateClause = "date(expense_date) >= date('now', '-30 days')";
+        orderDateClause = `date(o.created_at, '${tzMod}') >= date('now', '${tzMod}', '-29 days')`;
+        expenseDateClause = `date(expense_date) >= date('now', '${tzMod}', '-29 days')`;
+        const mStart = new Date(Date.now() - 29 * 86400000);
+        trendStartDate = getLocalDateStr(tz.offsetMinutes, mStart);
+        trendEndDate = todayStr;
+    }
+    else {
+        // range === 'today'
+        // For single-day "today", KPI cards reflect today, but Daily Trend chart shows the 7-day trajectory leading up to and including today
+        const wStart = new Date(Date.now() - 6 * 86400000);
+        trendStartDate = getLocalDateStr(tz.offsetMinutes, wStart);
+        trendEndDate = todayStr;
     }
     let branchFilterOrders = '';
     let branchFilterExpenses = '';
@@ -78,41 +104,44 @@ reportRouter.get('/dashboard', authenticate, authorizeRole(['admin', 'owner']), 
     GROUP BY u.id
     ORDER BY sales_total DESC LIMIT 5
   `).all(...dateParamsOrders, ...branchParamsOrders);
-    // 5. Daily Trend for Visual Charts
-    const dailyTrend = db.prepare(`
-    SELECT date(o.created_at) as date,
+    // 5. Daily Trend for Visual Charts (always filled with all consecutive dates in range)
+    const trendDays = generateDateRange(trendStartDate, trendEndDate);
+    const rawDailyTrend = db.prepare(`
+    SELECT date(o.created_at, '${tzMod}') as date,
            COALESCE(SUM(CASE WHEN o.status = 'COMPLETED' THEN o.total_amount ELSE 0 END), 0) as sales,
            COUNT(CASE WHEN o.status = 'COMPLETED' THEN 1 ELSE NULL END) as orders
     FROM orders o
-    WHERE ${orderDateClause} ${branchFilterOrders}
-    GROUP BY date(o.created_at)
+    WHERE date(o.created_at, '${tzMod}') >= ? AND date(o.created_at, '${tzMod}') <= ? ${branchFilterOrders}
+    GROUP BY date(o.created_at, '${tzMod}')
     ORDER BY date ASC
-  `).all(...dateParamsOrders, ...branchParamsOrders);
-    // 6. Hourly Sales & Rush-Hour Peak Heatmap
+  `).all(trendStartDate, trendEndDate, ...branchParamsOrders);
+    const trendMap = new Map(rawDailyTrend.map(r => [r.date, r]));
+    const dailyTrend = trendDays.map(d => trendMap.get(d) || { date: d, sales: 0, orders: 0 });
+    // 6. Hourly Sales & Rush-Hour Peak Heatmap (uses local hour)
     const hourlyTrend = db.prepare(`
-    SELECT strftime('%H:00', o.created_at) as hour,
+    SELECT strftime('%H:00', o.created_at, '${tzMod}') as hour,
            COALESCE(SUM(CASE WHEN o.status = 'COMPLETED' THEN o.total_amount ELSE 0 END), 0) as sales,
            COUNT(CASE WHEN o.status = 'COMPLETED' THEN 1 ELSE NULL END) as orders
     FROM orders o
     WHERE ${orderDateClause} ${branchFilterOrders}
-    GROUP BY strftime('%H:00', o.created_at)
+    GROUP BY strftime('%H:00', o.created_at, '${tzMod}')
     ORDER BY hour ASC
   `).all(...dateParamsOrders, ...branchParamsOrders);
     // 7. Payment Methods Breakdown (Cash, Telebirr, CBE Birr, Card)
-    let paymentDateClause = "date(p.created_at) = date('now')";
+    let paymentDateClause = `date(p.created_at, '${tzMod}') = date('now', '${tzMod}')`;
     let paymentDateParams = [];
     if (from && to) {
-        paymentDateClause = "date(p.created_at) BETWEEN date(?) AND date(?)";
+        paymentDateClause = `date(p.created_at, '${tzMod}') BETWEEN date(?) AND date(?)`;
         paymentDateParams = [from, to];
     }
     else if (range === 'yesterday') {
-        paymentDateClause = "date(p.created_at) = date('now', '-1 day')";
+        paymentDateClause = `date(p.created_at, '${tzMod}') = date('now', '${tzMod}', '-1 day')`;
     }
     else if (range === 'week') {
-        paymentDateClause = "date(p.created_at) >= date('now', '-7 days')";
+        paymentDateClause = `date(p.created_at, '${tzMod}') >= date('now', '${tzMod}', '-6 days')`;
     }
     else if (range === 'month') {
-        paymentDateClause = "date(p.created_at) >= date('now', '-30 days')";
+        paymentDateClause = `date(p.created_at, '${tzMod}') >= date('now', '${tzMod}', '-29 days')`;
     }
     let branchFilterPayments = '';
     const branchParamsPayments = [];
@@ -128,7 +157,6 @@ reportRouter.get('/dashboard', authenticate, authorizeRole(['admin', 'owner']), 
     FROM payments p
     WHERE ${paymentDateClause} ${branchFilterPayments}
     GROUP BY p.method
-    ORDER BY total_amount DESC
   `).all(...paymentDateParams, ...branchParamsPayments);
     // 8. BOM Cost & Gross Profit Margin per Menu Item
     const menuProfitMargins = db.prepare(`
@@ -214,6 +242,7 @@ reportRouter.get('/dashboard', authenticate, authorizeRole(['admin', 'owner']), 
             totalDiscounts: auditLosses?.total_discounts || 0,
             cancelledLoss: auditLosses?.cancelled_loss || 0
         },
+        timezone: tz,
         dailyTrend,
         hourlyTrend,
         paymentMethods,
@@ -252,8 +281,10 @@ reportRouter.get('/waiters', authenticate, authorizeRole(['admin', 'owner']), (r
 // CSV Export for Sales
 reportRouter.get('/export/sales', authenticate, authorizeRole(['admin', 'owner']), (req, res) => {
     const { from, to, branchId } = req.query;
+    const tz = resolveTimezone(req);
+    const tzMod = tz.modifier;
     let sql = `
-    SELECT o.order_number, COALESCE(b.name, 'Unknown') as branch, o.created_at, o.total_amount, o.status,
+    SELECT o.order_number, COALESCE(b.name, 'Unknown') as branch, datetime(o.created_at, '${tzMod}') as created_at, o.total_amount, o.status,
            COALESCE(GROUP_CONCAT(mi.name || ' x' || oi.quantity, '; '), '') as items
     FROM orders o
     LEFT JOIN branches b ON o.branch_id = b.id
@@ -263,11 +294,11 @@ reportRouter.get('/export/sales', authenticate, authorizeRole(['admin', 'owner']
   `;
     const params = [];
     if (from) {
-        sql += ' AND date(o.created_at) >= date(?)';
+        sql += ` AND date(o.created_at, '${tzMod}') >= date(?)`;
         params.push(from);
     }
     if (to) {
-        sql += ' AND date(o.created_at) <= date(?)';
+        sql += ` AND date(o.created_at, '${tzMod}') <= date(?)`;
         params.push(to);
     }
     if (branchId && branchId !== 'ALL') {

@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { translations, type Language } from '../i18n/translations';
 
+import { TIMEZONE_OPTIONS, getDeviceTimezone, getDeviceOffsetMinutes } from '../utils/timezone';
+
 export interface User {
   id: string;
   username: string;
@@ -33,6 +35,9 @@ export interface RestaurantSettings {
   vat_enabled: number;
   vat_percentage: number;
   tax_number?: string;
+  timezone_mode?: 'AUTO' | 'MANUAL';
+  system_timezone?: string;
+  timezone_offset_minutes?: number;
 }
 
 interface AppContextType {
@@ -53,16 +58,28 @@ interface AppContextType {
   refreshSettings: () => void;
   setLanguage: (lang: Language) => void;
   t: (key: string) => string;
+
+  // Timezone configuration
+  timezoneMode: 'auto' | 'manual';
+  selectedTimezone: string;
+  detectedTimezone: string;
+  activeTimezone: string;
+  activeOffsetMinutes: number;
+  setTimezoneMode: (mode: 'auto' | 'manual') => void;
+  setSelectedTimezone: (tz: string, offsetMinutes?: number) => void;
+  formatTime: (dateInput: string | Date | number, includeSeconds?: boolean) => string;
+  formatDateTime: (dateInput: string | Date | number) => string;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('user');
+    // Use sessionStorage for auth data — cleared on tab/browser close, not persistent to XSS
+    const saved = sessionStorage.getItem('gos_user');
     return saved ? JSON.parse(saved) : null;
   });
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
+  const [token, setToken] = useState<string | null>(() => sessionStorage.getItem('gos_token'));
   const [branches, setBranches] = useState<Branch[]>([]);
   const [currentBranchId, setCurrentBranchId] = useState<string>(() => {
     return localStorage.getItem('selected_branch') || 'branch_addis';
@@ -138,7 +155,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const login = (newUser: User, newToken: string) => {
     setUser(newUser);
     setToken(newToken);
-    localStorage.setItem('user', JSON.stringify(newUser));
+    // sessionStorage: auth data is cleared on browser/tab close (XSS-safer than localStorage)
+    sessionStorage.setItem('gos_token', newToken);
+    sessionStorage.setItem('gos_user', JSON.stringify(newUser));
     api.setToken(newToken);
     if (newUser.branch_id) {
       setCurrentBranchId(newUser.branch_id);
@@ -155,7 +174,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('user');
+    // Clear both sessionStorage and any legacy localStorage auth keys
+    sessionStorage.removeItem('gos_token');
+    sessionStorage.removeItem('gos_user');
+    localStorage.removeItem('token');   // legacy cleanup
+    localStorage.removeItem('user');    // legacy cleanup
     api.setToken(null);
   };
 
@@ -172,6 +195,83 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const t = (key: string): string => {
     return translations[language][key] || key;
+  };
+
+  // Timezone state management
+  const detectedTimezone = getDeviceTimezone();
+  const [timezoneMode, setTimezoneModeState] = useState<'auto' | 'manual'>(() => {
+    return (localStorage.getItem('gos_tz_mode') as 'auto' | 'manual') || 'auto';
+  });
+
+  const [selectedTimezone, setSelectedTimezoneState] = useState<string>(() => {
+    return localStorage.getItem('gos_selected_tz') || 'Africa/Addis_Ababa';
+  });
+
+  const [selectedOffsetMinutes, setSelectedOffsetMinutes] = useState<number>(() => {
+    const saved = localStorage.getItem('gos_selected_tz_offset');
+    return saved !== null ? parseInt(saved, 10) : 180;
+  });
+
+  // Calculate the currently active timezone and offset
+  const activeTimezone = timezoneMode === 'auto' 
+    ? detectedTimezone 
+    : selectedTimezone;
+
+  const activeOffsetMinutes = timezoneMode === 'auto'
+    ? getDeviceOffsetMinutes()
+    : selectedOffsetMinutes;
+
+  const setTimezoneMode = (mode: 'auto' | 'manual') => {
+    setTimezoneModeState(mode);
+    localStorage.setItem('gos_tz_mode', mode);
+  };
+
+  const setSelectedTimezone = (tz: string, offsetMinutes?: number) => {
+    setSelectedTimezoneState(tz);
+    localStorage.setItem('gos_selected_tz', tz);
+    let resolvedOffset = offsetMinutes;
+    if (resolvedOffset === undefined) {
+      const match = TIMEZONE_OPTIONS.find(o => o.value === tz);
+      resolvedOffset = match ? match.offsetMinutes : 180;
+    }
+    setSelectedOffsetMinutes(resolvedOffset);
+    localStorage.setItem('gos_selected_tz_offset', String(resolvedOffset));
+  };
+
+  const formatTime = (dateInput: string | Date | number, includeSeconds = false): string => {
+    try {
+      const d = typeof dateInput === 'string' && !dateInput.endsWith('Z') && !dateInput.includes('+')
+        ? new Date(dateInput.replace(' ', 'T') + 'Z')
+        : new Date(dateInput);
+      return new Intl.DateTimeFormat(language === 'am' ? 'am-ET' : 'en-US', {
+        timeZone: activeTimezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: includeSeconds ? '2-digit' : undefined,
+        hour12: true
+      }).format(d);
+    } catch (_) {
+      return String(dateInput);
+    }
+  };
+
+  const formatDateTime = (dateInput: string | Date | number): string => {
+    try {
+      const d = typeof dateInput === 'string' && !dateInput.endsWith('Z') && !dateInput.includes('+')
+        ? new Date(dateInput.replace(' ', 'T') + 'Z')
+        : new Date(dateInput);
+      return new Intl.DateTimeFormat(language === 'am' ? 'am-ET' : 'en-US', {
+        timeZone: activeTimezone,
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }).format(d);
+    } catch (_) {
+      return String(dateInput);
+    }
   };
 
   return (
@@ -193,7 +293,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         refreshBranches,
         refreshSettings,
         setLanguage,
-        t
+        t,
+        timezoneMode,
+        selectedTimezone,
+        detectedTimezone,
+        activeTimezone,
+        activeOffsetMinutes,
+        setTimezoneMode,
+        setSelectedTimezone,
+        formatTime,
+        formatDateTime
       }}
     >
       {children}

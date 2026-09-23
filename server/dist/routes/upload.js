@@ -9,6 +9,21 @@ if (!fs.existsSync(CONFIG.UPLOAD_DIR)) {
     fs.mkdirSync(CONFIG.UPLOAD_DIR, { recursive: true });
 }
 export const uploadRouter = Router();
+// Allowed MIME types and their magic byte signatures
+const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const MAGIC_BYTES = {
+    'image/jpeg': [[0xFF, 0xD8, 0xFF]],
+    'image/png': [[0x89, 0x50, 0x4E, 0x47]],
+    'image/webp': [[0x52, 0x49, 0x46, 0x46]], // RIFF header (WebP)
+    'image/gif': [[0x47, 0x49, 0x46, 0x38]] // GIF8
+};
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB hard limit
+function validateMagicBytes(buffer, mimeType) {
+    const signatures = MAGIC_BYTES[mimeType];
+    if (!signatures)
+        return false;
+    return signatures.some(sig => sig.every((byte, idx) => buffer[idx] === byte));
+}
 uploadRouter.post('/', authenticate, async (req, res) => {
     try {
         const { dataUrl, filename } = req.body;
@@ -19,14 +34,28 @@ uploadRouter.post('/', authenticate, async (req, res) => {
         if (!matches || matches.length !== 3) {
             return res.status(400).json({ error: 'Invalid data URL format' });
         }
-        const mimeType = matches[1];
+        const mimeType = matches[1].toLowerCase();
         const base64Data = matches[2];
+        // 1. Validate MIME type against allowlist
+        if (!ALLOWED_MIME_TYPES.has(mimeType)) {
+            return res.status(400).json({ error: `File type "${mimeType}" is not allowed. Only images (JPEG, PNG, WebP, GIF) are accepted.` });
+        }
         const buffer = Buffer.from(base64Data, 'base64');
+        // 2. Enforce file size limit
+        if (buffer.length > MAX_FILE_SIZE_BYTES) {
+            return res.status(413).json({ error: `File is too large (${Math.round(buffer.length / 1024)} KB). Maximum allowed size is 5 MB.` });
+        }
+        // 3. Validate magic bytes (prevent disguised executables/scripts)
+        if (!validateMagicBytes(buffer, mimeType)) {
+            return res.status(400).json({ error: 'File content does not match the declared image type. Upload rejected.' });
+        }
         let ext = 'jpg';
         if (mimeType.includes('png'))
             ext = 'png';
         else if (mimeType.includes('webp'))
             ext = 'webp';
+        else if (mimeType.includes('gif'))
+            ext = 'gif';
         const safePrefix = (filename || 'menu_item')
             .toLowerCase()
             .replace(/[^a-z0-9]/g, '_')

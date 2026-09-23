@@ -5,12 +5,16 @@ import { CameraCapture } from '../../components/CameraCapture';
 import { ImageUploadCompressor } from '../../components/ImageUploadCompressor';
 import { DetailedReportsDashboard } from '../../components/DetailedReportsDashboard';
 import { resolveImageUrl } from '../../utils/imageUrl';
-import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils, BarChart3, FolderPlus, Tag } from 'lucide-react';
+import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils, BarChart3, FolderPlus, Tag, Clock, Sparkles, Globe } from 'lucide-react';
 import { CreateCategoryModal } from '../../components/CreateCategoryModal';
+import { TIMEZONE_OPTIONS, getDeviceTimezone } from '../../utils/timezone';
 import { gToast } from '../../utils/toast';
 
 export const AdminView: React.FC = () => {
-  const { currentBranchId, branches, refreshBranches, settings, refreshSettings, t, language } = useApp();
+  const { 
+    currentBranchId, branches, refreshBranches, settings, refreshSettings, 
+    t, language, setTimezoneMode, setSelectedTimezone, activeTimezone, formatTime 
+  } = useApp();
   const [activeTab, setActiveTab] = useState<'employees' | 'branches' | 'tables' | 'settings' | 'expenses' | 'audit' | 'menu' | 'analytics'>('employees');
   const [users, setUsers] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
@@ -67,6 +71,19 @@ export const AdminView: React.FC = () => {
   const [appSlogan, setAppSlogan] = useState(settings?.slogan || 'Exquisite Taste & Seamless Hospitality');
   const [appLogo, setAppLogo] = useState<string | null>(settings?.logo_url || null);
   const [primaryColor, setPrimaryColor] = useState(settings?.primary_color || '#f97316');
+  const [adminTzMode, setAdminTzMode] = useState<'AUTO' | 'MANUAL'>(settings?.timezone_mode || 'AUTO');
+  const [adminSysTz, setAdminSysTz] = useState<string>(settings?.system_timezone || 'Africa/Addis_Ababa');
+
+  useEffect(() => {
+    if (settings) {
+      if (settings.restaurant_name) setAppName(settings.restaurant_name);
+      if (settings.slogan) setAppSlogan(settings.slogan);
+      if (settings.logo_url) setAppLogo(settings.logo_url);
+      if (settings.primary_color) setPrimaryColor(settings.primary_color);
+      if (settings.timezone_mode) setAdminTzMode(settings.timezone_mode);
+      if (settings.system_timezone) setAdminSysTz(settings.system_timezone);
+    }
+  }, [settings]);
 
   // Expense form
   const [expenseCategory, setExpenseCategory] = useState('Electricity');
@@ -329,10 +346,12 @@ export const AdminView: React.FC = () => {
     setShowBranchModal(true);
   };
 
-  // 3. Save Branding / App Name & Logo
+  // 3. Save Branding / App Name, Logo & Timezone
   const handleSaveBranding = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    const tzMatch = TIMEZONE_OPTIONS.find(o => o.value === adminSysTz);
+    const offsetMin = tzMatch ? tzMatch.offsetMinutes : 180;
     try {
       await api.request('/admin/settings', {
         method: 'PUT',
@@ -340,11 +359,21 @@ export const AdminView: React.FC = () => {
           restaurant_name: appName,
           slogan: appSlogan,
           logo_url: appLogo,
-          primary_color: primaryColor
+          primary_color: primaryColor,
+          timezone_mode: adminTzMode,
+          system_timezone: adminSysTz,
+          timezone_offset_minutes: offsetMin
         })
       });
+      // Synchronize client context
+      if (adminTzMode === 'MANUAL') {
+        setSelectedTimezone(adminSysTz, offsetMin);
+        setTimezoneMode('manual');
+      } else {
+        setTimezoneMode('auto');
+      }
       refreshSettings();
-      gToast.success('Restaurant Branding & App Name updated successfully!');
+      gToast.success('Restaurant Branding & Timezone settings updated successfully!');
     } catch (err: any) {
       gToast.error(err.message || 'Failed to update branding settings');
     } finally {
@@ -687,8 +716,114 @@ export const AdminView: React.FC = () => {
             </div>
           </div>
 
+          {/* Timezone & Clock Configuration Section */}
+          <div style={{
+            background: 'var(--bg-subtle)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            padding: 14,
+            marginBottom: 16
+          }}>
+            <h4 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-main)' }}>
+              <Clock size={16} color="var(--primary)" />
+              {language === 'am' ? 'የሰዓት ሰቅ እና የቀን አቆጣጠር (Timezone Settings)' : 'System Timezone & Clock Settings'}
+            </h4>
+
+            {/* Mode Radio Buttons */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+              <button
+                type="button"
+                onClick={() => setAdminTzMode('AUTO')}
+                style={{
+                  padding: '8px 10px',
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  background: adminTzMode === 'AUTO' ? 'var(--primary)' : 'var(--bg-card)',
+                  color: adminTzMode === 'AUTO' ? '#ffffff' : 'var(--text-main)',
+                  border: adminTzMode === 'AUTO' ? 'none' : '1px solid var(--border)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6
+                }}
+              >
+                <Sparkles size={14} />
+                {language === 'am' ? 'ራስ-ሰር (Auto)' : 'Automatic'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAdminTzMode('MANUAL')}
+                style={{
+                  padding: '8px 10px',
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  background: adminTzMode === 'MANUAL' ? 'var(--primary)' : 'var(--bg-card)',
+                  color: adminTzMode === 'MANUAL' ? '#ffffff' : 'var(--text-main)',
+                  border: adminTzMode === 'MANUAL' ? 'none' : '1px solid var(--border)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6
+                }}
+              >
+                <Globe size={14} />
+                {language === 'am' ? 'በእጅ የተመረጠ (Manual)' : 'Manual Selection'}
+              </button>
+            </div>
+
+            {adminTzMode === 'AUTO' ? (
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                {language === 'am'
+                  ? `⚡ ስርዓቱ የመሳሪያውን/የአሳሹን ሰዓት በራስ-ሰር ይከተላል (የአሁኑ መሣሪያ ሰዓት ሰቅ: ${getDeviceTimezone()})`
+                  : `⚡ The system automatically aligns with the browser/device timezone (Current device: ${getDeviceTimezone()})`}
+              </div>
+            ) : (
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                  {language === 'am' ? 'የስርዓቱ ዋና የሰዓት ሰቅ' : 'Restaurant System Timezone'}
+                </label>
+                <select
+                  value={adminSysTz}
+                  onChange={e => setAdminSysTz(e.target.value)}
+                  style={{ width: '100%', padding: '6px 8px', borderRadius: 8, fontSize: 12, fontWeight: 600 }}
+                >
+                  {TIMEZONE_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>
+                      {language === 'am' ? opt.labelAm : opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Live Clock Preview */}
+            <div style={{
+              marginTop: 10,
+              padding: '6px 10px',
+              borderRadius: 6,
+              background: 'var(--bg-card)',
+              border: '1px dashed var(--border)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontSize: 11
+            }}>
+              <span style={{ color: 'var(--text-muted)' }}>
+                {language === 'am' ? 'የአሁን ሰዓት ቅድመ-ዕይታ:' : 'Live Clock Preview:'}
+              </span>
+              <strong style={{ color: 'var(--primary)' }}>
+                {formatTime(new Date(), true)} ({adminTzMode === 'AUTO' ? getDeviceTimezone() : adminSysTz})
+              </strong>
+            </div>
+          </div>
+
           <button type="submit" disabled={loading} className="btn btn-primary btn-block" style={{ height: 48 }}>
-            {loading ? 'Saving Branding...' : 'Update App Name & Branding'}
+            {loading ? 'Saving Settings...' : (language === 'am' ? 'ማስተካከያዎቹን መዝግብ' : 'Save Branding & Timezone Settings')}
           </button>
         </form>
       )}

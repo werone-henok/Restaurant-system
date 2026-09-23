@@ -55,7 +55,8 @@ export interface SyncItem {
 }
 
 class ApiClient {
-  private token: string | null = localStorage.getItem('token');
+  // sessionStorage: cleared when the tab closes, not accessible to other tabs — XSS-safer than localStorage
+  private token: string | null = sessionStorage.getItem('gos_token') || localStorage.getItem('token');
   private syncQueue: SyncItem[] = JSON.parse(localStorage.getItem('offline_queue') || '[]');
   private ws: WebSocket | null = null;
   private wsListeners: ((event: any) => void)[] = [];
@@ -80,9 +81,10 @@ class ApiClient {
   setToken(token: string | null) {
     this.token = token;
     if (token) {
-      localStorage.setItem('token', token);
+      sessionStorage.setItem('gos_token', token);
     } else {
-      localStorage.removeItem('token');
+      sessionStorage.removeItem('gos_token');
+      localStorage.removeItem('token'); // legacy cleanup
     }
     this.reconnectWebSocket();
   }
@@ -218,6 +220,22 @@ class ApiClient {
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
+
+    // Attach active client timezone and offset so backend reports and counters align with user selection
+    try {
+      const tzMode = localStorage.getItem('gos_tz_mode') || 'auto';
+      if (tzMode === 'manual') {
+        const manualTz = localStorage.getItem('gos_selected_tz') || 'Africa/Addis_Ababa';
+        const manualOffset = localStorage.getItem('gos_selected_tz_offset') || '180';
+        headers['x-timezone'] = manualTz;
+        headers['x-timezone-offset'] = manualOffset;
+      } else {
+        const deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Africa/Addis_Ababa';
+        const deviceOffset = String(-new Date().getTimezoneOffset());
+        headers['x-timezone'] = deviceTz;
+        headers['x-timezone-offset'] = deviceOffset;
+      }
+    } catch (_) {}
 
     const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method?.toUpperCase() || 'GET');
 

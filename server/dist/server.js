@@ -10,7 +10,7 @@ import { CONFIG } from './config/env.js';
 import { getDatabase } from './database/connection.js';
 import { seedDatabase } from './database/seed.js';
 import { setupWebSocket } from './services/websocket.js';
-import { authRateLimiter, globalRateLimiter } from './middleware/rateLimiter.js';
+import { authRateLimiter, globalRateLimiter, uploadRateLimiter, paymentRateLimiter } from './middleware/rateLimiter.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { authRouter } from './routes/auth.js';
 import { branchRouter } from './routes/branches.js';
@@ -82,13 +82,20 @@ async function bootstrap() {
         },
         credentials: true
     }));
-    // ── Body parsers ──────────────────────────────────────────────────
-    app.use(express.json({ limit: '10mb' }));
-    app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+    // ── Body parsers (tight limits per route type) ───────────────────
+    // Upload routes keep 10mb; API mutation routes limited to 2mb to prevent payload DoS
+    app.use('/api/upload', express.json({ limit: '10mb' }));
+    app.use('/api/upload', express.urlencoded({ extended: true, limit: '10mb' }));
+    app.use(express.json({ limit: '2mb' }));
+    app.use(express.urlencoded({ extended: true, limit: '2mb' }));
     // ── Global rate limiting ──────────────────────────────────────────
     app.use(globalRateLimiter);
     // ── Auth-specific rate limiting (tighter) ─────────────────────────
     app.use('/api/auth', authRateLimiter);
+    // ── Upload rate limiting (10 uploads per 15 min) ──────────────────
+    app.use('/api/upload', uploadRateLimiter);
+    // ── Payment rate limiting (30 per 15 min) ─────────────────────────
+    app.use('/api/payments', paymentRateLimiter);
     // ── Static client build & Uploads directory ───────────────────────
     const possibleClientDirs = [
         path.resolve(__dirname, '../public'),
@@ -156,11 +163,11 @@ async function bootstrap() {
         }
         return res.status(404).json({ error: 'Image not found' });
     });
-    // ── Health check ──────────────────────────────────────────────────
+    // ── Health check (minimal — no server internals exposed) ─────────
     app.get('/api/health', (_req, res) => {
         res.json({
             status: 'HEALTHY',
-            service: 'GourmetOS Restaurant Platform Server',
+            service: 'GourmetOS Restaurant Platform',
             timestamp: new Date().toISOString()
         });
     });

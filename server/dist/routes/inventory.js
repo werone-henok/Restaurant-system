@@ -59,8 +59,8 @@ inventoryRouter.get('/', authenticate, (req, res) => {
           ELSE 0 
         END as is_low_stock,
         CASE
-          WHEN i.expiration_date IS NOT NULL AND date(i.expiration_date) <= date('now') THEN 'EXPIRED'
-          WHEN i.expiration_date IS NOT NULL AND date(i.expiration_date) <= date('now', '+3 days') THEN 'EXPIRING_SOON'
+          WHEN i.expiration_date IS NOT NULL AND date(i.expiration_date) <= date('now', 'localtime') THEN 'EXPIRED'
+          WHEN i.expiration_date IS NOT NULL AND date(i.expiration_date) <= date('now', 'localtime', '+3 days') THEN 'EXPIRING_SOON'
           ELSE 'OK'
         END as expiration_status
       FROM ingredients i
@@ -79,8 +79,8 @@ inventoryRouter.get('/', authenticate, (req, res) => {
           ELSE 0 
         END as is_low_stock,
         CASE
-          WHEN i.expiration_date IS NOT NULL AND date(i.expiration_date) <= date('now') THEN 'EXPIRED'
-          WHEN i.expiration_date IS NOT NULL AND date(i.expiration_date) <= date('now', '+3 days') THEN 'EXPIRING_SOON'
+          WHEN i.expiration_date IS NOT NULL AND date(i.expiration_date) <= date('now', 'localtime') THEN 'EXPIRED'
+          WHEN i.expiration_date IS NOT NULL AND date(i.expiration_date) <= date('now', 'localtime', '+3 days') THEN 'EXPIRING_SOON'
           ELSE 'OK'
         END as expiration_status
       FROM ingredients i

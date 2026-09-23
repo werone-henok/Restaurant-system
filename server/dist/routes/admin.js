@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../database/schema.js';
 import { authenticate, authorizeRole } from '../middleware/auth.js';
-import { logAudit } from '../services/auditService.js';
+import { logAudit, verifyAuditChain } from '../services/auditService.js';
 import { hashSecretSync } from '../utils/security.js';
 import { validate } from '../middleware/validate.js';
 import { createStaffSchema, updateUserStatusSchema } from '../schemas/api.schemas.js';
@@ -109,37 +109,97 @@ adminRouter.get('/audit-logs', authenticate, authorizeRole(['admin', 'owner']), 
 });
 // 5. Get and Update Restaurant / Branding Settings
 adminRouter.get('/settings', authenticate, (_req, res) => {
-    const settings = db.prepare('SELECT * FROM restaurant_settings LIMIT 1').get();
-    res.json(settings);
+    let settings = db.prepare('SELECT * FROM restaurant_settings LIMIT 1').get();
+    if (!settings) {
+        db.prepare(`
+      INSERT INTO restaurant_settings (
+        id, restaurant_name, slogan, primary_color, secondary_color, 
+        vat_enabled, vat_percentage, tax_number, receipt_footer, receipt_footer_amharic, 
+        default_currency, timezone_mode, system_timezone, timezone_offset_minutes
+      ) VALUES (
+        'settings_default', 'GourmetOS Restaurant & Lounge', 'Exquisite Taste & Seamless Hospitality',
+        '#f97316', '#0f172a', 1, 15.0, 'TIN-0098471201',
+        'Thank you for dining with us! Come again soon.', 'ስለመረጡን እናመሰግናለን! እንደገና ይምጡ።',
+        'ETB', 'AUTO', 'Africa/Addis_Ababa', 180
+      )
+    `).run();
+        settings = db.prepare('SELECT * FROM restaurant_settings LIMIT 1').get();
+    }
+    res.json(settings || {});
 });
 adminRouter.put('/settings', authenticate, authorizeRole(['admin', 'owner']), (req, res) => {
-    const { restaurant_name, slogan, primary_color, secondary_color, vat_enabled, vat_percentage, tax_number, receipt_footer, receipt_footer_amharic, default_currency } = req.body;
-    db.prepare(`
-    UPDATE restaurant_settings
-    SET restaurant_name = COALESCE(?, restaurant_name),
-        slogan = COALESCE(?, slogan),
-        primary_color = COALESCE(?, primary_color),
-        secondary_color = COALESCE(?, secondary_color),
-        vat_enabled = COALESCE(?, vat_enabled),
-        vat_percentage = COALESCE(?, vat_percentage),
-        tax_number = COALESCE(?, tax_number),
-        receipt_footer = COALESCE(?, receipt_footer),
-        receipt_footer_amharic = COALESCE(?, receipt_footer_amharic),
-        default_currency = COALESCE(?, default_currency),
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = (SELECT id FROM restaurant_settings LIMIT 1)
-  `).run(restaurant_name, slogan, primary_color, secondary_color, vat_enabled, vat_percentage, tax_number, receipt_footer, receipt_footer_amharic, default_currency);
+    const { restaurant_name, slogan, primary_color, secondary_color, vat_enabled, vat_percentage, tax_number, receipt_footer, receipt_footer_amharic, default_currency, timezone_mode, system_timezone, timezone_offset_minutes } = req.body;
+    const existing = db.prepare('SELECT id FROM restaurant_settings LIMIT 1').get();
+    if (!existing) {
+        db.prepare(`
+      INSERT INTO restaurant_settings (
+        id, restaurant_name, slogan, primary_color, secondary_color, 
+        vat_enabled, vat_percentage, tax_number, receipt_footer, receipt_footer_amharic, 
+        default_currency, timezone_mode, system_timezone, timezone_offset_minutes
+      ) VALUES (
+        'settings_default', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      )
+    `).run(restaurant_name || 'GourmetOS Restaurant & Lounge', slogan || 'Exquisite Taste & Seamless Hospitality', primary_color || '#f97316', secondary_color || '#0f172a', vat_enabled ?? 1, vat_percentage ?? 15.0, tax_number || 'TIN-0098471201', receipt_footer || 'Thank you for dining with us! Come again soon.', receipt_footer_amharic || 'ስለመረጡን እናመሰግናለን! እንደገና ይምጡ።', default_currency || 'ETB', timezone_mode || 'AUTO', system_timezone || 'Africa/Addis_Ababa', timezone_offset_minutes ?? 180);
+    }
+    else {
+        db.prepare(`
+      UPDATE restaurant_settings
+      SET restaurant_name = COALESCE(?, restaurant_name),
+          slogan = COALESCE(?, slogan),
+          primary_color = COALESCE(?, primary_color),
+          secondary_color = COALESCE(?, secondary_color),
+          vat_enabled = COALESCE(?, vat_enabled),
+          vat_percentage = COALESCE(?, vat_percentage),
+          tax_number = COALESCE(?, tax_number),
+          receipt_footer = COALESCE(?, receipt_footer),
+          receipt_footer_amharic = COALESCE(?, receipt_footer_amharic),
+          default_currency = COALESCE(?, default_currency),
+          timezone_mode = COALESCE(?, timezone_mode),
+          system_timezone = COALESCE(?, system_timezone),
+          timezone_offset_minutes = COALESCE(?, timezone_offset_minutes),
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(restaurant_name ?? null, slogan ?? null, primary_color ?? null, secondary_color ?? null, vat_enabled !== undefined ? vat_enabled : null, vat_percentage !== undefined ? vat_percentage : null, tax_number ?? null, receipt_footer ?? null, receipt_footer_amharic ?? null, default_currency ?? null, timezone_mode ?? null, system_timezone ?? null, timezone_offset_minutes !== undefined ? timezone_offset_minutes : null, existing.id);
+    }
+    const updatedSettings = db.prepare('SELECT * FROM restaurant_settings LIMIT 1').get();
     logAudit({
         userId: req.user.id,
         action: 'SETTINGS_UPDATED',
         entityType: 'SETTINGS',
         details: req.body
     });
-    res.json({ message: 'Settings updated successfully' });
+    res.json({ message: 'Settings updated successfully', settings: updatedSettings });
 });
 // 6. Cloud Database Sync (Render Free Tier Persistence)
 adminRouter.get('/cloud-sync/status', authenticate, authorizeRole(['admin', 'owner']), (_req, res) => {
     res.json(getSyncStatus());
+});
+// Audit Log Integrity Verification (Owner-only)
+// Verifies the cryptographic hash chain of audit logs to detect tampering.
+adminRouter.get('/audit-integrity', authenticate, authorizeRole(['owner']), (_req, res) => {
+    const result = verifyAuditChain();
+    res.json(result);
+});
+// Audit Logs Viewer (Admin + Owner, read-only)
+adminRouter.get('/audit-logs', authenticate, authorizeRole(['admin', 'owner']), (req, res) => {
+    const limit = Math.min(parseInt(req.query.limit || '100', 10), 500);
+    const offset = parseInt(req.query.offset || '0', 10);
+    const branchId = req.query.branchId;
+    let query = `
+    SELECT al.*, u.username, u.full_name
+    FROM audit_logs al
+    LEFT JOIN users u ON al.user_id = u.id
+    WHERE 1=1
+  `;
+    const params = [];
+    if (branchId && branchId !== 'ALL') {
+        query += ' AND al.branch_id = ?';
+        params.push(branchId);
+    }
+    query += ' ORDER BY al.rowid DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+    const logs = db.prepare(query).all(...params);
+    res.json(logs);
 });
 adminRouter.post('/cloud-sync/trigger', authenticate, authorizeRole(['admin', 'owner']), async (_req, res) => {
     const result = await syncDatabaseToCloud('manual_admin_dashboard');

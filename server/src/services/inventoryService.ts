@@ -80,7 +80,7 @@ export function deductBomStock(
 
   const updateStockStmt = db.prepare(`
     UPDATE inventory_stock
-    SET current_quantity = MAX(0, current_quantity - ?),
+    SET current_quantity = current_quantity - ?,
         updated_at       = CURRENT_TIMESTAMP
     WHERE branch_id = ? AND ingredient_id = ?
   `);
@@ -100,7 +100,17 @@ export function deductBomStock(
 
   const lowStockAlerts: { ingredient_id: string; name: string; unit: string; current: number; min: number }[] = [];
 
-  // 3. Execute all deductions inside a single transaction
+  // 3. Pre-flight check: ensure no ingredient would go negative before committing any deductions
+  for (const line of totals.values()) {
+    if (line.current_quantity < line.quantity_to_deduct) {
+      throw new Error(
+        `Insufficient stock for "${line.ingredient_name}": required ${line.quantity_to_deduct} ${line.unit}, ` +
+        `available ${line.current_quantity} ${line.unit}. Restock before confirming this order.`
+      );
+    }
+  }
+
+  // 4. Execute all deductions inside a single transaction
   const tx = db.transaction(() => {
     for (const line of totals.values()) {
       updateStockStmt.run(line.quantity_to_deduct, branchId, line.ingredient_id);
@@ -131,6 +141,7 @@ export function deductBomStock(
   });
 
   tx();
+
 
   // 4. Persist and Broadcast low-stock alerts
   const insertNotif = db.prepare(`

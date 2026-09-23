@@ -23,3 +23,28 @@ export const authRateLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many authentication attempts. Please wait 15 minutes and try again.' }
 });
+
+/**
+ * Upload rate limiter — applied only to /api/upload routes.
+ * 10 uploads per 15 minutes per IP (prevents upload-based DoS).
+ */
+export const uploadRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many upload requests. Please wait 15 minutes and try again.' }
+});
+
+/**
+ * Payment rate limiter — applied to /api/payments/* routes.
+ * 30 payments per 15 minutes per IP.
+ */
+export const paymentRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many payment requests. Please slow down.' }
+});
+

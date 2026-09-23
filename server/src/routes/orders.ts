@@ -5,6 +5,7 @@ import { logAudit } from '../services/auditService.js';
 import { broadcastEvent } from '../services/websocket.js';
 import { v4 as uuidv4 } from 'uuid';
 import { deductBomStock } from '../services/inventoryService.js';
+import { resolveTimezone } from '../utils/timezone.js';
 
 export const orderRouter = Router();
 
@@ -156,9 +157,16 @@ orderRouter.post('/', authenticate, (req: AuthenticatedRequest, res) => {
     return res.status(400).json({ error: 'Order must have at least one item' });
   }
 
+  // Business logic: DINE_IN orders must have a table selected
+  const resolvedOrderType = order_type || 'DINE_IN';
+  if (resolvedOrderType === 'DINE_IN' && !table_id) {
+    return res.status(400).json({ error: 'Table selection is required for Dine-In orders. Please select a table before placing the order.' });
+  }
+
   const targetBranch = branch_id || req.user!.branch_id;
 
   // Idempotency check for offline sync
+
   if (client_tx_id) {
     const existing = db.prepare('SELECT id, order_number, status FROM orders WHERE client_tx_id = ?').get(client_tx_id);
     if (existing) {
@@ -180,22 +188,25 @@ orderRouter.post('/', authenticate, (req: AuthenticatedRequest, res) => {
   const taxAmount = +(subtotal * vatRate).toFixed(2);
   const totalAmount = +(subtotal + taxAmount).toFixed(2);
 
+  const tz = resolveTimezone(req);
+  const tzMod = tz.modifier;
+
   const tx = db.transaction(() => {
-    // Atomic sequential order number increment for today
+    // Atomic sequential order number increment for today in active timezone
     const existingMax = db.prepare(`
       SELECT COALESCE(MAX(order_number), 100) as max_num FROM orders
-      WHERE branch_id = ? AND date(created_at) = date('now')
+      WHERE branch_id = ? AND date(created_at, '${tzMod}') = date('now', '${tzMod}')
     `).get(targetBranch) as { max_num: number };
 
     db.prepare(`
       INSERT INTO order_counters (branch_id, counter_date, last_number)
-      VALUES (?, date('now'), ?)
+      VALUES (?, date('now', '${tzMod}'), ?)
       ON CONFLICT(branch_id, counter_date) DO UPDATE SET last_number = MAX(last_number + 1, excluded.last_number)
     `).run(targetBranch, existingMax.max_num + 1);
 
     const counterRow = db.prepare(`
       SELECT last_number FROM order_counters
-      WHERE branch_id = ? AND counter_date = date('now')
+      WHERE branch_id = ? AND counter_date = date('now', '${tzMod}')
     `).get(targetBranch) as { last_number: number };
 
     const orderNumber = counterRow.last_number;
@@ -207,7 +218,7 @@ orderRouter.post('/', authenticate, (req: AuthenticatedRequest, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING_CASHIER', ?, ?, ?, ?)
     `).run(
       orderId, orderNumber, client_tx_id || null, targetBranch, table_id || null, req.user!.id,
-      order_type || 'DINE_IN', subtotal, taxAmount, totalAmount, special_notes || null
+      resolvedOrderType, subtotal, taxAmount, totalAmount, special_notes || null
     );
 
     const insertItem = db.prepare(`
@@ -310,10 +321,80 @@ orderRouter.post('/:id/confirm', authenticate, authorizeRole(['cashier', 'admin'
 
   tx();
 
+  // ── Self-Dealing Detection ─────────────────────────────────────────
+  // Alert admins/owner if the cashier confirming the order is the same person who created it.
+  if (order.waiter_id === req.user!.id) {
+    logAudit({
+      branchId: order.branch_id,
+      userId: req.user!.id,
+      action: 'SELF_DEALING_DETECTED',
+      entityType: 'ORDER',
+      entityId: orderId,
+      details: {
+        orderNumber: order.order_number,
+        userId: req.user!.id,
+        username: req.user!.username,
+        message: 'Same user created and confirmed this order (waiter = cashier)'
+      }
+    });
+    broadcastEvent({
+      type: 'SUSPICIOUS_ACTIVITY',
+      branchId: order.branch_id,
+      targetRole: ['admin', 'owner'],
+      payload: {
+        userId: req.user!.id,
+        username: req.user!.username,
+        orderId,
+        orderNumber: order.order_number,
+        message: `⚠️ Self-dealing detected: ${req.user!.full_name} created AND confirmed Order #${order.order_number}`
+      }
+    });
+  }
+
+  // ── Discount Audit Trail ───────────────────────────────────────────
+  if (discount_amount && discount_amount > 0) {
+    logAudit({
+      branchId: order.branch_id,
+      userId: req.user!.id,
+      action: 'DISCOUNT_APPLIED',
+      entityType: 'ORDER',
+      entityId: orderId,
+      details: {
+        orderNumber: order.order_number,
+        discountAmount: discount_amount,
+        discountReason: discount_reason || 'No reason provided',
+        appliedBy: req.user!.full_name,
+        appliedByRole: req.user!.role,
+        originalTotal: order.subtotal + order.tax_amount
+      }
+    });
+  }
+
   // ── BOM Stock Deduction ────────────────────────────────────────────
-  // Runs outside the order-status transaction so a missing recipe doesn't
-  // block order confirmation — it degrades gracefully (no recipe = no deduction).
-  const { lowStockAlerts } = deductBomStock(String(orderId), String(order.branch_id), String(req.user!.id));
+  // Runs outside the order-status transaction. If a recipe has insufficient stock,
+  // we roll back the order status to PENDING_CASHIER and return a 409 error.
+  let lowStockAlerts: { ingredient_id: string; name: string; unit: string; current: number; min: number }[] = [];
+  try {
+    const bomResult = deductBomStock(String(orderId), String(order.branch_id), String(req.user!.id));
+    lowStockAlerts = bomResult.lowStockAlerts;
+  } catch (stockErr: any) {
+    // Roll back order to PENDING_CASHIER so the cashier can handle the stock issue first
+    db.prepare(`
+      UPDATE orders SET status = 'PENDING_CASHIER', cashier_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+    `).run(orderId);
+    logAudit({
+      branchId: order.branch_id,
+      userId: req.user!.id,
+      action: 'ORDER_CONFIRM_BLOCKED_INSUFFICIENT_STOCK',
+      entityType: 'ORDER',
+      entityId: orderId,
+      details: { orderNumber: order.order_number, reason: stockErr.message }
+    });
+    return res.status(409).json({
+      error: `Cannot confirm order: ${stockErr.message}`,
+      code: 'INSUFFICIENT_STOCK'
+    });
+  }
 
   logAudit({
     branchId: order.branch_id,
@@ -324,8 +405,10 @@ orderRouter.post('/:id/confirm', authenticate, authorizeRole(['cashier', 'admin'
     details: { orderNumber: order.order_number, cashier: req.user!.full_name, stockDeducted: true }
   });
 
+
   // Get items to route
   const items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(orderId) as any[];
+
   const hasFood = items.some(i => i.routing_destination === 'KITCHEN' || i.routing_destination === 'BOTH');
   const hasDrink = items.some(i => i.routing_destination === 'BAR' || i.routing_destination === 'BOTH');
 

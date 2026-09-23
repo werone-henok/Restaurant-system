@@ -1,11 +1,25 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Building2, Globe, Wifi, WifiOff, RefreshCw, Moon, Sun } from 'lucide-react';
+import { Building2, Globe, Wifi, WifiOff, RefreshCw, Moon, Sun, Clock } from 'lucide-react';
 import { NotificationCenter } from './NotificationCenter';
+import { TimezoneModal } from './TimezoneModal';
 import { resolveImageUrl } from '../utils/imageUrl';
 
 export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile }) => {
-  const { user, branches, currentBranchId, switchBranch, settings, language, setLanguage, isOnline, offlineCount, darkMode, toggleDarkMode, t } = useApp();
+  const { 
+    user, branches, currentBranchId, switchBranch, settings, 
+    language, setLanguage, isOnline, offlineCount, 
+    darkMode, toggleDarkMode, t,
+    activeTimezone, timezoneMode, formatTime 
+  } = useApp();
+
+  const [showTimezoneModal, setShowTimezoneModal] = useState(false);
+  const [clockTick, setClockTick] = useState<number>(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setClockTick(Date.now()), 10000);
+    return () => clearInterval(timer);
+  }, []);
 
   const logoInitial = settings?.restaurant_name?.charAt(0)?.toUpperCase() || 'G';
 
@@ -86,6 +100,30 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
           </span>
         )}
 
+        {/* Live Timezone & Clock Button */}
+        <button
+          onClick={() => setShowTimezoneModal(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '3px 7px',
+            borderRadius: 6,
+            background: 'rgba(255, 255, 255, 0.2)',
+            fontSize: 11,
+            fontWeight: 700,
+            color: '#ffffff',
+            border: 'none',
+            cursor: 'pointer'
+          }}
+          title={timezoneMode === 'auto' 
+            ? `⚡ Auto: ${activeTimezone} (Click to change)` 
+            : `🌐 Custom: ${activeTimezone} (Click to change)`}
+        >
+          <Clock size={12} />
+          <span>{formatTime(new Date(clockTick))}</span>
+        </button>
+
         {/* Language Switcher */}
         <button
           onClick={() => setLanguage(language === 'en' ? 'am' : 'en')}
@@ -138,6 +176,11 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
           </button>
         )}
       </div>
+
+      <TimezoneModal 
+        isOpen={showTimezoneModal} 
+        onClose={() => setShowTimezoneModal(false)} 
+      />
     </header>
   );
 };
