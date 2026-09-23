@@ -5,7 +5,8 @@ import { CameraCapture } from '../../components/CameraCapture';
 import { ImageUploadCompressor } from '../../components/ImageUploadCompressor';
 import { DetailedReportsDashboard } from '../../components/DetailedReportsDashboard';
 import { resolveImageUrl } from '../../utils/imageUrl';
-import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils, BarChart3 } from 'lucide-react';
+import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils, BarChart3, FolderPlus, Tag } from 'lucide-react';
+import { CreateCategoryModal } from '../../components/CreateCategoryModal';
 import { gToast } from '../../utils/toast';
 
 export const AdminView: React.FC = () => {
@@ -20,6 +21,8 @@ export const AdminView: React.FC = () => {
   // Menu Management State
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('ALL');
   const [showMenuModal, setShowMenuModal] = useState(false);
   const [editingMenuItemId, setEditingMenuItemId] = useState<string | null>(null);
   const [menuName, setMenuName] = useState('');
@@ -757,31 +760,98 @@ export const AdminView: React.FC = () => {
       {/* 6. MENU MANAGEMENT TAB */}
       {activeTab === 'menu' && (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
             <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase' }}>
-              Menu Catalogue ({menuItems.length} items)
+              {language === 'am' ? 'የምግብ ካታሎግ' : 'Menu Catalogue'} ({menuItems.length} items)
             </span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setShowCategoryModal(true)}
+                className="btn btn-secondary"
+                style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+              >
+                <FolderPlus size={14} color="var(--primary)" /> {language === 'am' ? 'አዲስ ምድብ' : '+ New Category'}
+              </button>
+              <button
+                onClick={() => {
+                  setEditingMenuItemId(null);
+                  setMenuName('');
+                  setMenuNameAmharic('');
+                  setMenuPrice(100);
+                  setMenuCategory(categories[0]?.id || 'cat_burgers');
+                  setMenuRouting('KITCHEN');
+                  setMenuDesc('');
+                  setMenuPhoto('');
+                  setShowMenuModal(true);
+                }}
+                className="btn btn-primary"
+                style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 800 }}
+              >
+                <Plus size={14} /> {language === 'am' ? 'ምግብ ጨምር' : '+ Add Menu Item'}
+              </button>
+            </div>
+          </div>
+
+          {/* Category Filter Pills */}
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 14 }}>
             <button
-              onClick={() => {
-                setEditingMenuItemId(null);
-                setMenuName('');
-                setMenuNameAmharic('');
-                setMenuPrice(100);
-                setMenuCategory(categories[0]?.id || 'cat_burgers');
-                setMenuRouting('KITCHEN');
-                setMenuDesc('');
-                setMenuPhoto('');
-                setShowMenuModal(true);
+              onClick={() => setSelectedCategoryFilter('ALL')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: 800,
+                border: selectedCategoryFilter === 'ALL' ? 'none' : '1px solid var(--border)',
+                background: selectedCategoryFilter === 'ALL' ? 'var(--primary)' : 'var(--bg-card)',
+                color: selectedCategoryFilter === 'ALL' ? '#ffffff' : 'var(--text-main)',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
               }}
-              className="btn btn-primary"
-              style={{ padding: '6px 12px', fontSize: 12 }}
             >
-              <Plus size={14} /> Add Menu Item
+              {language === 'am' ? 'ሁሉም ምግቦች' : 'All Categories'} ({menuItems.length})
             </button>
+            {categories.map(cat => {
+              const count = menuItems.filter(m => m.category_id === cat.id).length;
+              const isSelected = selectedCategoryFilter === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategoryFilter(cat.id)}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 20,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    border: isSelected ? 'none' : '1px solid var(--border)',
+                    background: isSelected ? 'var(--primary)' : 'var(--bg-card)',
+                    color: isSelected ? '#ffffff' : 'var(--text-main)',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  <span>{cat.icon || '🍽️'}</span>
+                  <span>{language === 'am' && cat.name_amharic ? cat.name_amharic : cat.name}</span>
+                  <span style={{
+                    fontSize: 10,
+                    padding: '1px 6px',
+                    borderRadius: 10,
+                    background: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--bg-subtle)',
+                    color: isSelected ? '#ffffff' : 'var(--text-muted)'
+                  }}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
-            {menuItems.map(item => (
+            {menuItems
+              .filter(item => selectedCategoryFilter === 'ALL' || item.category_id === selectedCategoryFilter)
+              .map(item => (
               <div
                 key={item.id}
                 style={{
@@ -1070,11 +1140,46 @@ export const AdminView: React.FC = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Category</label>
-                  <select value={menuCategory} onChange={e => setMenuCategory(e.target.value)} style={{ width: '100%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>
+                      {language === 'am' ? 'ምድብ (Category)' : 'Category'}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowCategoryModal(true)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--primary)',
+                        fontSize: 11,
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        padding: 0
+                      }}
+                    >
+                      <Plus size={11} /> {language === 'am' ? 'አዲስ ምድብ' : '+ New'}
+                    </button>
+                  </div>
+                  <select
+                    value={menuCategory}
+                    onChange={e => {
+                      if (e.target.value === '__NEW__') {
+                        setShowCategoryModal(true);
+                      } else {
+                        setMenuCategory(e.target.value);
+                      }
+                    }}
+                    style={{ width: '100%' }}
+                  >
                     {categories.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
+                      <option key={c.id} value={c.id}>
+                        {c.icon ? `${c.icon} ` : ''}{c.name} {c.name_amharic ? `(${c.name_amharic})` : ''}
+                      </option>
                     ))}
+                    <option value="__NEW__">+ {language === 'am' ? 'አዲስ ምድብ ፍጠር...' : 'Create New Category...'}</option>
                   </select>
                 </div>
 
@@ -1111,6 +1216,19 @@ export const AdminView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MODAL: CREATE CATEGORY */}
+      <CreateCategoryModal
+        isOpen={showCategoryModal}
+        onClose={() => setShowCategoryModal(false)}
+        onCategoryCreated={(newCat) => {
+          setCategories(prev => {
+            if (prev.some(c => c.id === newCat.id)) return prev;
+            return [...prev, newCat];
+          });
+          setMenuCategory(newCat.id);
+        }}
+      />
     </div>
   );
 };

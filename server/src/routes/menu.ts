@@ -5,12 +5,130 @@ import { logAudit } from '../services/auditService.js';
 import { requestDebouncedSync } from '../services/cloudSyncService.js';
 import { v4 as uuidv4 } from 'uuid';
 
+import { createCategorySchema, updateCategorySchema } from '../schemas/api.schemas.js';
+
 export const menuRouter = Router();
 
 // Get categories
 menuRouter.get('/categories', authenticate, (_req, res) => {
   const categories = db.prepare('SELECT * FROM menu_categories WHERE is_active = 1 ORDER BY sort_order ASC').all();
   res.json(categories);
+});
+
+// Create menu category (Admin, Owner, Chef)
+menuRouter.post('/categories', authenticate, authorizeRole(['admin', 'owner', 'chef']), (req: AuthenticatedRequest, res) => {
+  const parsed = createCategorySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid category data' });
+  }
+
+  const { name, name_amharic, icon, sort_order } = parsed.data;
+  const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 15) || 'cat';
+  const catId = `cat_${slug}_${uuidv4().substring(0, 6)}`;
+
+  let nextSortOrder = sort_order;
+  if (nextSortOrder === undefined || nextSortOrder === null) {
+    const maxRow = db.prepare('SELECT COALESCE(MAX(sort_order), 0) + 1 as next_order FROM menu_categories').get() as any;
+    nextSortOrder = maxRow?.next_order || 1;
+  }
+
+  db.prepare(`
+    INSERT INTO menu_categories (id, name, name_amharic, icon, sort_order, is_active)
+    VALUES (?, ?, ?, ?, ?, 1)
+  `).run(
+    catId,
+    name,
+    name_amharic?.trim() || null,
+    icon?.trim() || 'Utensils',
+    nextSortOrder
+  );
+
+  logAudit({
+    branchId: req.user!.branch_id,
+    userId: req.user!.id,
+    action: 'MENU_CATEGORY_CREATED',
+    entityType: 'MENU_CATEGORY',
+    entityId: catId,
+    details: { name, name_amharic: name_amharic?.trim(), createdBy: req.user!.username }
+  });
+
+  requestDebouncedSync();
+
+  const newCategory = db.prepare('SELECT * FROM menu_categories WHERE id = ?').get(catId);
+  res.status(201).json(newCategory);
+});
+
+// Update menu category (Admin, Owner, Chef)
+menuRouter.put('/categories/:id', authenticate, authorizeRole(['admin', 'owner', 'chef']), (req: AuthenticatedRequest, res) => {
+  const parsed = updateCategorySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid category data' });
+  }
+
+  const existing = db.prepare('SELECT * FROM menu_categories WHERE id = ?').get(req.params.id) as any;
+  if (!existing) return res.status(404).json({ error: 'Category not found' });
+
+  const { name, name_amharic, icon, sort_order, is_active } = parsed.data;
+
+  db.prepare(`
+    UPDATE menu_categories
+    SET name = COALESCE(?, name),
+        name_amharic = COALESCE(?, name_amharic),
+        icon = COALESCE(?, icon),
+        sort_order = COALESCE(?, sort_order),
+        is_active = COALESCE(?, is_active)
+    WHERE id = ?
+  `).run(
+    name ?? null,
+    name_amharic ?? null,
+    icon ?? null,
+    sort_order !== undefined ? Number(sort_order) : null,
+    is_active !== undefined ? (is_active ? 1 : 0) : null,
+    req.params.id
+  );
+
+  logAudit({
+    branchId: req.user!.branch_id,
+    userId: req.user!.id,
+    action: 'MENU_CATEGORY_UPDATED',
+    entityType: 'MENU_CATEGORY',
+    entityId: req.params.id,
+    details: { name: name || existing.name }
+  });
+
+  requestDebouncedSync();
+
+  const updated = db.prepare('SELECT * FROM menu_categories WHERE id = ?').get(req.params.id);
+  res.json(updated);
+});
+
+// Delete menu category (Admin, Owner, Chef)
+menuRouter.delete('/categories/:id', authenticate, authorizeRole(['admin', 'owner', 'chef']), (req: AuthenticatedRequest, res) => {
+  const existing = db.prepare('SELECT * FROM menu_categories WHERE id = ?').get(req.params.id) as any;
+  if (!existing) return res.status(404).json({ error: 'Category not found' });
+
+  // Check if any active menu items exist in this category
+  const itemCount = db.prepare('SELECT COUNT(*) as count FROM menu_items WHERE category_id = ? AND deleted_at IS NULL').get(req.params.id) as any;
+  if (itemCount?.count > 0) {
+    return res.status(400).json({ 
+      error: `Cannot delete category containing ${itemCount.count} active menu items. Please reassign or delete the items first.` 
+    });
+  }
+
+  db.prepare('DELETE FROM menu_categories WHERE id = ?').run(req.params.id);
+
+  logAudit({
+    branchId: req.user!.branch_id,
+    userId: req.user!.id,
+    action: 'MENU_CATEGORY_DELETED',
+    entityType: 'MENU_CATEGORY',
+    entityId: req.params.id,
+    details: { name: existing.name }
+  });
+
+  requestDebouncedSync();
+
+  res.json({ message: 'Category deleted successfully' });
 });
 
 // Search menu items (by English or Amharic name)

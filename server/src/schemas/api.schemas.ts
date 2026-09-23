@@ -158,3 +158,18 @@ export const upsertRecipeSchema = z.object({
   yield_portions: z.number().int().positive().default(1),
   ingredients: z.array(recipeIngredientSchema).min(1, 'At least one ingredient is required')
 });
+
+export const createCategorySchema = z.object({
+  name: z.string().min(1, 'Category name is required').trim(),
+  name_amharic: z.string().optional().nullable(),
+  icon: z.string().optional().nullable(),
+  sort_order: z.number().int().optional().nullable()
+});
+
+export const updateCategorySchema = z.object({
+  name: z.string().min(1).trim().optional(),
+  name_amharic: z.string().optional().nullable(),
+  icon: z.string().optional().nullable(),
+  sort_order: z.number().int().optional().nullable(),
+  is_active: z.boolean().optional()
+});
