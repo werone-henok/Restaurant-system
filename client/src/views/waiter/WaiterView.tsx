@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
-import { Plus, Minus, Send, CheckCircle2, Clock, UtensilsCrossed, AlertCircle, ShoppingBag, Check, RefreshCw } from 'lucide-react';
+import { Plus, Minus, Send, CheckCircle2, Clock, UtensilsCrossed, AlertCircle, ShoppingBag, Check, RefreshCw, Search, History, Eye } from 'lucide-react';
 import { OrderProgressStepper } from '../../components/OrderProgressStepper';
 import { UniversalStatusBadge } from '../../components/UniversalStatusBadge';
+import { OrderHistoryModal } from '../../components/OrderHistoryModal';
 import { tactileFeedback, speak } from '../../utils/feedback';
 import { gToast } from '../../utils/toast';
 import { resolveImageUrl } from '../../utils/imageUrl';
@@ -28,7 +29,7 @@ const CATEGORY_NAMES_AM: Record<string, string> = {
 
 export const WaiterView: React.FC = () => {
   const { currentBranchId, t, user, language } = useApp();
-  const [activeTab, setActiveTab] = useState<'create' | 'active' | 'ready'>('create');
+  const [activeTab, setActiveTab] = useState<'create' | 'active' | 'ready' | 'history'>('create');
   const [tables, setTables] = useState<any[]>([]);
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -39,9 +40,14 @@ export const WaiterView: React.FC = () => {
   const [specialNotes, setSpecialNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [myOrders, setMyOrders] = useState<any[]>([]);
+  const [historyOrders, setHistoryOrders] = useState<any[]>([]);
+  const [historySearch, setHistorySearch] = useState('');
+  const [selectedHistoryOrder, setSelectedHistoryOrder] = useState<any | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(api.isConnected);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
 
   // Auto-refresh fallback (30 seconds)
   const loadTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -64,11 +70,20 @@ export const WaiterView: React.FC = () => {
     }, 600);
   };
 
+  const loadHistory = useCallback(() => {
+    setLoadingHistory(true);
+    api.request<any[]>(`/orders/history/waiter?branchId=${currentBranchId}`)
+      .then(data => setHistoryOrders(data || []))
+      .catch(() => {})
+      .finally(() => setLoadingHistory(false));
+  }, [currentBranchId]);
+
   const loadData = () => {
     api.request<any[]>(`/tables?branchId=${currentBranchId}`).then(setTables).catch(() => {});
     api.request<any[]>('/menu/categories').then(setCategories).catch(() => {});
     api.request<any[]>('/menu/items').then(setMenuItems).catch(() => {});
     api.request<any[]>(`/orders?branchId=${currentBranchId}&myOrders=true`).then(setMyOrders).catch(() => {});
+    loadHistory();
   };
 
   useEffect(() => {
@@ -235,6 +250,12 @@ export const WaiterView: React.FC = () => {
           style={{ flex: 1, padding: '8px 0', fontSize: 13, fontWeight: 700, borderRadius: 8, background: activeTab === 'active' ? '#ffffff' : 'transparent', color: activeTab === 'active' ? 'var(--primary)' : 'var(--text-muted)' }}
         >
           Active ({activeOrders.length})
+        </button>
+        <button
+          onClick={() => { setActiveTab('history'); loadHistory(); }}
+          style={{ flex: 1, padding: '8px 0', fontSize: 13, fontWeight: 700, borderRadius: 8, background: activeTab === 'history' ? '#ffffff' : 'transparent', color: activeTab === 'history' ? 'var(--primary)' : 'var(--text-muted)', boxShadow: activeTab === 'history' ? 'var(--shadow-sm)' : 'none' }}
+        >
+          {language === 'am' ? 'ታሪክ' : 'History'}
         </button>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 4,
@@ -713,6 +734,152 @@ export const WaiterView: React.FC = () => {
         </div>
       )}
 
+      {/* Order History Tab */}
+      {activeTab === 'history' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Search bar */}
+          <div style={{ position: 'relative' }}>
+            <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input
+              type="text"
+              placeholder={language === 'am' ? 'የትዕዛዝ ቁጥር፣ ጠረጴዛ ወይም የምግብ ስም ፈልግ...' : 'Search by order #, table, or item name...'}
+              value={historySearch}
+              onChange={(e) => setHistorySearch(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 12px 10px 36px',
+                borderRadius: 12,
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
+                color: 'var(--text)',
+                fontSize: 13,
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+
+          {/* List count */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
+            <span>{language === 'am' ? 'ያስተናገዷቸው ትዕዛዞች' : 'Orders Taken by You'}</span>
+            <span>
+              {historyOrders.filter(o => {
+                if (!historySearch.trim()) return true;
+                const q = historySearch.toLowerCase();
+                const matchNum = String(o.order_number).includes(q);
+                const matchTable = (o.table_number && String(o.table_number).toLowerCase().includes(q)) || (o.table_name && o.table_name.toLowerCase().includes(q));
+                const matchItems = o.items?.some((it: any) => it.name?.toLowerCase().includes(q) || it.menu_name?.toLowerCase().includes(q) || it.name_amharic?.includes(q));
+                const matchStatus = o.status?.toLowerCase().includes(q);
+                return matchNum || matchTable || matchItems || matchStatus;
+              }).length} {language === 'am' ? 'ትዕዛዞች' : 'orders'}
+            </span>
+          </div>
+
+          {loadingHistory ? (
+            <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)' }}>
+              <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 10px' }} />
+              <p>{language === 'am' ? 'የታሪክ መረጃዎች እየተጫኑ ነው...' : 'Loading order history...'}</p>
+            </div>
+          ) : historyOrders.filter(o => {
+            if (!historySearch.trim()) return true;
+            const q = historySearch.toLowerCase();
+            const matchNum = String(o.order_number).includes(q);
+            const matchTable = (o.table_number && String(o.table_number).toLowerCase().includes(q)) || (o.table_name && o.table_name.toLowerCase().includes(q));
+            const matchItems = o.items?.some((it: any) => it.name?.toLowerCase().includes(q) || it.menu_name?.toLowerCase().includes(q) || it.name_amharic?.includes(q));
+            const matchStatus = o.status?.toLowerCase().includes(q);
+            return matchNum || matchTable || matchItems || matchStatus;
+          }).length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)', background: 'var(--surface-muted, #f8fafc)', borderRadius: 14 }}>
+              <History size={36} style={{ margin: '0 auto 10px', opacity: 0.4 }} />
+              <p style={{ fontWeight: 700, margin: '0 0 4px 0' }}>{language === 'am' ? 'ምንም የትዕዛዝ ታሪክ አልተገኘም' : 'No order history found'}</p>
+              <span style={{ fontSize: 12 }}>{language === 'am' ? 'የፈጠሯቸው ትዕዛዞች እዚህ በሙሉ በዝርዝር ይመዘገባሉ' : 'Orders you take from tables will automatically appear here.'}</span>
+            </div>
+          ) : (
+            historyOrders.filter(o => {
+              if (!historySearch.trim()) return true;
+              const q = historySearch.toLowerCase();
+              const matchNum = String(o.order_number).includes(q);
+              const matchTable = (o.table_number && String(o.table_number).toLowerCase().includes(q)) || (o.table_name && o.table_name.toLowerCase().includes(q));
+              const matchItems = o.items?.some((it: any) => it.name?.toLowerCase().includes(q) || it.menu_name?.toLowerCase().includes(q) || it.name_amharic?.includes(q));
+              const matchStatus = o.status?.toLowerCase().includes(q);
+              return matchNum || matchTable || matchItems || matchStatus;
+            }).map(o => (
+              <div
+                key={o.id}
+                onClick={() => setSelectedHistoryOrder(o)}
+                style={{
+                  background: 'var(--surface, #ffffff)',
+                  border: '1px solid var(--border, #e2e8f0)',
+                  borderRadius: 14,
+                  padding: 14,
+                  boxShadow: 'var(--shadow-sm)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 8,
+                      background: '#f97316', color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 800, fontSize: 13
+                    }}>
+                      #{o.order_number}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: 14 }}>
+                        {o.table_number ? `Table ${o.table_number}` : (o.table_name || o.order_type)}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        {new Date(o.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <UniversalStatusBadge status={o.status} size="sm" />
+                </div>
+
+                {/* Items summary */}
+                <div style={{ fontSize: 12, color: 'var(--text-main)', background: 'var(--bg-subtle, #f8fafc)', padding: '8px 10px', borderRadius: 8, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {o.items?.map((it: any, idx: number) => (
+                      <span key={it.id || idx} style={{ fontWeight: 500 }}>
+                        {it.quantity}x {language === 'am' && it.name_amharic ? it.name_amharic : (it.menu_name || it.name)}{idx < o.items.length - 1 ? ' • ' : ''}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
+                    {o.items?.length || 0} {language === 'am' ? 'ዓይነት ምግቦች' : 'items'}
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: '#059669' }}>
+                      {(o.total_amount || 0).toLocaleString()} ETB
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setSelectedHistoryOrder(o); }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 4,
+                        padding: '4px 10px', borderRadius: 8,
+                        background: '#eff6ff', color: '#1d4ed8',
+                        border: '1px solid #bfdbfe', fontSize: 12, fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Eye size={13} /> {language === 'am' ? 'ዝርዝር' : 'View'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
       {/* Floating Action Button for Cart Review */}
       {activeTab === 'create' && cartList.length > 0 && (
         <button
@@ -746,6 +913,16 @@ export const WaiterView: React.FC = () => {
           </div>
         </button>
       )}
+
+      {/* Order Detail Modal */}
+      {selectedHistoryOrder && (
+        <OrderHistoryModal
+          order={selectedHistoryOrder}
+          onClose={() => setSelectedHistoryOrder(null)}
+          role="waiter"
+        />
+      )}
     </div>
   );
 };
+

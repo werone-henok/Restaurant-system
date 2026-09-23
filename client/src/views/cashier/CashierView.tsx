@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
-import { Check, Printer, DollarSign, Tag, ShieldAlert, ArrowRight, CreditCard, Banknote, Smartphone, Search, Filter, ShoppingBag, Clock, Sparkles } from 'lucide-react';
+import { Check, Printer, DollarSign, Tag, ShieldAlert, ArrowRight, CreditCard, Banknote, Smartphone, Search, Filter, ShoppingBag, Clock, Sparkles, History, Eye, CheckCircle2 } from 'lucide-react';
+import { UniversalStatusBadge } from '../../components/UniversalStatusBadge';
+import { OrderHistoryModal } from '../../components/OrderHistoryModal';
 import { gToast } from '../../utils/toast';
 
 export const CashierView: React.FC = () => {
@@ -18,7 +20,10 @@ export const CashierView: React.FC = () => {
   const [showCustomSplit, setShowCustomSplit] = useState(false);
   const [isConnected, setIsConnected] = useState(api.isConnected);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterTab, setFilterTab] = useState<'ALL' | 'PENDING' | 'READY'>('ALL');
+  const [filterTab, setFilterTab] = useState<'ALL' | 'PENDING' | 'READY' | 'HISTORY'>('ALL');
+  const [approvalHistory, setApprovalHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [selectedHistoryOrder, setSelectedHistoryOrder] = useState<any | null>(null);
   const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 960);
 
   // Responsive desktop detection
@@ -32,9 +37,13 @@ export const CashierView: React.FC = () => {
   const loadTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const loadCallbackRef = useRef<() => void>(() => {});
 
-  useEffect(() => {
-    loadCallbackRef.current = loadOrders;
-  }, []);
+  const loadApprovalHistory = () => {
+    setLoadingHistory(true);
+    api.request<any[]>(`/orders/history/cashier?branchId=${currentBranchId}`)
+      .then(data => setApprovalHistory(data || []))
+      .catch(() => {})
+      .finally(() => setLoadingHistory(false));
+  };
 
   const loadOrders = () => {
     api.request<any[]>(`/orders?branchId=${currentBranchId}`)
@@ -47,7 +56,14 @@ export const CashierView: React.FC = () => {
         }
       })
       .catch(() => {});
+    loadApprovalHistory();
   };
+
+  useEffect(() => {
+    loadCallbackRef.current = loadOrders;
+  }, []);
+
+
 
   useEffect(() => {
     loadOrders();
@@ -567,6 +583,13 @@ export const CashierView: React.FC = () => {
           >
             💳 {language === 'am' ? 'ክፍያ' : 'Settle'} ({readyToPayOrders.length})
           </button>
+          <button
+            onClick={() => { setFilterTab('HISTORY'); loadApprovalHistory(); }}
+            className={`btn ${filterTab === 'HISTORY' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ height: 40, padding: '0 14px', fontSize: 12, fontWeight: 700, borderRadius: 10 }}
+          >
+            📜 {language === 'am' ? 'የማረጋገጫ ታሪክ' : 'Approval History'} ({approvalHistory.length})
+          </button>
         </div>
       </div>
 
@@ -704,6 +727,146 @@ export const CashierView: React.FC = () => {
               )}
             </div>
           )}
+
+          {/* Approval History Section */}
+          {filterTab === 'HISTORY' && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {language === 'am' ? `📜 በእርስዎ የተረጋገጡ ትዕዛዞች (${approvalHistory.filter(o => {
+                    if (!searchQuery.trim()) return true;
+                    const q = searchQuery.toLowerCase();
+                    const orderNum = String(o.order_number || '');
+                    const waiter = String(o.waiter_name || '').toLowerCase();
+                    const table = String(o.table_number || '').toLowerCase();
+                    const items = o.items?.some((it: any) => it.name?.toLowerCase().includes(q) || it.menu_name?.toLowerCase().includes(q) || it.name_amharic?.includes(q));
+                    return orderNum.includes(q) || waiter.includes(q) || table.includes(q) || items;
+                  }).length})` : `Orders Approved / Released by You (${approvalHistory.filter(o => {
+                    if (!searchQuery.trim()) return true;
+                    const q = searchQuery.toLowerCase();
+                    const orderNum = String(o.order_number || '');
+                    const waiter = String(o.waiter_name || '').toLowerCase();
+                    const table = String(o.table_number || '').toLowerCase();
+                    const items = o.items?.some((it: any) => it.name?.toLowerCase().includes(q) || it.menu_name?.toLowerCase().includes(q) || it.name_amharic?.includes(q));
+                    return orderNum.includes(q) || waiter.includes(q) || table.includes(q) || items;
+                  }).length})`}
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  {language === 'am' ? 'የቅርብ ጊዜ በቅድሚያ' : 'Newest first'}
+                </span>
+              </div>
+
+              {loadingHistory ? (
+                <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                  <div className="animate-spin" style={{ display: 'inline-block', marginBottom: 8 }}>🔄</div>
+                  <div>{language === 'am' ? 'የማረጋገጫ ታሪክ በመጫን ላይ...' : 'Loading approval history...'}</div>
+                </div>
+              ) : approvalHistory.filter(o => {
+                if (!searchQuery.trim()) return true;
+                const q = searchQuery.toLowerCase();
+                const orderNum = String(o.order_number || '');
+                const waiter = String(o.waiter_name || '').toLowerCase();
+                const table = String(o.table_number || '').toLowerCase();
+                const items = o.items?.some((it: any) => it.name?.toLowerCase().includes(q) || it.menu_name?.toLowerCase().includes(q) || it.name_amharic?.includes(q));
+                return orderNum.includes(q) || waiter.includes(q) || table.includes(q) || items;
+              }).length === 0 ? (
+                <div style={{ background: '#ffffff', border: '1px dashed var(--border)', borderRadius: 14, padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                  <History size={36} style={{ margin: '0 auto 8px', opacity: 0.4 }} />
+                  <div style={{ fontWeight: 700 }}>{language === 'am' ? 'ምንም የማረጋገጫ ታሪክ አልተገኘም' : 'No approval history found'}</div>
+                  <div style={{ fontSize: 11, marginTop: 4 }}>{language === 'am' ? 'ያረጋገጧቸውና የለቀቋቸው ትዕዛዞች እዚህ ይመዘገባሉ' : 'Orders you confirm and release will appear here.'}</div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {approvalHistory.filter(o => {
+                    if (!searchQuery.trim()) return true;
+                    const q = searchQuery.toLowerCase();
+                    const orderNum = String(o.order_number || '');
+                    const waiter = String(o.waiter_name || '').toLowerCase();
+                    const table = String(o.table_number || '').toLowerCase();
+                    const items = o.items?.some((it: any) => it.name?.toLowerCase().includes(q) || it.menu_name?.toLowerCase().includes(q) || it.name_amharic?.includes(q));
+                    return orderNum.includes(q) || waiter.includes(q) || table.includes(q) || items;
+                  }).map(o => (
+                    <div
+                      key={o.id}
+                      onClick={() => setSelectedHistoryOrder(o)}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid var(--border)',
+                        borderRadius: 14,
+                        padding: 14,
+                        boxShadow: 'var(--shadow-sm)',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{
+                            background: '#0284c7', color: '#fff',
+                            fontWeight: 800, fontSize: 12, padding: '2px 8px', borderRadius: 6
+                          }}>
+                            #{o.order_number}
+                          </span>
+                          <span style={{ fontWeight: 800, fontSize: 14 }}>
+                            {o.table_number ? `${language === 'am' ? 'ጠረጴዛ' : 'Table'} ${o.table_number}` : o.order_type}
+                          </span>
+                          {o.waiter_name && (
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                              • {o.waiter_name}
+                            </span>
+                          )}
+                        </div>
+                        <UniversalStatusBadge status={o.status} size="sm" />
+                      </div>
+
+                      {/* Approval time and items summary */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
+                        <span>
+                          {o.approval_at ? (
+                            <span style={{ color: '#0369a1', fontWeight: 600 }}>
+                              ✓ {language === 'am' ? 'የተረጋገጠበት:' : 'Approved:'} {new Date(o.approval_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          ) : (
+                            new Date(o.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                          )}
+                        </span>
+                        <span style={{ fontWeight: 600 }}>
+                          {o.items?.length || 0} {language === 'am' ? 'ምግቦች' : 'items'}
+                        </span>
+                      </div>
+
+                      <div style={{ fontSize: 12, color: 'var(--text-main)', background: '#f8fafc', padding: '6px 10px', borderRadius: 8, marginBottom: 8 }}>
+                        {o.items?.map((it: any, idx: number) => (
+                          <span key={it.id || idx}>
+                            {it.quantity}x {language === 'am' && it.name_amharic ? it.name_amharic : (it.menu_name || it.name)}{idx < o.items.length - 1 ? ', ' : ''}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                        <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--primary)' }}>
+                          {(o.total_amount || 0).toLocaleString()} {t('currency')}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setSelectedHistoryOrder(o); }}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 4,
+                            padding: '4px 10px', borderRadius: 8,
+                            background: '#eff6ff', color: '#1d4ed8',
+                            border: '1px solid #bfdbfe', fontSize: 12, fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Eye size={13} /> {language === 'am' ? 'ዝርዝር ይመልከቱ' : 'View Details'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right Column (Desktop Billing Workstation) */}
@@ -815,6 +978,15 @@ export const CashierView: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Order History Inspection Modal */}
+      {selectedHistoryOrder && (
+        <OrderHistoryModal
+          order={selectedHistoryOrder}
+          onClose={() => setSelectedHistoryOrder(null)}
+          role="cashier"
+        />
       )}
     </div>
   );

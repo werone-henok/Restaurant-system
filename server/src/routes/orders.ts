@@ -495,3 +495,223 @@ orderRouter.post('/:id/cancel', authenticate, (req: AuthenticatedRequest, res) =
 
   res.json({ message: 'Order cancelled successfully', status: 'CANCELLED' });
 });
+
+// ── 9. Role-Restricted History Views ─────────────────────────────────
+
+// 9A. Waiter Order History (Only orders created by logged-in waiter)
+orderRouter.get('/history/waiter', authenticate, authorizeRole(['waiter', 'admin', 'owner']), (req: AuthenticatedRequest, res) => {
+  try {
+    const branchId = (req.query.branchId as string) || req.user!.branch_id;
+    let query = `
+      SELECT o.*, t.table_number, t.name as table_name, u.full_name as waiter_name, c.full_name as cashier_name
+      FROM orders o
+      LEFT JOIN restaurant_tables t ON o.table_id = t.id
+      LEFT JOIN users u ON o.waiter_id = u.id
+      LEFT JOIN users c ON o.cashier_id = c.id
+      WHERE o.branch_id = ?
+    `;
+    const params: any[] = [branchId];
+
+    // Strict Backend RBAC: Waiters can ONLY see their own orders
+    if (req.user!.role === 'waiter') {
+      query += ` AND o.waiter_id = ?`;
+      params.push(req.user!.id);
+    }
+
+    query += ` ORDER BY o.created_at DESC LIMIT 150`;
+
+    const orders = db.prepare(query).all(...params) as any[];
+
+    const getItemStmt = db.prepare(`
+      SELECT oi.*, mi.name as menu_name, mi.name_amharic, mi.photo_url
+      FROM order_items oi
+      JOIN menu_items mi ON oi.menu_item_id = mi.id
+      WHERE oi.order_id = ?
+    `);
+
+    const populated = orders.map(order => ({
+      ...order,
+      items: getItemStmt.all(order.id)
+    }));
+
+    res.json(populated);
+  } catch (err: any) {
+    console.error('[Waiter History Error]:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch waiter history' });
+  }
+});
+
+// 9B. Cashier Approval History (Only orders approved/released by logged-in cashier)
+orderRouter.get('/history/cashier', authenticate, authorizeRole(['cashier', 'admin', 'owner']), (req: AuthenticatedRequest, res) => {
+  try {
+    const branchId = (req.query.branchId as string) || req.user!.branch_id;
+    let query = `
+      SELECT o.*, t.table_number, t.name as table_name, u.full_name as waiter_name, c.full_name as cashier_name,
+             (SELECT h.created_at FROM order_status_history h 
+              WHERE h.order_id = o.id AND h.new_status = 'CONFIRMED' 
+              ORDER BY h.created_at DESC LIMIT 1) as approval_at
+      FROM orders o
+      LEFT JOIN restaurant_tables t ON o.table_id = t.id
+      LEFT JOIN users u ON o.waiter_id = u.id
+      LEFT JOIN users c ON o.cashier_id = c.id
+      WHERE o.branch_id = ?
+    `;
+    const params: any[] = [branchId];
+
+    // Strict Backend RBAC: Cashiers can ONLY see orders they approved/settled
+    if (req.user!.role === 'cashier') {
+      query += ` AND (o.cashier_id = ? OR o.id IN (
+        SELECT h.order_id FROM order_status_history h WHERE h.user_id = ? AND h.new_status = 'CONFIRMED'
+      ))`;
+      params.push(req.user!.id, req.user!.id);
+    } else {
+      query += ` AND o.status != 'PENDING_CASHIER' AND o.status != 'DRAFT'`;
+    }
+
+    query += ` ORDER BY COALESCE(approval_at, o.updated_at, o.created_at) DESC LIMIT 150`;
+
+    const orders = db.prepare(query).all(...params) as any[];
+
+    const getItemStmt = db.prepare(`
+      SELECT oi.*, mi.name as menu_name, mi.name_amharic, mi.photo_url
+      FROM order_items oi
+      JOIN menu_items mi ON oi.menu_item_id = mi.id
+      WHERE oi.order_id = ?
+    `);
+
+    const populated = orders.map(order => ({
+      ...order,
+      items: getItemStmt.all(order.id)
+    }));
+
+    res.json(populated);
+  } catch (err: any) {
+    console.error('[Cashier History Error]:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch cashier history' });
+  }
+});
+
+// 9C. Chef Preparation History (Food items prepared/completed by logged-in chef)
+orderRouter.get('/history/chef', authenticate, authorizeRole(['chef', 'admin', 'owner']), (req: AuthenticatedRequest, res) => {
+  try {
+    const branchId = (req.query.branchId as string) || req.user!.branch_id;
+    let query = `
+      SELECT DISTINCT o.*, t.table_number, t.name as table_name, u.full_name as waiter_name,
+             (SELECT MAX(oi2.ready_at) FROM order_items oi2 
+              WHERE oi2.order_id = o.id AND oi2.routing_destination IN ('KITCHEN', 'BOTH')
+              ${req.user!.role === 'chef' ? 'AND oi2.prepared_by_id = ?' : ''}) as completion_time
+      FROM orders o
+      JOIN order_items oi ON o.id = oi.order_id
+      LEFT JOIN restaurant_tables t ON o.table_id = t.id
+      LEFT JOIN users u ON o.waiter_id = u.id
+      WHERE o.branch_id = ? AND oi.routing_destination IN ('KITCHEN', 'BOTH')
+    `;
+    const params: any[] = [];
+
+    // Strict Backend RBAC: Chef can ONLY see orders where they completed items
+    if (req.user!.role === 'chef') {
+      params.push(req.user!.id);
+      params.push(branchId);
+      query += ` AND (oi.prepared_by_id = ? OR (oi.status = 'READY' AND o.id IN (
+        SELECT h.order_id FROM order_status_history h WHERE h.user_id = ?
+      )))`;
+      params.push(req.user!.id, req.user!.id);
+    } else {
+      params.push(branchId);
+      query += ` AND oi.status = 'READY'`;
+    }
+
+    query += ` ORDER BY COALESCE(completion_time, o.updated_at, o.created_at) DESC LIMIT 150`;
+
+    const orders = db.prepare(query).all(...params) as any[];
+
+    const getKitchenItemStmt = db.prepare(`
+      SELECT oi.*, mi.name as menu_name, mi.name_amharic, mi.photo_url, chef.full_name as prepared_by_name
+      FROM order_items oi
+      JOIN menu_items mi ON oi.menu_item_id = mi.id
+      LEFT JOIN users chef ON oi.prepared_by_id = chef.id
+      WHERE oi.order_id = ? AND oi.routing_destination IN ('KITCHEN', 'BOTH')
+    `);
+
+    const populated = orders.map(order => ({
+      ...order,
+      items: getKitchenItemStmt.all(order.id)
+    }));
+
+    res.json(populated);
+  } catch (err: any) {
+    console.error('[Chef History Error]:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch chef history' });
+  }
+});
+
+// 9D. Barista Preparation History (Beverage items prepared/completed by logged-in barista)
+orderRouter.get('/history/barista', authenticate, authorizeRole(['barista', 'admin', 'owner']), (req: AuthenticatedRequest, res) => {
+  try {
+    const branchId = (req.query.branchId as string) || req.user!.branch_id;
+    let query = `
+      SELECT DISTINCT o.*, t.table_number, t.name as table_name, u.full_name as waiter_name,
+             (SELECT MAX(oi2.ready_at) FROM order_items oi2 
+              WHERE oi2.order_id = o.id AND oi2.routing_destination IN ('BAR', 'BOTH')
+              ${req.user!.role === 'barista' ? 'AND oi2.prepared_by_id = ?' : ''}) as completion_time
+      FROM orders o
+      JOIN order_items oi ON o.id = oi.order_id
+      LEFT JOIN restaurant_tables t ON o.table_id = t.id
+      LEFT JOIN users u ON o.waiter_id = u.id
+      WHERE o.branch_id = ? AND oi.routing_destination IN ('BAR', 'BOTH')
+    `;
+    const params: any[] = [];
+
+    // Strict Backend RBAC: Barista can ONLY see orders where they completed items
+    if (req.user!.role === 'barista') {
+      params.push(req.user!.id);
+      params.push(branchId);
+      query += ` AND (oi.prepared_by_id = ? OR (oi.status = 'READY' AND o.id IN (
+        SELECT h.order_id FROM order_status_history h WHERE h.user_id = ?
+      )))`;
+      params.push(req.user!.id, req.user!.id);
+    } else {
+      params.push(branchId);
+      query += ` AND oi.status = 'READY'`;
+    }
+
+    query += ` ORDER BY COALESCE(completion_time, o.updated_at, o.created_at) DESC LIMIT 150`;
+
+    const orders = db.prepare(query).all(...params) as any[];
+
+    const getBarItemStmt = db.prepare(`
+      SELECT oi.*, mi.name as menu_name, mi.name_amharic, mi.photo_url, bar.full_name as prepared_by_name
+      FROM order_items oi
+      JOIN menu_items mi ON oi.menu_item_id = mi.id
+      LEFT JOIN users bar ON oi.prepared_by_id = bar.id
+      WHERE oi.order_id = ? AND oi.routing_destination IN ('BAR', 'BOTH')
+    `);
+
+    const populated = orders.map(order => ({
+      ...order,
+      items: getBarItemStmt.all(order.id)
+    }));
+
+    res.json(populated);
+  } catch (err: any) {
+    console.error('[Barista History Error]:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch barista history' });
+  }
+});
+
+// 9E. Order Status Audit History Timeline
+orderRouter.get('/:id/status-history', authenticate, (req: AuthenticatedRequest, res) => {
+  try {
+    const history = db.prepare(`
+      SELECT h.*, u.full_name as user_name, u.role as user_role
+      FROM order_status_history h
+      LEFT JOIN users u ON h.user_id = u.id
+      WHERE h.order_id = ?
+      ORDER BY h.created_at ASC
+    `).all(req.params.id);
+    res.json(history);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
