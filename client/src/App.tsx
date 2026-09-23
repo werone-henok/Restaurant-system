@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from './context/AppContext';
 import { api } from './api/client';
 import { tactileFeedback } from './utils/feedback';
@@ -35,6 +35,11 @@ export const App: React.FC = () => {
   const [activeTabOverride, setActiveTabOverride] = useState<string | null>(null);
   const [showProfile, setShowProfile] = useState(false);
 
+  // Reset active tab override whenever logged-in user changes
+  useEffect(() => {
+    setActiveTabOverride(null);
+  }, [user?.id, user?.role]);
+
   // 1. Show Onboarding if first launch
   if (!hasSeenOnboarding) {
     return <OnboardingSlider onComplete={() => setHasSeenOnboarding(true)} />;
@@ -46,7 +51,20 @@ export const App: React.FC = () => {
   }
 
   const role = user.role;
-  const currentTab = activeTabOverride || role;
+
+  // Allowed tabs per role to prevent lower-permission roles from being trapped in admin/owner views
+  const roleAllowedTabs: Record<string, string[]> = {
+    owner: ['owner', 'cashier', 'chef', 'storekeeper', 'admin', 'waiter', 'barista'],
+    admin: ['admin', 'cashier', 'storekeeper', 'owner', 'waiter', 'chef', 'barista'],
+    waiter: ['waiter'],
+    cashier: ['cashier'],
+    chef: ['chef'],
+    barista: ['barista'],
+    storekeeper: ['storekeeper']
+  };
+
+  const allowedTabs = roleAllowedTabs[role] || [role];
+  const currentTab = (activeTabOverride && allowedTabs.includes(activeTabOverride)) ? activeTabOverride : role;
 
   // Bottom navigation items adapt automatically based on role permissions
   // Designed with large 56px touch targets and prominent icons for illiterate/low-literacy staff
@@ -201,6 +219,7 @@ export const App: React.FC = () => {
                   await api.request('/auth/logout', { method: 'POST' });
                 } catch (_) {}
                 setShowProfile(false);
+                setActiveTabOverride(null);
                 logout();
               }}
               className="btn btn-danger btn-block"
