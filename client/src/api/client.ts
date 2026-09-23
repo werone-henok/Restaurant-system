@@ -1,10 +1,17 @@
+import { Capacitor } from '@capacitor/core';
+
 export function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     const saved = localStorage.getItem('gourmet_api_url');
     if (saved && saved.trim()) return saved.trim();
 
+    // Native mobile app (Android / BlueStacks / iOS): default to live cloud API
+    if (Capacitor.isNativePlatform()) {
+      return 'https://restaurant-system-ipd2.onrender.com/api';
+    }
+
     const host = window.location.hostname;
-    // Localhost development
+    // Localhost development in desktop browser
     if (host === 'localhost' || host === '127.0.0.1') {
       return 'http://localhost:4001/api';
     }
