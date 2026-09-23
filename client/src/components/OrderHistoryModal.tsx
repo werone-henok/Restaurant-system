@@ -40,14 +40,21 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({ order, onC
     <div
       style={{
         position: 'fixed',
-        inset: 0,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
         backgroundColor: 'rgba(15, 23, 42, 0.75)',
         backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
         zIndex: 99999,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 16
+        padding: 16,
+        boxSizing: 'border-box'
       }}
       onClick={onClose}
     >
@@ -63,6 +70,7 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({ order, onC
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          margin: 'auto',
           border: '1px solid var(--border, #e2e8f0)',
           overflow: 'hidden'
         }}

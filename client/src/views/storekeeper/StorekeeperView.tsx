@@ -943,9 +943,15 @@ export const StorekeeperView: React.FC = () => {
         <div 
           style={{
             position: 'fixed',
-            inset: 0,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
             background: 'rgba(15, 23, 42, 0.75)',
-            backdropFilter: 'blur(5px)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -965,7 +971,8 @@ export const StorekeeperView: React.FC = () => {
               display: 'flex',
               flexDirection: 'column',
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              margin: 'auto'
             }}
             onClick={e => e.stopPropagation()}
           >
@@ -1174,9 +1181,15 @@ export const StorekeeperView: React.FC = () => {
         <div 
           style={{
             position: 'fixed',
-            inset: 0,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
             background: 'rgba(15, 23, 42, 0.75)',
-            backdropFilter: 'blur(5px)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1194,7 +1207,8 @@ export const StorekeeperView: React.FC = () => {
               maxWidth: 420,
               padding: 24,
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
-              textAlign: 'center'
+              textAlign: 'center',
+              margin: 'auto'
             }}
             onClick={e => e.stopPropagation()}
           >
