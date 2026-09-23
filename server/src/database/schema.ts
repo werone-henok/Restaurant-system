@@ -244,6 +244,8 @@ export function initDatabase() {
       status TEXT DEFAULT 'RECEIVED', -- 'DRAFT', 'ORDERED', 'RECEIVED'
       total_cost REAL NOT NULL,
       invoice_number TEXT,
+      receiving_date DATE DEFAULT CURRENT_DATE,
+      receipt_photo_url TEXT,
       notes TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -397,4 +399,8 @@ export function initDatabase() {
   try { db.exec("ALTER TABLE users ADD COLUMN pin_locked_until DATETIME"); } catch (_) {}
   try { db.exec("ALTER TABLE users ADD COLUMN reset_token TEXT"); } catch (_) {}
   try { db.exec("ALTER TABLE users ADD COLUMN reset_expiry DATETIME"); } catch (_) {}
+
+  // Inventory purchase order receipt details migrations
+  try { db.exec("ALTER TABLE purchase_orders ADD COLUMN receiving_date DATE DEFAULT CURRENT_DATE"); } catch (_) {}
+  try { db.exec("ALTER TABLE purchase_orders ADD COLUMN receipt_photo_url TEXT"); } catch (_) {}
 }

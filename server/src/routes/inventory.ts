@@ -5,6 +5,8 @@ import { validate } from '../middleware/validate.js';
 import { createIngredientSchema, updateIngredientSchema } from '../schemas/api.schemas.js';
 import { logAudit } from '../services/auditService.js';
 import { broadcastEvent } from '../services/websocket.js';
+import { notifyRoles } from '../services/notificationService.js';
+import { requestDebouncedSync } from '../services/cloudSyncService.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export const inventoryRouter = Router();
@@ -37,7 +39,7 @@ inventoryRouter.get('/', authenticate, (req: AuthenticatedRequest, res) => {
 
 // 2. Receive Stock (Storekeeper purchases/deliveries)
 inventoryRouter.post('/receive', authenticate, authorizeRole(['storekeeper', 'admin', 'owner']), (req: AuthenticatedRequest, res) => {
-  const { branch_id, supplier_id, invoice_number, items, notes } = req.body;
+  const { branch_id, supplier_id, invoice_number, items, notes, receiving_date, receipt_photo_url } = req.body;
   // items: Array of { ingredient_id: string, quantity: number, unit_price: number }
 
   if (!items || !Array.isArray(items) || items.length === 0) {
@@ -47,18 +49,22 @@ inventoryRouter.post('/receive', authenticate, authorizeRole(['storekeeper', 'ad
   const targetBranch = branch_id || req.user!.branch_id;
   const poId = `po_${uuidv4().substring(0, 8)}`;
   const poNumber = `PO-${Date.now().toString().slice(-6)}`;
+  const receivingDate = receiving_date && receiving_date.trim() ? receiving_date.trim() : new Date().toISOString().split('T')[0];
+  const receiptPhoto = receipt_photo_url && receipt_photo_url.trim() ? receipt_photo_url.trim() : null;
 
   let totalCost = 0;
   for (const it of items) {
-    totalCost += it.quantity * it.unit_price;
+    totalCost += Number(it.quantity) * Number(it.unit_price);
   }
 
+  const expenseId = `exp_${uuidv4().substring(0, 8)}`;
+
   const tx = db.transaction(() => {
-    // 1. Create Purchase Order
+    // 1. Create Purchase Order with receiving date and receipt photo
     db.prepare(`
-      INSERT INTO purchase_orders (id, po_number, branch_id, supplier_id, storekeeper_id, total_cost, invoice_number, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(poId, poNumber, targetBranch, supplier_id || 'sup_01', req.user!.id, totalCost, invoice_number || null, notes || null);
+      INSERT INTO purchase_orders (id, po_number, branch_id, supplier_id, storekeeper_id, total_cost, invoice_number, receiving_date, receipt_photo_url, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(poId, poNumber, targetBranch, supplier_id || 'sup_01', req.user!.id, totalCost, invoice_number || null, receivingDate, receiptPhoto, notes || null);
 
     const insertPoItem = db.prepare(`
       INSERT INTO purchase_order_items (id, purchase_order_id, ingredient_id, quantity, unit_price, total_price)
@@ -78,10 +84,36 @@ inventoryRouter.post('/receive', authenticate, authorizeRole(['storekeeper', 'ad
     `);
 
     for (const it of items) {
-      insertPoItem.run(uuidv4(), poId, it.ingredient_id, it.quantity, it.unit_price, it.quantity * it.unit_price);
+      const lineCost = Number(it.quantity) * Number(it.unit_price);
+      insertPoItem.run(uuidv4(), poId, it.ingredient_id, it.quantity, it.unit_price, lineCost);
       updateStock.run(`stk_${uuidv4().substring(0, 8)}`, targetBranch, it.ingredient_id, it.quantity);
       insertMov.run(uuidv4(), targetBranch, it.ingredient_id, req.user!.id, it.quantity, targetBranch, it.ingredient_id, poId, `Received under ${poNumber}`);
     }
+
+    // 2. Automatically record this inventory intake as an operational expense
+    const sampleIng = db.prepare('SELECT category FROM ingredients WHERE id = ?').get(items[0].ingredient_id) as any;
+    const expenseCategory = (sampleIng?.category === 'Beverages' && items.every(it => {
+      const c = db.prepare('SELECT category FROM ingredients WHERE id = ?').get(it.ingredient_id) as any;
+      return c?.category === 'Beverages';
+    })) ? 'Beverages' : 'Food purchases';
+
+    const expenseDesc = `Stock Intake: ${poNumber} (${items.length} item${items.length > 1 ? 's' : ''}${invoice_number ? `, Inv: ${invoice_number}` : ''})`;
+
+    db.prepare(`
+      INSERT INTO expenses (id, branch_id, user_id, category, amount, expense_date, description, receipt_photo_url, supplier_id, reference_number)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      expenseId,
+      targetBranch,
+      req.user!.id,
+      expenseCategory,
+      totalCost,
+      receivingDate,
+      expenseDesc,
+      receiptPhoto,
+      supplier_id || null,
+      invoice_number || poNumber
+    );
   });
 
   tx();
@@ -89,19 +121,39 @@ inventoryRouter.post('/receive', authenticate, authorizeRole(['storekeeper', 'ad
   logAudit({
     branchId: targetBranch,
     userId: req.user!.id,
-    action: 'STOCK_RECEIVED',
+    action: 'STOCK_RECEIVED_EXPENSE_RECORDED',
     entityType: 'PURCHASE_ORDER',
     entityId: poId,
-    details: { poNumber, totalCost, itemsCount: items.length }
+    details: { poNumber, totalCost, expenseId, itemsCount: items.length, receivingDate }
+  });
+
+  // Notify Admin & Owner in real-time
+  notifyRoles({
+    branchId: targetBranch,
+    targetRoles: ['admin', 'owner'],
+    title: '📦 Stock Intake & Expense Recorded',
+    titleAmharic: '📦 ዕቃ ተረክቧል እና ወጪ ተመዝግቧል',
+    message: `${req.user!.full_name || 'Storekeeper'} received ${items.length} inventory item(s) (${poNumber}, ${totalCost.toLocaleString()} ETB). Automatically recorded under expenses.`,
+    messageAmharic: `በ ${req.user!.full_name || 'ስቶር ኪፐር'} ${items.length} ግብዓት ተረክቧል (${poNumber}፣ ${totalCost.toLocaleString()} ብር)። በወጪዎች መዝገብ ላይ ተመዝግቧል።`,
+    type: 'EXPENSE',
+    linkRef: poId
   });
 
   broadcastEvent({
     type: 'STOCK_UPDATED',
     branchId: targetBranch,
-    payload: { poNumber, totalCost }
+    payload: { poNumber, totalCost, expenseId }
   });
 
-  res.status(201).json({ message: 'Stock received and inventory successfully incremented', poNumber, totalCost });
+  requestDebouncedSync();
+
+  res.status(201).json({
+    message: 'Stock received and automatically recorded as expense',
+    poNumber,
+    totalCost,
+    expenseId,
+    receivingDate
+  });
 });
 
 // 3. Log Waste / Spoilage
@@ -150,6 +202,19 @@ inventoryRouter.post('/waste', authenticate, authorizeRole(['storekeeper', 'chef
     entityId: wasteId,
     details: { ingredient: ing?.name, quantity, reason, estCost }
   });
+
+  notifyRoles({
+    branchId: targetBranch,
+    targetRoles: ['admin', 'owner'],
+    title: '⚠️ Waste / Spoilage Recorded',
+    titleAmharic: '⚠️ የዕቃ ብክነት ተመዝግቧል',
+    message: `${req.user!.full_name || 'Staff'} logged waste: ${quantity} ${unit || ''} of ${ing?.name || 'item'} (${reason}, est. ${estCost.toLocaleString()} ETB).`,
+    messageAmharic: `በ ${req.user!.full_name || 'ሰራተኛ'} ብክነት ተመዝግቧል: ${quantity} ${unit || ''} ${ing?.name_amharic || ing?.name || 'ግብዓት'} (${reason}፣ ግምታዊ ${estCost.toLocaleString()} ብር)።`,
+    type: 'LOW_STOCK',
+    linkRef: wasteId
+  });
+
+  requestDebouncedSync();
 
   res.status(201).json({ message: 'Waste recorded and inventory updated', wasteId, estimatedCost: estCost });
 });
@@ -203,11 +268,24 @@ inventoryRouter.post('/ingredients', authenticate, authorizeRole(['storekeeper',
     details: { name, category, unit, unit_cost, min_stock_level }
   });
 
+  notifyRoles({
+    branchId: req.user!.branch_id,
+    targetRoles: ['admin', 'owner'],
+    title: '✨ New Ingredient Catalog Item',
+    titleAmharic: '✨ አዲስ ግብዓት ተፈጠረ',
+    message: `${req.user!.full_name || 'Staff'} added "${name}" (${category}) to the master inventory catalog.`,
+    messageAmharic: `በ ${req.user!.full_name || 'ሰራተኛ'} አዲስ ግብዓት "${name_amharic || name}" (${category}) ወደ ካታሎግ ተጨምሯል።`,
+    type: 'INFO',
+    linkRef: id
+  });
+
   broadcastEvent({
     type: 'STOCK_UPDATED',
     branchId: req.user!.branch_id,
     payload: { ingredientId: id, name, action: 'CREATED' }
   });
+
+  requestDebouncedSync();
 
   res.status(201).json({ id, message: 'Ingredient added to master catalog' });
 });
@@ -260,11 +338,24 @@ inventoryRouter.put('/ingredients/:id', authenticate, authorizeRole(['storekeepe
     details: { name: name ?? existing.name, category: category ?? existing.category }
   });
 
+  notifyRoles({
+    branchId: req.user!.branch_id,
+    targetRoles: ['admin', 'owner'],
+    title: '📝 Ingredient Updated',
+    titleAmharic: '📝 ግብዓት ተሻሽሏል',
+    message: `${req.user!.full_name || 'Staff'} updated details for "${name ?? existing.name}".`,
+    messageAmharic: `በ ${req.user!.full_name || 'ሰራተኛ'} የግብዓት መረጃ "${name ?? existing.name}" ተሻሽሏል።`,
+    type: 'INFO',
+    linkRef: String(id)
+  });
+
   broadcastEvent({
     type: 'STOCK_UPDATED',
     branchId: req.user!.branch_id,
     payload: { ingredientId: id, action: 'UPDATED' }
   });
+
+  requestDebouncedSync();
 
   res.json({ message: 'Ingredient updated successfully', id });
 });
@@ -289,11 +380,46 @@ inventoryRouter.delete('/ingredients/:id', authenticate, authorizeRole(['admin',
     details: { name: existing.name }
   });
 
+  notifyRoles({
+    branchId: req.user!.branch_id,
+    targetRoles: ['admin', 'owner'],
+    title: '🗑️ Ingredient Removed',
+    titleAmharic: '🗑️ ግብዓት ተሰርዟል',
+    message: `${req.user!.full_name || 'Admin'} removed "${existing.name}" from active inventory.`,
+    messageAmharic: `በ ${req.user!.full_name || 'አስተዳዳሪ'} ግብዓት "${existing.name}" ከካታሎግ ተሰርዟል።`,
+    type: 'INFO',
+    linkRef: String(id)
+  });
+
   broadcastEvent({
     type: 'STOCK_UPDATED',
     branchId: req.user!.branch_id,
     payload: { ingredientId: id, action: 'DELETED' }
   });
 
+  requestDebouncedSync();
+
   res.json({ message: 'Ingredient removed from active catalog', id });
+});
+
+// 8. Get Purchase Orders / Receiving History
+inventoryRouter.get('/purchases', authenticate, (req: AuthenticatedRequest, res) => {
+  const branchId = (req.query.branchId as string) || req.user!.branch_id;
+  const isOwner = req.user!.role === 'owner';
+
+  let query = `
+    SELECT po.*, s.name as supplier_name, u.full_name as storekeeper_name
+    FROM purchase_orders po
+    LEFT JOIN suppliers s ON po.supplier_id = s.id
+    LEFT JOIN users u ON po.storekeeper_id = u.id
+  `;
+  const params: any[] = [];
+  if (!isOwner && branchId) {
+    query += ` WHERE po.branch_id = ?`;
+    params.push(branchId);
+  }
+  query += ` ORDER BY COALESCE(po.receiving_date, po.created_at) DESC, po.created_at DESC LIMIT 50`;
+
+  const purchases = db.prepare(query).all(...params);
+  res.json(purchases);
 });

@@ -102,6 +102,8 @@ export const StorekeeperView: React.FC = () => {
   const [receiveQuantity, setReceiveQuantity] = useState<number>(10);
   const [unitCost, setUnitCost] = useState<number>(100);
   const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [receivingDate, setReceivingDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [receiptPhoto, setReceiptPhoto] = useState<string | null>(null);
 
   // Waste form
   const [wasteIngredient, setWasteIngredient] = useState('');
@@ -290,6 +292,8 @@ export const StorekeeperView: React.FC = () => {
         body: JSON.stringify({
           branch_id: currentBranchId,
           invoice_number: invoiceNumber,
+          receiving_date: receivingDate,
+          receipt_photo_url: receiptPhoto,
           items: [{
             ingredient_id: selectedIngredient,
             quantity: Number(receiveQuantity),
@@ -297,9 +301,11 @@ export const StorekeeperView: React.FC = () => {
           }]
         })
       });
-      gToast.success(language === 'am' ? 'ዕቃው በተሳካ ሁኔታ ተቀብሎ ክምችቱ ጨምሯል!' : 'Stock successfully received and inventory updated!');
+      gToast.success(language === 'am' ? 'ዕቃው ተረክቧል፣ በወጪዎች መዝገብ ላይ ተመዝግቧል!' : 'Stock received and expense recorded!');
       tactileFeedback('success');
       setInvoiceNumber('');
+      setReceiptPhoto(null);
+      setReceivingDate(new Date().toISOString().split('T')[0]);
       loadStock();
       setActiveTab('stock');
     } catch (err: any) {
@@ -808,16 +814,54 @@ export const StorekeeperView: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-              {language === 'am' ? 'የደረሰኝ / ኢንቮይስ ቁጥር' : 'Invoice / Delivery Reference'}
-            </label>
-            <input type="text" placeholder="e.g. INV-9042" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} style={{ width: '100%' }} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                {language === 'am' ? 'የተረከቡበት ቀን *' : 'Date of Receiving *'}
+              </label>
+              <input
+                type="date"
+                required
+                value={receivingDate}
+                onChange={e => setReceivingDate(e.target.value)}
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                {language === 'am' ? 'የደረሰኝ / ኢንቮይስ ቁጥር' : 'Invoice / Delivery Reference'}
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. INV-9042"
+                value={invoiceNumber}
+                onChange={e => setInvoiceNumber(e.target.value)}
+                style={{ width: '100%' }}
+              />
+            </div>
+          </div>
+
+          <CameraCapture
+            label={language === 'am' ? 'የክፍያ ወይም የርክክብ ደረሰኝ ፎቶ (ካሜራ ወይም ፋይል)' : 'Delivery / Supplier Receipt Photo (Camera or Upload)'}
+            photoUrl={receiptPhoto}
+            onPhotoCaptured={setReceiptPhoto}
+            onPhotoCleared={() => setReceiptPhoto(null)}
+          />
+
+          {/* Automatic Expense Sync Banner */}
+          <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 12, padding: '12px 14px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 22 }}>🧾</span>
+            <div style={{ fontSize: 12, color: '#065f46', lineHeight: 1.4 }}>
+              <strong>{language === 'am' ? 'ራስ-ሰር የወጪ መዝገብ' : 'Automatic Expense Tracking'}:</strong>{' '}
+              {language === 'am'
+                ? `ይህ ርክክብ ሲጠናቀቅ አጠቃላይ ${((Number(receiveQuantity) || 0) * (Number(unitCost) || 0)).toLocaleString()} ብር በወጪዎች ላይ በራስ-ሰር ይመዘገባል እንዲሁም ለአስተዳዳሪው እና ለባለቤቱ ማሳወቂያ ይደርሳል።`
+                : `Receiving this delivery will automatically record a ${((Number(receiveQuantity) || 0) * (Number(unitCost) || 0)).toLocaleString()} ${t('currency')} expense voucher and notify the Admin & Owner.`}
+            </div>
           </div>
 
           <button type="submit" disabled={loading} className="btn btn-success btn-block" style={{ height: 48 }}>
             <ArrowDownLeft size={16} />
-            {loading ? (language === 'am' ? 'በመቀበል ላይ...' : 'Receiving...') : (language === 'am' ? 'ወደ ክምችት ጨምር' : 'Add to Stock Room')}
+            {loading ? (language === 'am' ? 'በመቀበል ላይ...' : 'Receiving...') : (language === 'am' ? 'ወደ ክምችት ጨምርና ወጪውን መዝግብ' : 'Add to Stock & Record Expense')}
           </button>
         </form>
       )}
