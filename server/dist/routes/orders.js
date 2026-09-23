@@ -6,9 +6,22 @@ import { broadcastEvent } from '../services/websocket.js';
 import { v4 as uuidv4 } from 'uuid';
 import { deductBomStock } from '../services/inventoryService.js';
 export const orderRouter = Router();
+function getTargetBranch(req) {
+    const raw = req.query.branchId;
+    if (raw === 'ALL') {
+        if (req.user?.role === 'owner' || req.user?.role === 'admin') {
+            return null;
+        }
+        return req.user?.branch_id || null;
+    }
+    if (!raw && (req.user?.role === 'owner' || req.user?.role === 'admin') && !req.user?.branch_id) {
+        return null;
+    }
+    return raw || req.user?.branch_id || null;
+}
 // 1. Get Orders for Branch & Filter
 orderRouter.get('/', authenticate, (req, res) => {
-    const branchId = req.query.branchId || req.user.branch_id;
+    const targetBranch = getTargetBranch(req);
     const status = req.query.status;
     const role = req.user.role;
     let query = `
@@ -17,9 +30,13 @@ orderRouter.get('/', authenticate, (req, res) => {
     LEFT JOIN restaurant_tables t ON o.table_id = t.id
     LEFT JOIN users u ON o.waiter_id = u.id
     LEFT JOIN users c ON o.cashier_id = c.id
-    WHERE o.branch_id = ?
+    WHERE 1=1
   `;
-    const params = [branchId];
+    const params = [];
+    if (targetBranch) {
+        query += ` AND o.branch_id = ?`;
+        params.push(targetBranch);
+    }
     if (status) {
         query += ` AND o.status = ?`;
         params.push(status);
@@ -46,18 +63,23 @@ orderRouter.get('/', authenticate, (req, res) => {
 });
 // 2. Kitchen Queue (Chef view: all food items)
 orderRouter.get('/queue/kitchen', authenticate, authorizeRole(['chef', 'admin', 'owner']), (req, res) => {
-    const branchId = req.query.branchId || req.user.branch_id;
-    const orders = db.prepare(`
+    const targetBranch = getTargetBranch(req);
+    let query = `
     SELECT DISTINCT o.*, t.table_number, u.full_name as waiter_name
     FROM orders o
     JOIN order_items oi ON o.id = oi.order_id
     LEFT JOIN restaurant_tables t ON o.table_id = t.id
     LEFT JOIN users u ON o.waiter_id = u.id
-    WHERE o.branch_id = ? 
-      AND o.status IN ('CONFIRMED', 'PREPARING', 'PARTIALLY_READY')
+    WHERE o.status IN ('CONFIRMED', 'PREPARING', 'PARTIALLY_READY')
       AND oi.routing_destination IN ('KITCHEN', 'BOTH')
-    ORDER BY o.created_at ASC
-  `).all(branchId);
+  `;
+    const params = [];
+    if (targetBranch) {
+        query += ` AND o.branch_id = ?`;
+        params.push(targetBranch);
+    }
+    query += ` ORDER BY o.created_at ASC`;
+    const orders = db.prepare(query).all(...params);
     const getKitchenItems = db.prepare(`
     SELECT oi.*, mi.name_amharic
     FROM order_items oi
@@ -72,18 +94,23 @@ orderRouter.get('/queue/kitchen', authenticate, authorizeRole(['chef', 'admin', 
 });
 // 3. Bar Queue (Barista view: all drink items)
 orderRouter.get('/queue/bar', authenticate, authorizeRole(['barista', 'admin', 'owner']), (req, res) => {
-    const branchId = req.query.branchId || req.user.branch_id;
-    const orders = db.prepare(`
+    const targetBranch = getTargetBranch(req);
+    let query = `
     SELECT DISTINCT o.*, t.table_number, u.full_name as waiter_name
     FROM orders o
     JOIN order_items oi ON o.id = oi.order_id
     LEFT JOIN restaurant_tables t ON o.table_id = t.id
     LEFT JOIN users u ON o.waiter_id = u.id
-    WHERE o.branch_id = ? 
-      AND o.status IN ('CONFIRMED', 'PREPARING', 'PARTIALLY_READY')
+    WHERE o.status IN ('CONFIRMED', 'PREPARING', 'PARTIALLY_READY')
       AND oi.routing_destination IN ('BAR', 'BOTH')
-    ORDER BY o.created_at ASC
-  `).all(branchId);
+  `;
+    const params = [];
+    if (targetBranch) {
+        query += ` AND o.branch_id = ?`;
+        params.push(targetBranch);
+    }
+    query += ` ORDER BY o.created_at ASC`;
+    const orders = db.prepare(query).all(...params);
     const getBarItems = db.prepare(`
     SELECT oi.*, mi.name_amharic
     FROM order_items oi
@@ -411,16 +438,20 @@ orderRouter.post('/:id/cancel', authenticate, (req, res) => {
 // 9A. Waiter Order History (Only orders created by logged-in waiter)
 orderRouter.get('/history/waiter', authenticate, authorizeRole(['waiter', 'admin', 'owner']), (req, res) => {
     try {
-        const branchId = req.query.branchId || req.user.branch_id;
+        const targetBranch = getTargetBranch(req);
         let query = `
       SELECT o.*, t.table_number, t.name as table_name, u.full_name as waiter_name, c.full_name as cashier_name
       FROM orders o
       LEFT JOIN restaurant_tables t ON o.table_id = t.id
       LEFT JOIN users u ON o.waiter_id = u.id
       LEFT JOIN users c ON o.cashier_id = c.id
-      WHERE o.branch_id = ?
+      WHERE 1=1
     `;
-        const params = [branchId];
+        const params = [];
+        if (targetBranch) {
+            query += ` AND o.branch_id = ?`;
+            params.push(targetBranch);
+        }
         // Strict Backend RBAC: Waiters can ONLY see their own orders
         if (req.user.role === 'waiter') {
             query += ` AND o.waiter_id = ?`;
@@ -448,7 +479,7 @@ orderRouter.get('/history/waiter', authenticate, authorizeRole(['waiter', 'admin
 // 9B. Cashier Approval History (Only orders approved/released by logged-in cashier)
 orderRouter.get('/history/cashier', authenticate, authorizeRole(['cashier', 'admin', 'owner']), (req, res) => {
     try {
-        const branchId = req.query.branchId || req.user.branch_id;
+        const targetBranch = getTargetBranch(req);
         let query = `
       SELECT o.*, t.table_number, t.name as table_name, u.full_name as waiter_name, c.full_name as cashier_name,
              (SELECT h.created_at FROM order_status_history h 
@@ -458,9 +489,13 @@ orderRouter.get('/history/cashier', authenticate, authorizeRole(['cashier', 'adm
       LEFT JOIN restaurant_tables t ON o.table_id = t.id
       LEFT JOIN users u ON o.waiter_id = u.id
       LEFT JOIN users c ON o.cashier_id = c.id
-      WHERE o.branch_id = ?
+      WHERE 1=1
     `;
-        const params = [branchId];
+        const params = [];
+        if (targetBranch) {
+            query += ` AND o.branch_id = ?`;
+            params.push(targetBranch);
+        }
         // Strict Backend RBAC: Cashiers can ONLY see orders they approved/settled
         if (req.user.role === 'cashier') {
             query += ` AND (o.cashier_id = ? OR o.id IN (
@@ -493,7 +528,7 @@ orderRouter.get('/history/cashier', authenticate, authorizeRole(['cashier', 'adm
 // 9C. Chef Preparation History (Food items prepared/completed by logged-in chef)
 orderRouter.get('/history/chef', authenticate, authorizeRole(['chef', 'admin', 'owner']), (req, res) => {
     try {
-        const branchId = req.query.branchId || req.user.branch_id;
+        const targetBranch = getTargetBranch(req);
         let query = `
       SELECT DISTINCT o.*, t.table_number, t.name as table_name, u.full_name as waiter_name,
              (SELECT MAX(oi2.ready_at) FROM order_items oi2 
@@ -503,20 +538,24 @@ orderRouter.get('/history/chef', authenticate, authorizeRole(['chef', 'admin', '
       JOIN order_items oi ON o.id = oi.order_id
       LEFT JOIN restaurant_tables t ON o.table_id = t.id
       LEFT JOIN users u ON o.waiter_id = u.id
-      WHERE o.branch_id = ? AND oi.routing_destination IN ('KITCHEN', 'BOTH')
+      WHERE oi.routing_destination IN ('KITCHEN', 'BOTH')
     `;
         const params = [];
-        // Strict Backend RBAC: Chef can ONLY see orders where they completed items
         if (req.user.role === 'chef') {
             params.push(req.user.id);
-            params.push(branchId);
+        }
+        if (targetBranch) {
+            query += ` AND o.branch_id = ?`;
+            params.push(targetBranch);
+        }
+        // Strict Backend RBAC: Chef can ONLY see orders where they completed items
+        if (req.user.role === 'chef') {
             query += ` AND (oi.prepared_by_id = ? OR (oi.status = 'READY' AND o.id IN (
         SELECT h.order_id FROM order_status_history h WHERE h.user_id = ?
       )))`;
             params.push(req.user.id, req.user.id);
         }
         else {
-            params.push(branchId);
             query += ` AND oi.status = 'READY'`;
         }
         query += ` ORDER BY COALESCE(completion_time, o.updated_at, o.created_at) DESC LIMIT 150`;
@@ -542,7 +581,7 @@ orderRouter.get('/history/chef', authenticate, authorizeRole(['chef', 'admin', '
 // 9D. Barista Preparation History (Beverage items prepared/completed by logged-in barista)
 orderRouter.get('/history/barista', authenticate, authorizeRole(['barista', 'admin', 'owner']), (req, res) => {
     try {
-        const branchId = req.query.branchId || req.user.branch_id;
+        const targetBranch = getTargetBranch(req);
         let query = `
       SELECT DISTINCT o.*, t.table_number, t.name as table_name, u.full_name as waiter_name,
              (SELECT MAX(oi2.ready_at) FROM order_items oi2 
@@ -552,20 +591,24 @@ orderRouter.get('/history/barista', authenticate, authorizeRole(['barista', 'adm
       JOIN order_items oi ON o.id = oi.order_id
       LEFT JOIN restaurant_tables t ON o.table_id = t.id
       LEFT JOIN users u ON o.waiter_id = u.id
-      WHERE o.branch_id = ? AND oi.routing_destination IN ('BAR', 'BOTH')
+      WHERE oi.routing_destination IN ('BAR', 'BOTH')
     `;
         const params = [];
-        // Strict Backend RBAC: Barista can ONLY see orders where they completed items
         if (req.user.role === 'barista') {
             params.push(req.user.id);
-            params.push(branchId);
+        }
+        if (targetBranch) {
+            query += ` AND o.branch_id = ?`;
+            params.push(targetBranch);
+        }
+        // Strict Backend RBAC: Barista can ONLY see orders where they completed items
+        if (req.user.role === 'barista') {
             query += ` AND (oi.prepared_by_id = ? OR (oi.status = 'READY' AND o.id IN (
         SELECT h.order_id FROM order_status_history h WHERE h.user_id = ?
       )))`;
             params.push(req.user.id, req.user.id);
         }
         else {
-            params.push(branchId);
             query += ` AND oi.status = 'READY'`;
         }
         query += ` ORDER BY COALESCE(completion_time, o.updated_at, o.created_at) DESC LIMIT 150`;

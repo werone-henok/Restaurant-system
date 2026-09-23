@@ -3,6 +3,7 @@ import { useApp } from './context/AppContext';
 import { api } from './api/client';
 import { tactileFeedback } from './utils/feedback';
 import { Header } from './components/Header';
+import { resolveImageUrl } from './utils/imageUrl';
 import { OnboardingSlider } from './views/onboarding/OnboardingSlider';
 import { AuthView } from './views/auth/AuthView';
 import { WaiterView } from './views/waiter/WaiterView';
@@ -199,8 +200,12 @@ export const App: React.FC = () => {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-              <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: 800, fontSize: 20 }}>
-                {user.full_name.charAt(0).toUpperCase()}
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: 800, fontSize: 20, overflow: 'hidden', flexShrink: 0 }}>
+                {user.profile_photo ? (
+                  <img src={resolveImageUrl(user.profile_photo)} alt={user.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  user.full_name.charAt(0).toUpperCase()
+                )}
               </div>
               <div>
                 <h4 style={{ fontSize: 16, fontWeight: 800 }}>{user.full_name}</h4>

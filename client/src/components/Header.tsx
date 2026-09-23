@@ -2,6 +2,7 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import { Building2, Globe, Wifi, WifiOff, RefreshCw, Moon, Sun } from 'lucide-react';
 import { NotificationCenter } from './NotificationCenter';
+import { resolveImageUrl } from '../utils/imageUrl';
 
 export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile }) => {
   const { user, branches, currentBranchId, switchBranch, settings, language, setLanguage, isOnline, offlineCount, darkMode, toggleDarkMode, t } = useApp();
@@ -11,10 +12,10 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
   return (
     <header className="app-header animated-gradient">
       {/* Branch Selector or Logo */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="header-left">
         <div style={{
-          width: 34,
-          height: 34,
+          width: 32,
+          height: 32,
           borderRadius: 8,
           background: settings?.primary_color ? `linear-gradient(135deg, ${settings.primary_color} 0%, #ea580c 100%)` : 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
           display: 'flex',
@@ -22,11 +23,12 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
           justifyContent: 'center',
           color: 'white',
           fontWeight: 800,
-          fontSize: 15,
-          overflow: 'hidden'
+          fontSize: 14,
+          overflow: 'hidden',
+          flexShrink: 0
         }}>
           {settings?.logo_url ? (
-            <img src={settings.logo_url} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src={resolveImageUrl(settings.logo_url)} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
             logoInitial
           )}
@@ -36,12 +38,15 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
           <select
             value={currentBranchId}
             onChange={(e) => switchBranch(e.target.value)}
+            className="header-branch-select"
             style={{
-              padding: '4px 8px',
+              padding: '3px 6px',
               fontSize: 12,
               fontWeight: 700,
-              maxWidth: 150,
-              textOverflow: 'ellipsis'
+              maxWidth: 135,
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden'
             }}
           >
             <option value="ALL">🏢 {t('all_branches')}</option>
@@ -50,29 +55,34 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
             ))}
           </select>
         ) : (
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Building2 size={14} color="var(--primary)" />
-            {branches.find(b => b.id === currentBranchId)?.name || 'Addis Ababa Bole'}
+          <span className="header-branch-title" style={{ fontSize: 12, fontWeight: 700, color: '#ffffff', display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>
+            <Building2 size={13} color="#ffffff" style={{ flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {branches.find(b => b.id === currentBranchId)?.name || 'Addis Ababa Bole'}
+            </span>
           </span>
         )}
       </div>
 
       {/* Connectivity & Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="header-right">
         {/* Offline / Sync Badge */}
         {isOnline ? (
           offlineCount > 0 ? (
-            <span className="badge badge-pending" title="Syncing offline items">
-              <RefreshCw size={10} className="animate-spin" /> {offlineCount}
+            <span className="badge badge-pending header-badge" title="Syncing offline items">
+              <RefreshCw size={10} className="animate-spin" />
+              <span className="header-badge-text">{offlineCount}</span>
             </span>
           ) : (
-            <span className="badge badge-ready" title="Connected to server">
-              <Wifi size={11} /> {t('online')}
+            <span className="badge badge-ready header-badge" title="Connected to server">
+              <Wifi size={11} />
+              <span className="header-badge-text">{t('online')}</span>
             </span>
           )
         ) : (
-          <span className="badge badge-cancelled" title="Working offline">
-            <WifiOff size={11} /> {t('offline')}
+          <span className="badge badge-cancelled header-badge" title="Working offline">
+            <WifiOff size={11} />
+            <span className="header-badge-text">{t('offline')}</span>
           </span>
         )}
 
@@ -82,17 +92,18 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 4,
-            padding: '4px 8px',
+            gap: 3,
+            padding: '3px 6px',
             borderRadius: 6,
-            background: 'var(--bg-subtle)',
-            fontSize: 12,
+            background: 'rgba(255, 255, 255, 0.2)',
+            fontSize: 11,
             fontWeight: 700,
-            color: 'var(--text-main)'
+            color: '#ffffff'
           }}
+          title={language === 'en' ? 'ወደ አማርኛ ቀይር' : 'Switch to English'}
         >
-          <Globe size={13} />
-          {language === 'en' ? 'አማርኛ' : 'EN'}
+          <Globe size={12} />
+          <span>{language === 'en' ? 'አማ' : 'EN'}</span>
         </button>
 
         {/* Dark Mode Toggle */}
@@ -100,32 +111,27 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
           onClick={toggleDarkMode}
           className="dark-toggle"
           title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          style={{ width: 28, height: 28, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          {darkMode ? <Sun size={15} /> : <Moon size={15} />}
+          {darkMode ? <Sun size={14} /> : <Moon size={14} />}
         </button>
 
         {/* System Notifications */}
         {user && <NotificationCenter />}
 
-        {/* User Role Indicator */}
+        {/* User Role Indicator / Profile Picture */}
         {user && (
           <button
             onClick={onOpenProfile}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 32,
-              height: 32,
-              borderRadius: '50%',
-              background: 'var(--primary-light)',
-              color: 'var(--primary)',
-              fontWeight: 700,
-              fontSize: 12
-            }}
+            title={`${user.full_name} (${user.role})`}
+            className="header-profile-btn"
           >
             {user.profile_photo ? (
-              <img src={user.profile_photo} alt={user.full_name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+              <img
+                src={resolveImageUrl(user.profile_photo)}
+                alt={user.full_name}
+                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+              />
             ) : (
               user.full_name.charAt(0).toUpperCase()
             )}

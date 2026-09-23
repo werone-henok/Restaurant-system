@@ -6,8 +6,14 @@ import { v4 as uuidv4 } from 'uuid';
 export const tableRouter = Router();
 // Get tables for a branch
 tableRouter.get('/', authenticate, (req, res) => {
-    const branchId = req.query.branchId || req.user.branch_id;
-    const tables = db.prepare('SELECT * FROM restaurant_tables WHERE branch_id = ? AND is_active = 1 ORDER BY table_number ASC').all(branchId);
+    const rawBranchId = req.query.branchId;
+    const isAll = rawBranchId === 'ALL' || (!rawBranchId && (req.user?.role === 'owner' || req.user?.role === 'admin') && !req.user?.branch_id);
+    const branchId = isAll ? null : (rawBranchId || req.user.branch_id);
+    if (branchId) {
+        const tables = db.prepare('SELECT * FROM restaurant_tables WHERE branch_id = ? AND is_active = 1 ORDER BY table_number ASC').all(branchId);
+        return res.json(tables);
+    }
+    const tables = db.prepare('SELECT * FROM restaurant_tables WHERE is_active = 1 ORDER BY table_number ASC').all();
     res.json(tables);
 });
 // Update table status (e.g. AVAILABLE, OCCUPIED, RESERVED)

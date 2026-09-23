@@ -48,26 +48,54 @@ async function saveReceiptPhoto(dataUrlOrUrl: string | null): Promise<string | n
 
 // 1. Get Ingredients & Stock Levels for a Branch
 inventoryRouter.get('/', authenticate, (req: AuthenticatedRequest, res) => {
-  const branchId = (req.query.branchId as string) || req.user!.branch_id;
+  const rawBranchId = req.query.branchId as string;
+  const isAll = rawBranchId === 'ALL' || (!rawBranchId && (req.user?.role === 'owner' || req.user?.role === 'admin') && !req.user?.branch_id);
+  const branchId = isAll ? null : (rawBranchId || req.user!.branch_id);
 
-  const stockList = db.prepare(`
-    SELECT 
-      i.*,
-      COALESCE(s.current_quantity, 0) as current_quantity,
-      CASE 
-        WHEN COALESCE(s.current_quantity, 0) <= i.min_stock_level THEN 1 
-        ELSE 0 
-      END as is_low_stock,
-      CASE
-        WHEN i.expiration_date IS NOT NULL AND date(i.expiration_date) <= date('now') THEN 'EXPIRED'
-        WHEN i.expiration_date IS NOT NULL AND date(i.expiration_date) <= date('now', '+3 days') THEN 'EXPIRING_SOON'
-        ELSE 'OK'
-      END as expiration_status
-    FROM ingredients i
-    LEFT JOIN inventory_stock s ON i.id = s.ingredient_id AND s.branch_id = ?
-    WHERE i.is_active = 1
-    ORDER BY is_low_stock DESC, i.name ASC
-  `).all(branchId);
+  let stockList: any[];
+  if (branchId) {
+    stockList = db.prepare(`
+      SELECT 
+        i.*,
+        COALESCE(s.current_quantity, 0) as current_quantity,
+        CASE 
+          WHEN COALESCE(s.current_quantity, 0) <= i.min_stock_level THEN 1 
+          ELSE 0 
+        END as is_low_stock,
+        CASE
+          WHEN i.expiration_date IS NOT NULL AND date(i.expiration_date) <= date('now') THEN 'EXPIRED'
+          WHEN i.expiration_date IS NOT NULL AND date(i.expiration_date) <= date('now', '+3 days') THEN 'EXPIRING_SOON'
+          ELSE 'OK'
+        END as expiration_status
+      FROM ingredients i
+      LEFT JOIN inventory_stock s ON i.id = s.ingredient_id AND s.branch_id = ?
+      WHERE i.is_active = 1
+      ORDER BY is_low_stock DESC, i.name ASC
+    `).all(branchId);
+  } else {
+    stockList = db.prepare(`
+      SELECT 
+        i.*,
+        COALESCE(s.current_quantity, 0) as current_quantity,
+        CASE 
+          WHEN COALESCE(s.current_quantity, 0) <= i.min_stock_level THEN 1 
+          ELSE 0 
+        END as is_low_stock,
+        CASE
+          WHEN i.expiration_date IS NOT NULL AND date(i.expiration_date) <= date('now') THEN 'EXPIRED'
+          WHEN i.expiration_date IS NOT NULL AND date(i.expiration_date) <= date('now', '+3 days') THEN 'EXPIRING_SOON'
+          ELSE 'OK'
+        END as expiration_status
+      FROM ingredients i
+      LEFT JOIN (
+        SELECT ingredient_id, SUM(current_quantity) as current_quantity 
+        FROM inventory_stock 
+        GROUP BY ingredient_id
+      ) s ON i.id = s.ingredient_id
+      WHERE i.is_active = 1
+      ORDER BY is_low_stock DESC, i.name ASC
+    `).all();
+  }
 
   res.json(stockList);
 });
