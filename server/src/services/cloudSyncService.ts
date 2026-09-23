@@ -31,10 +31,32 @@ let isSyncing = false;
 let debouncedTimer: NodeJS.Timeout | null = null;
 let autoSyncInterval: NodeJS.Timeout | null = null;
 
+function normalizeSupabaseUrl(rawUrl: string): string {
+  let url = (rawUrl || '').trim();
+  if (!url) return '';
+
+  // If user pasted dashboard URL: https://supabase.com/dashboard/project/<ref>...
+  const dashboardMatch = url.match(/supabase\.com\/dashboard\/project\/([a-zA-Z0-9_-]+)/);
+  if (dashboardMatch && dashboardMatch[1]) {
+    return `https://${dashboardMatch[1]}.supabase.co`;
+  }
+
+  // Strip trailing slashes
+  url = url.replace(/\/+$/, '');
+
+  // If user forgot https://
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = `https://${url}`;
+  }
+
+  return url;
+}
+
 function getSupabase(): SupabaseClient | null {
   if (!syncStatus.configured) return null;
   if (!supabase) {
-    supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY, {
+    const normalizedUrl = normalizeSupabaseUrl(CONFIG.SUPABASE_URL);
+    supabase = createClient(normalizedUrl, CONFIG.SUPABASE_KEY.trim(), {
       auth: { persistSession: false, autoRefreshToken: false }
     });
   }
