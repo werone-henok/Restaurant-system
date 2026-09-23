@@ -5,6 +5,7 @@ import { logAudit } from '../services/auditService.js';
 import { hashSecretSync } from '../utils/security.js';
 import { validate } from '../middleware/validate.js';
 import { createStaffSchema, updateUserStatusSchema } from '../schemas/api.schemas.js';
+import { getSyncStatus, syncDatabaseToCloud } from '../services/cloudSyncService.js';
 
 export const adminRouter = Router();
 
@@ -161,4 +162,18 @@ adminRouter.put('/settings', authenticate, authorizeRole(['admin', 'owner']), (r
   });
 
   res.json({ message: 'Settings updated successfully' });
+});
+
+// 6. Cloud Database Sync (Render Free Tier Persistence)
+adminRouter.get('/cloud-sync/status', authenticate, authorizeRole(['admin', 'owner']), (_req, res) => {
+  res.json(getSyncStatus());
+});
+
+adminRouter.post('/cloud-sync/trigger', authenticate, authorizeRole(['admin', 'owner']), async (_req, res) => {
+  const result = await syncDatabaseToCloud('manual_admin_dashboard');
+  if (result.success) {
+    res.json({ success: true, message: result.message, status: getSyncStatus() });
+  } else {
+    res.status(500).json({ success: false, error: result.message, status: getSyncStatus() });
+  }
 });

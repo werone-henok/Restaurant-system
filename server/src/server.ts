@@ -27,14 +27,19 @@ import { adminRouter } from './routes/admin.js';
 import { uploadRouter } from './routes/upload.js';
 import { notificationRouter } from './routes/notifications.js';
 import { initBackupScheduler } from './services/backupService.js';
+import { restoreLatestFromCloud, initAutoSync } from './services/cloudSyncService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function bootstrap() {
+  // ── Cloud Database Synchronization (Restore before SQLite init) ──
+  await restoreLatestFromCloud();
+
   await getDatabase();
   seedDatabase();
   initBackupScheduler();
+  initAutoSync();
 
   const app = express();
   const server = http.createServer(app);
@@ -114,7 +119,7 @@ async function bootstrap() {
   app.get('/', (_req, res) => {
     res.sendFile(path.join(clientDist, 'index.html'), (err) => {
       if (err) {
-        res.redirect('http://localhost:5173');
+        res.redirect('http://localhost:5180');
       }
     });
   });

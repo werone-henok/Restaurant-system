@@ -3,6 +3,7 @@ import { db } from '../database/schema.js';
 import { authenticate, authorizeRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import { logAudit } from '../services/auditService.js';
 import { broadcastEvent } from '../services/websocket.js';
+import { requestDebouncedSync } from '../services/cloudSyncService.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export const paymentRouter = Router();
@@ -184,6 +185,9 @@ paymentRouter.post('/', authenticate, authorizeRole(['cashier', 'admin', 'owner'
       });
     }
   }
+
+  // Trigger automated cloud sync to persist latest payments and inventory state
+  requestDebouncedSync();
 
   res.json({
     message: 'Payment recorded, recipe stock automatically deducted, and receipt issued.',

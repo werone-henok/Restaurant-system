@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../database/schema.js';
 import { authenticate, authorizeRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import { logAudit } from '../services/auditService.js';
+import { requestDebouncedSync } from '../services/cloudSyncService.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export const menuRouter = Router();
@@ -113,6 +114,8 @@ menuRouter.post('/items', authenticate, authorizeRole(['admin', 'owner', 'chef']
     details: { name, price, routing_destination }
   });
 
+  requestDebouncedSync();
+
   res.status(201).json({ id: itemId, message: 'Menu item created successfully' });
 });
 
@@ -210,6 +213,8 @@ menuRouter.put('/items/:id/recipe', authenticate, authorizeRole(['admin', 'owner
     details: { ingredientCount: ingredients.length }
   });
 
+  requestDebouncedSync();
+
   res.json({ message: 'Recipe updated successfully', menuItemId });
 });
 
@@ -253,6 +258,8 @@ menuRouter.put('/items/:id', authenticate, authorizeRole(['admin', 'owner', 'che
     details: { name: name || item.name, price: price || item.price }
   });
 
+  requestDebouncedSync();
+
   res.json({ message: 'Menu item updated successfully', id: req.params.id });
 });
 
@@ -271,6 +278,8 @@ menuRouter.delete('/items/:id', authenticate, authorizeRole(['admin', 'owner', '
     entityId: req.params.id,
     details: { name: item.name }
   });
+
+  requestDebouncedSync();
 
   res.json({ message: 'Menu item deleted successfully' });
 });

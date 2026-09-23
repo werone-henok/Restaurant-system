@@ -39,10 +39,30 @@ Right now, your database and server run on your personal laptop at `localhost:40
 7. Render will build and deploy your API. Once ready, copy your public URL:
    `https://gourmetos-api.onrender.com`
 
-### ⚠️ CRITICAL: Attach a Persistent Disk (Never Lose Data!)
-By default, free cloud containers on Render have **ephemeral storage**, meaning the SQLite database resets when the server sleeps or restarts!
-To make your database permanent:
-1. In your Render Dashboard, click your `gourmetos-api` service.
+### ⚠️ CRITICAL: Permanent Data Storage on Render (Never Lose Data!)
+By default, free cloud containers on Render have **ephemeral storage**, meaning the SQLite database resets when the server sleeps after 15 minutes of inactivity or restarts!
+
+To make your database permanent, choose **Option A (100% Free - Recommended)** or **Option B (Paid Render Disk)**:
+
+#### Option A: 100% Free Supabase Cloud Storage Sync (No Credit Card Required) ⭐
+GourmetOS includes an automated Cloud Storage Sync engine that restores `restaurant.db` whenever Render boots and backs it up continuously on data writes.
+
+1. Create a free account at [Supabase.com](https://supabase.com) (free forever, 1 GB storage).
+2. Create a new free project (e.g. `gourmetos-db`).
+3. Click **Storage** in the left menu ➔ Click **New Bucket** ➔ Name it `restaurant-backups` (set to Private).
+4. Go to **Project Settings** ➔ **API** and copy:
+   - **Project URL** (e.g. `https://xxxx.supabase.co`)
+   - **service_role secret key** (or anon key)
+5. In your **Render Dashboard** ➔ Go to your `restaurant-system` Web Service ➔ **Environment** tab:
+   - `SUPABASE_URL`: `https://xxxx.supabase.co`
+   - `SUPABASE_KEY`: `your-service-role-secret-key`
+   - `SUPABASE_BUCKET`: `restaurant-backups`
+6. Click **Save Changes**.
+Now, whenever Render wakes up or restarts, your database is restored from your free cloud bucket and your data will never be lost!
+
+#### Option B: Attach a Paid Render Persistent Disk ($7/month)
+If you are already on Render's Starter plan ($7/mo):
+1. In your Render Dashboard, click your `restaurant-system` service.
 2. In the left menu, click **Disks** ➔ **Add Disk**:
    - **Name**: `restaurant-data`
    - **Mount Path**: `/data`
@@ -51,7 +71,6 @@ To make your database permanent:
    - `DB_PATH`: `/data/restaurant.db`
    - `UPLOAD_DIR`: `/data/uploads`
 4. Click **Save Changes**.
-Now all orders, inventory, staff, and settings are saved permanently to your dedicated SSD volume and will never be lost!
 
 ---
 

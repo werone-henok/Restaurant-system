@@ -3,7 +3,7 @@ async function runFullScenario() {
 
   // 1. Authenticate Waiter
   console.log('1. Logging in Waiter Dawit Haile...');
-  const waiterLogin = await fetch('http://localhost:4000/api/auth/login', {
+  const waiterLogin = await fetch('http://localhost:4001/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username: 'waiter', password: 'password123' })
@@ -13,7 +13,7 @@ async function runFullScenario() {
 
   // 2. Waiter creates Order (Burger + Macchiato)
   console.log('2. Waiter creating Order #101 with 1x Gourmet Burger & 1x Macchiato...');
-  const orderRes = await fetch('http://localhost:4000/api/orders', {
+  const orderRes = await fetch('http://localhost:4001/api/orders', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${waiterToken}` },
     body: JSON.stringify({
@@ -31,7 +31,7 @@ async function runFullScenario() {
 
   // 3. Authenticate Cashier & Confirm Order
   console.log('3. Logging in Cashier Yohannes...');
-  const cashierLogin = await fetch('http://localhost:4000/api/auth/login', {
+  const cashierLogin = await fetch('http://localhost:4001/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username: 'cashier', password: 'password123' })
@@ -39,7 +39,7 @@ async function runFullScenario() {
   const cashierToken = cashierLogin.token;
 
   console.log('   Confirming and routing order...');
-  const confirmRes = await fetch(`http://localhost:4000/api/orders/${orderRes.orderId}/confirm`, {
+  const confirmRes = await fetch(`http://localhost:4001/api/orders/${orderRes.orderId}/confirm`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cashierToken}` },
     body: JSON.stringify({ discount_amount: 0 })
@@ -48,13 +48,13 @@ async function runFullScenario() {
 
   // 4. Chef Kitchen Queue verification
   console.log('4. Checking Chef Kitchen Display System (KDS)...');
-  const chefLogin = await fetch('http://localhost:4000/api/auth/login', {
+  const chefLogin = await fetch('http://localhost:4001/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username: 'chef', password: 'password123' })
   }).then(r => r.json());
 
-  const kitchenQueue = await fetch(`http://localhost:4000/api/orders/queue/kitchen?branchId=branch_addis`, {
+  const kitchenQueue = await fetch(`http://localhost:4001/api/orders/queue/kitchen?branchId=branch_addis`, {
     headers: { 'Authorization': `Bearer ${chefLogin.token}` }
   }).then(r => r.json());
 
@@ -63,13 +63,13 @@ async function runFullScenario() {
 
   // 5. Barista Queue verification
   console.log('5. Checking Barista Beverage Queue...');
-  const baristaLogin = await fetch('http://localhost:4000/api/auth/login', {
+  const baristaLogin = await fetch('http://localhost:4001/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username: 'barista', password: 'password123' })
   }).then(r => r.json());
 
-  const barQueue = await fetch(`http://localhost:4000/api/orders/queue/bar?branchId=branch_addis`, {
+  const barQueue = await fetch(`http://localhost:4001/api/orders/queue/bar?branchId=branch_addis`, {
     headers: { 'Authorization': `Bearer ${baristaLogin.token}` }
   }).then(r => r.json());
 
@@ -78,14 +78,14 @@ async function runFullScenario() {
 
   // 6. Chef and Barista mark items READY
   console.log('6. Chef marks Burger READY...');
-  await fetch(`http://localhost:4000/api/orders/${orderRes.orderId}/items/${targetKitchenOrder.items[0].id}/status`, {
+  await fetch(`http://localhost:4001/api/orders/${orderRes.orderId}/items/${targetKitchenOrder.items[0].id}/status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${chefLogin.token}` },
     body: JSON.stringify({ status: 'READY' })
   });
 
   console.log('   Barista marks Macchiato READY...');
-  const readyResult = await fetch(`http://localhost:4000/api/orders/${orderRes.orderId}/items/${targetBarOrder.items[0].id}/status`, {
+  const readyResult = await fetch(`http://localhost:4001/api/orders/${orderRes.orderId}/items/${targetBarOrder.items[0].id}/status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${baristaLogin.token}` },
     body: JSON.stringify({ status: 'READY' })
@@ -94,7 +94,7 @@ async function runFullScenario() {
 
   // 7. Waiter delivers order to table
   console.log('7. Waiter delivers order to Table 1...');
-  const deliverRes = await fetch(`http://localhost:4000/api/orders/${orderRes.orderId}/deliver`, {
+  const deliverRes = await fetch(`http://localhost:4001/api/orders/${orderRes.orderId}/deliver`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${waiterToken}` }
   }).then(r => r.json());
@@ -102,7 +102,7 @@ async function runFullScenario() {
 
   // 8. Settle Split Payment (Telebirr + Cash) & automatic stock deduction
   console.log('8. Settling bill with split payments (200 ETB Cash + 421 ETB Telebirr)...');
-  const payRes = await fetch(`http://localhost:4000/api/payments`, {
+  const payRes = await fetch(`http://localhost:4001/api/payments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cashierToken}` },
     body: JSON.stringify({
@@ -118,13 +118,13 @@ async function runFullScenario() {
 
   // 9. Verify Owner Consolidated Dashboard
   console.log('9. Checking Owner Dashboard & Performance Reports...');
-  const ownerLogin = await fetch('http://localhost:4000/api/auth/login', {
+  const ownerLogin = await fetch('http://localhost:4001/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username: 'owner', password: 'password123' })
   }).then(r => r.json());
 
-  const dashboard = await fetch('http://localhost:4000/api/reports/dashboard?branchId=ALL', {
+  const dashboard = await fetch('http://localhost:4001/api/reports/dashboard?branchId=ALL', {
     headers: { 'Authorization': `Bearer ${ownerLogin.token}` }
   }).then(r => r.json());
   console.log(`   ✓ Total Sales: ${dashboard.kpis.totalSales} ETB`);

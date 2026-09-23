@@ -491,7 +491,7 @@ export const AuthView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setCustomApiUrl('http://localhost:4000/api');
+                  setCustomApiUrl('http://localhost:4001/api');
                 }}
                 style={{
                   padding: 12,
@@ -507,7 +507,7 @@ export const AuthView: React.FC = () => {
               >
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-main)' }}>💻 Localhost (Laptop Persistent DB)</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>http://localhost:4000/api (Never loses data)</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>http://localhost:4001/api (Never loses data)</div>
                 </div>
                 {apiUrl.includes('localhost') && <Check size={18} color="var(--primary)" />}
               </button>
@@ -546,7 +546,7 @@ export const AuthView: React.FC = () => {
                   type="text"
                   value={customInput}
                   onChange={(e) => setCustomInput(e.target.value)}
-                  placeholder="http://192.168.1.X:4000/api"
+                  placeholder="http://192.168.1.X:4001/api"
                   style={{
                     flex: 1,
                     padding: '8px 10px',

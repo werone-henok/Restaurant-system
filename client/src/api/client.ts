@@ -6,11 +6,11 @@ export function getApiBaseUrl(): string {
     const host = window.location.hostname;
     // Localhost development
     if (host === 'localhost' || host === '127.0.0.1') {
-      return 'http://localhost:4000/api';
+      return 'http://localhost:4001/api';
     }
-    // LAN Wi-Fi development (e.g. tablet/phone connected to host IP on port 5173)
-    if (window.location.port === '5173' && (host.startsWith('192.168.') || host.startsWith('10.') || host.startsWith('172.'))) {
-      return `http://${host}:4000/api`;
+    // LAN Wi-Fi development (e.g. tablet/phone connected to host IP on port 5180)
+    if ((window.location.port === '5180' || window.location.port === '5173') && (host.startsWith('192.168.') || host.startsWith('10.') || host.startsWith('172.'))) {
+      return `http://${host}:4001/api`;
     }
   }
 
