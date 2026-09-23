@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
 import { CameraCapture } from '../../components/CameraCapture';
@@ -938,39 +939,38 @@ export const StorekeeperView: React.FC = () => {
       )}
 
       {/* ────────────────── Modal: Create / Edit Ingredient ────────────────── */}
-      {showModal && (
+      {showModal && typeof document !== 'undefined' && createPortal(
         <div 
           style={{
             position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            backdropFilter: 'blur(3px)',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(5px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 1000,
-            padding: 16
+            zIndex: 99999,
+            padding: 16,
+            boxSizing: 'border-box'
           }}
           onClick={() => setShowModal(false)}
         >
           <div 
             style={{
               background: '#ffffff',
-              borderRadius: 16,
+              borderRadius: 18,
               width: '100%',
-              maxWidth: 520,
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              padding: 20,
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+              maxWidth: 540,
+              maxHeight: 'calc(100vh - 32px)',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+              overflow: 'hidden'
             }}
             onClick={e => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid var(--border)', background: '#ffffff', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 22 }}>
                   {modalMode === 'create' ? '✨' : '✏️'}
@@ -982,15 +982,17 @@ export const StorekeeperView: React.FC = () => {
                 </h3>
               </div>
               <button 
+                type="button"
                 onClick={() => setShowModal(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}
+                style={{ background: 'var(--bg-subtle, #f1f5f9)', border: 'none', borderRadius: '50%', color: 'var(--text-muted)', cursor: 'pointer', padding: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSaveIngredient}>
+            <form onSubmit={handleSaveIngredient} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
               {/* English Name */}
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
@@ -1122,8 +1124,17 @@ export const StorekeeperView: React.FC = () => {
                 onPhotoCleared={() => setFormData({ ...formData, photo_url: null })}
               />
 
-              {/* Action buttons */}
-              <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+              </div>
+
+              {/* Action buttons (Fixed at bottom) */}
+              <div style={{
+                display: 'flex',
+                gap: 10,
+                padding: '14px 20px',
+                borderTop: '1px solid var(--border)',
+                background: '#f8fafc',
+                flexShrink: 0
+              }}>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
@@ -1154,36 +1165,35 @@ export const StorekeeperView: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ────────────────── Modal: Delete Confirmation (Admin / Owner ONLY) ────────────────── */}
-      {itemToDelete && (
+      {itemToDelete && typeof document !== 'undefined' && createPortal(
         <div 
           style={{
             position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            backdropFilter: 'blur(3px)',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(5px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 1000,
-            padding: 16
+            zIndex: 99999,
+            padding: 16,
+            boxSizing: 'border-box'
           }}
           onClick={() => setItemToDelete(null)}
         >
           <div 
             style={{
               background: '#ffffff',
-              borderRadius: 16,
+              borderRadius: 18,
               width: '100%',
               maxWidth: 420,
-              padding: 22,
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+              padding: 24,
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
               textAlign: 'center'
             }}
             onClick={e => e.stopPropagation()}
@@ -1243,7 +1253,8 @@ export const StorekeeperView: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { X, Clock, MapPin, User, Calendar, DollarSign, CheckCircle2, AlertTriangle, Utensils, Coffee, Tag, FileText } from 'lucide-react';
 import { UniversalStatusBadge } from './UniversalStatusBadge';
 import { useApp } from '../context/AppContext';
@@ -33,14 +34,16 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({ order, onC
 
   const isDineIn = order.order_type === 'DINE_IN';
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.65)',
+        backgroundColor: 'rgba(15, 23, 42, 0.75)',
         backdropFilter: 'blur(6px)',
-        zIndex: 9999,
+        zIndex: 99999,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -443,6 +446,7 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({ order, onC
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
