@@ -33,6 +33,7 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
   const [activeReportTab, setActiveReportTab] = useState<'overview' | 'hourly' | 'margins' | 'payments' | 'staff'>('overview');
+  const [itemsChartMode, setItemsChartMode] = useState<'bar' | 'donut'>('bar');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(api.isConnected);
@@ -408,10 +409,15 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
 
           {/* Daily Sales Bar Chart */}
           <div className="glass-card" style={{ padding: 14, marginBottom: 16 }}>
-            <h3 style={{ fontSize: 13, fontWeight: 800, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <BarChart3 size={16} color="var(--primary)" />
-              {language === 'am' ? 'የቀን የሽያጭ ሂደት' : 'Daily Sales Trend'}
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <BarChart3 size={16} color="var(--primary)" />
+                {language === 'am' ? 'የቀን የሽያጭ ሂደት' : 'Daily Sales Trend'}
+              </h3>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+                {language === 'am' ? 'የቀን ጠቅላላ ገቢ' : 'Daily Revenue'}
+              </span>
+            </div>
             {dailyTrend.length === 0 ? (
               <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
                 {language === 'am' ? 'በዚህ ወቅት ምንም ሽያጭ አልተመዘገበም' : 'No sales recorded for this period'}
@@ -424,25 +430,130 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
                     <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
                     <Tooltip
                       contentStyle={{ background: 'var(--bg-card)', borderColor: 'var(--border)', borderRadius: 8, fontSize: 11 }}
-                      formatter={(value: any) => [`${value} ${t('currency')}`, 'Revenue']}
-                      labelFormatter={l => `Date: ${l}`}
+                      formatter={(value: any) => [`${value} ${t('currency')}`, language === 'am' ? 'የቀን ገቢ' : 'Daily Revenue']}
+                      labelFormatter={l => `${language === 'am' ? 'ቀን' : 'Date'}: ${l}`}
                     />
-                    <Bar dataKey="sales" fill="#f97316" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="sales" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={44} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             )}
           </div>
 
-          {/* Top Selling Items Breakdown */}
+          {/* Top Selling Items Breakdown / Bar Graph */}
           <div className="glass-card" style={{ padding: 14, marginBottom: 16 }}>
-            <h3 style={{ fontSize: 13, fontWeight: 800, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <PieIcon size={16} color="var(--primary)" />
-              {language === 'am' ? 'በብዛት የተሸጡ ምግቦች' : 'Top Selling Items Breakdown'}
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <h3 style={{ fontSize: 13, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <BarChart3 size={16} color="var(--primary)" />
+                  {language === 'am' ? 'በብዛት የተሸጡ ምግቦች' : 'Sold Menu Items Breakdown'}
+                </h3>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  {language === 'am' ? 'የእያንዳንዱ ምግብ ሽያጭ መጠን በግራፍ' : 'Items sold breakdown by quantity & revenue'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', background: 'var(--bg-subtle)', borderRadius: 8, padding: 2, border: '1px solid var(--border)' }}>
+                <button
+                  type="button"
+                  onClick={() => setItemsChartMode('bar')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    border: 'none',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: itemsChartMode === 'bar' ? 'var(--primary)' : 'transparent',
+                    color: itemsChartMode === 'bar' ? '#fff' : 'var(--text-muted)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <BarChart3 size={13} />
+                  {language === 'am' ? 'ባር ግራፍ' : 'Bar Graph'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setItemsChartMode('donut')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    border: 'none',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: itemsChartMode === 'donut' ? 'var(--primary)' : 'transparent',
+                    color: itemsChartMode === 'donut' ? '#fff' : 'var(--text-muted)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <PieIcon size={13} />
+                  {language === 'am' ? 'ዶናት' : 'Donut'}
+                </button>
+              </div>
+            </div>
+
             {topSellers.length === 0 ? (
               <div style={{ height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
                 {language === 'am' ? 'ምንም የምግብ መረጃ የለም' : 'No menu item data recorded'}
+              </div>
+            ) : itemsChartMode === 'bar' ? (
+              <div>
+                <div style={{ width: '100%', height: Math.max(160, topSellers.length * 36) }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      layout="vertical"
+                      data={topSellers.map((item: any) => ({
+                        ...item,
+                        displayName: (language === 'am' && item.name_amharic) ? item.name_amharic : item.name
+                      }))}
+                      margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+                    >
+                      <XAxis type="number" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} allowDecimals={false} />
+                      <YAxis
+                        type="category"
+                        dataKey="displayName"
+                        tick={{ fontSize: 11, fill: 'var(--text-main)', fontWeight: 600 }}
+                        width={130}
+                      />
+                      <Tooltip
+                        contentStyle={{ background: 'var(--bg-card)', borderColor: 'var(--border)', borderRadius: 8, fontSize: 11 }}
+                        formatter={(val: any, _name: any, props: any) => [
+                          `${val} ${language === 'am' ? 'ተሸጧል' : 'sold'} (${props.payload.revenue || 0} ${t('currency')})`,
+                          language === 'am' ? 'የተሸጠው መጠን' : 'Quantity Sold'
+                        ]}
+                      />
+                      <Bar dataKey="quantity_sold" radius={[0, 4, 4, 0]} maxBarSize={22}>
+                        {topSellers.map((_entry: any, index: number) => (
+                          <Cell key={`bar-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                {/* Items detail list below the bar chart */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8, marginTop: 12, paddingTop: 10, borderTop: '1px dashed var(--border)' }}>
+                  {topSellers.map((item: any, i: number) => {
+                    const itemName = (language === 'am' && item.name_amharic) ? item.name_amharic : item.name;
+                    return (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'var(--bg-subtle)', borderRadius: 8, fontSize: 11 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+                          <div style={{ width: 8, height: 8, borderRadius: 2, background: CHART_COLORS[i % CHART_COLORS.length], flexShrink: 0 }} />
+                          <span style={{ fontWeight: 600, textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>{itemName}</span>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <strong style={{ color: 'var(--primary)', display: 'block' }}>{item.quantity_sold} {language === 'am' ? 'ተሸጧል' : 'sold'}</strong>
+                          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{item.revenue || 0} {t('currency')}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -450,9 +561,12 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={topSellers}
+                        data={topSellers.map((item: any) => ({
+                          ...item,
+                          displayName: (language === 'am' && item.name_amharic) ? item.name_amharic : item.name
+                        }))}
                         dataKey="quantity_sold"
-                        nameKey="name"
+                        nameKey="displayName"
                         cx="50%"
                         cy="50%"
                         innerRadius={32}
@@ -471,15 +585,18 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
                   </ResponsiveContainer>
                 </div>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {topSellers.map((item: any, i: number) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
-                        <div style={{ width: 8, height: 8, borderRadius: 2, background: CHART_COLORS[i % CHART_COLORS.length], flexShrink: 0 }} />
-                        <span style={{ fontWeight: 600, textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>{item.name}</span>
+                  {topSellers.map((item: any, i: number) => {
+                    const itemName = (language === 'am' && item.name_amharic) ? item.name_amharic : item.name;
+                    return (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+                          <div style={{ width: 8, height: 8, borderRadius: 2, background: CHART_COLORS[i % CHART_COLORS.length], flexShrink: 0 }} />
+                          <span style={{ fontWeight: 600, textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>{itemName}</span>
+                        </div>
+                        <strong style={{ color: 'var(--primary)', flexShrink: 0 }}>{item.quantity_sold} sold</strong>
                       </div>
-                      <strong style={{ color: 'var(--primary)', flexShrink: 0 }}>{item.quantity_sold} sold</strong>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -555,7 +672,7 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
                       contentStyle={{ background: 'var(--bg-card)', borderColor: 'var(--border)', borderRadius: 8, fontSize: 11 }}
                       formatter={(val: any, name: any) => [name === 'sales' ? `${val} ${t('currency')}` : `${val} orders`, name === 'sales' ? 'Revenue' : 'Orders']}
                     />
-                    <Bar dataKey="sales" fill="#0284c7" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="sales" fill="#0284c7" radius={[4, 4, 0, 0]} maxBarSize={40} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

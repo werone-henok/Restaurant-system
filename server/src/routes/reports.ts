@@ -67,13 +67,13 @@ reportRouter.get('/dashboard', authenticate, authorizeRole(['admin', 'owner']), 
 
   // 3. Top Selling Menu Items
   const topSellers = db.prepare(`
-    SELECT mi.name, SUM(oi.quantity) as quantity_sold, SUM(oi.quantity * oi.price) as revenue
+    SELECT mi.name, mi.name_amharic, SUM(oi.quantity) as quantity_sold, SUM(oi.quantity * oi.price) as revenue
     FROM order_items oi
     JOIN orders o ON oi.order_id = o.id
     JOIN menu_items mi ON oi.menu_item_id = mi.id
     WHERE o.status = 'COMPLETED' AND ${orderDateClause} ${branchFilterOrders}
     GROUP BY mi.id
-    ORDER BY quantity_sold DESC LIMIT 5
+    ORDER BY quantity_sold DESC LIMIT 10
   `).all(...dateParamsOrders, ...branchParamsOrders);
 
   // 4. Waiter Performance in Date Range
