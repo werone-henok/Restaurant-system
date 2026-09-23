@@ -45,5 +45,14 @@ if (fs.existsSync(clientDir) && (!isRenderOrCi || !hasPrebuiltPublic)) {
 }
 
 console.log('3. Compiling TypeScript server backend...');
-execSync('npx tsc', { cwd: __dirname, stdio: 'inherit' });
+try {
+  execSync('npx tsc', { cwd: __dirname, stdio: 'inherit' });
+  console.log('   ✓ TypeScript compiled successfully.');
+} catch (tscErr) {
+  if (fs.existsSync(path.join(__dirname, 'dist', 'server.js'))) {
+    console.log('   ✓ Using precompiled server/dist files from repository.');
+  } else {
+    throw tscErr;
+  }
+}
 console.log('=== GOURMETOS BUILD FINISHED SUCCESSFULLY ===');

@@ -7,8 +7,10 @@ node_modules/
 coverage/
 
 # Production builds
-dist/
+client/dist/
 build/
+!server/dist/
+!server/dist/**
 
 # Local Environment & Secrets
 .env

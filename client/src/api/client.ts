@@ -19,6 +19,11 @@ export function getApiBaseUrl(): string {
     if ((window.location.port === '5180' || window.location.port === '5173') && (host.startsWith('192.168.') || host.startsWith('10.') || host.startsWith('172.'))) {
       return `http://${host}:4001/api`;
     }
+
+    // Direct web access (e.g. on Render, domain, or server port 4001)
+    if (window.location.origin && window.location.port !== '5180' && window.location.port !== '5173') {
+      return `${window.location.origin}/api`;
+    }
   }
 
   const envUrl = (import.meta as any).env?.VITE_API_URL;
