@@ -33,11 +33,15 @@ import { restoreLatestFromCloud, initAutoSync, downloadImageFromCloud, uploadIma
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import { initDatabase, runMigrations } from './database/schema.js';
+
 async function bootstrap() {
   // ── Cloud Database Synchronization (Restore before SQLite init) ──
   await restoreLatestFromCloud();
 
   await getDatabase();
+  initDatabase();
+  runMigrations();
   seedDatabase();
   healMissingUploadedImages().catch(e => console.warn('[CloudSync] Notice during missing images healing:', e));
   initBackupScheduler();

@@ -287,13 +287,31 @@ export const StorekeeperView: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
+      let finalPhotoUrl = receiptPhoto;
+      if (receiptPhoto && receiptPhoto.startsWith('data:image/')) {
+        try {
+          const uploadRes = await api.request<{ url: string }>('/upload', {
+            method: 'POST',
+            body: JSON.stringify({
+              dataUrl: receiptPhoto,
+              filename: `receipt_${selectedIngredient}`
+            })
+          });
+          if (uploadRes?.url) {
+            finalPhotoUrl = uploadRes.url;
+          }
+        } catch (uploadErr) {
+          console.warn('Direct image upload notice, passing data directly:', uploadErr);
+        }
+      }
+
       await api.request('/inventory/receive', {
         method: 'POST',
         body: JSON.stringify({
           branch_id: currentBranchId,
           invoice_number: invoiceNumber,
           receiving_date: receivingDate,
-          receipt_photo_url: receiptPhoto,
+          receipt_photo_url: finalPhotoUrl,
           items: [{
             ingredient_id: selectedIngredient,
             quantity: Number(receiveQuantity),

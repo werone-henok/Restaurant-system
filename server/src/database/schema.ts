@@ -388,19 +388,44 @@ export function initDatabase() {
   `;
 
   db.exec(schema);
-
-  // Soft delete column migrations for existing databases
-  try { db.exec("ALTER TABLE users ADD COLUMN deleted_at DATETIME"); } catch (_) {}
-  try { db.exec("ALTER TABLE restaurant_tables ADD COLUMN deleted_at DATETIME"); } catch (_) {}
-  try { db.exec("ALTER TABLE menu_items ADD COLUMN deleted_at DATETIME"); } catch (_) {}
-
-  // Security and auth migrations
-  try { db.exec("ALTER TABLE users ADD COLUMN pin_attempts INTEGER DEFAULT 0"); } catch (_) {}
-  try { db.exec("ALTER TABLE users ADD COLUMN pin_locked_until DATETIME"); } catch (_) {}
-  try { db.exec("ALTER TABLE users ADD COLUMN reset_token TEXT"); } catch (_) {}
-  try { db.exec("ALTER TABLE users ADD COLUMN reset_expiry DATETIME"); } catch (_) {}
-
-  // Inventory purchase order receipt details migrations
-  try { db.exec("ALTER TABLE purchase_orders ADD COLUMN receiving_date DATE DEFAULT CURRENT_DATE"); } catch (_) {}
-  try { db.exec("ALTER TABLE purchase_orders ADD COLUMN receipt_photo_url TEXT"); } catch (_) {}
+  runMigrations();
 }
+
+export function runMigrations() {
+  const migrations = [
+    // Soft deletes
+    "ALTER TABLE users ADD COLUMN deleted_at DATETIME",
+    "ALTER TABLE restaurant_tables ADD COLUMN deleted_at DATETIME",
+    "ALTER TABLE menu_items ADD COLUMN deleted_at DATETIME",
+
+    // Security and auth
+    "ALTER TABLE users ADD COLUMN pin_attempts INTEGER DEFAULT 0",
+    "ALTER TABLE users ADD COLUMN pin_locked_until DATETIME",
+    "ALTER TABLE users ADD COLUMN reset_token TEXT",
+    "ALTER TABLE users ADD COLUMN reset_expiry DATETIME",
+
+    // Inventory purchase order receipt details (DATE without non-constant DEFAULT to support all SQLite versions)
+    "ALTER TABLE purchase_orders ADD COLUMN receiving_date DATE",
+    "ALTER TABLE purchase_orders ADD COLUMN receipt_photo_url TEXT",
+
+    // Operational expenses columns
+    "ALTER TABLE expenses ADD COLUMN receipt_photo_url TEXT",
+    "ALTER TABLE expenses ADD COLUMN supplier_id TEXT",
+    "ALTER TABLE expenses ADD COLUMN reference_number TEXT"
+  ];
+
+  for (const sql of migrations) {
+    try {
+      db.exec(sql);
+      console.log(`[Migration] ✓ Executed: ${sql}`);
+    } catch (_) {
+      // Column already exists or table not yet initialized
+    }
+  }
+
+  // Backfill receiving_date on existing purchase orders if null
+  try {
+    db.exec("UPDATE purchase_orders SET receiving_date = date(created_at) WHERE receiving_date IS NULL");
+  } catch (_) {}
+}
+

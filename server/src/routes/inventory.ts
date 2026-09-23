@@ -1,15 +1,50 @@
 import { Router } from 'express';
+import fs from 'fs';
+import path from 'path';
 import { db } from '../database/schema.js';
+import { CONFIG } from '../config/env.js';
 import { authenticate, authorizeRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { createIngredientSchema, updateIngredientSchema } from '../schemas/api.schemas.js';
 import { logAudit } from '../services/auditService.js';
 import { broadcastEvent } from '../services/websocket.js';
 import { notifyRoles } from '../services/notificationService.js';
-import { requestDebouncedSync } from '../services/cloudSyncService.js';
+import { requestDebouncedSync, uploadImageToCloud } from '../services/cloudSyncService.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export const inventoryRouter = Router();
+
+async function saveReceiptPhoto(dataUrlOrUrl: string | null): Promise<string | null> {
+  if (!dataUrlOrUrl || typeof dataUrlOrUrl !== 'string') return null;
+  if (!dataUrlOrUrl.startsWith('data:image/')) return dataUrlOrUrl;
+
+  try {
+    const matches = dataUrlOrUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) return null;
+
+    const mimeType = matches[1];
+    const base64Data = matches[2];
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    let ext = 'jpg';
+    if (mimeType.includes('png')) ext = 'png';
+    else if (mimeType.includes('webp')) ext = 'webp';
+
+    const outFileName = `receipt_${Date.now()}_${uuidv4().substring(0, 6)}.${ext}`;
+    const filePath = path.join(CONFIG.UPLOAD_DIR, outFileName);
+
+    if (!fs.existsSync(CONFIG.UPLOAD_DIR)) {
+      fs.mkdirSync(CONFIG.UPLOAD_DIR, { recursive: true });
+    }
+
+    fs.writeFileSync(filePath, buffer);
+    uploadImageToCloud(outFileName, buffer, mimeType).catch(() => {});
+    return `/uploads/${outFileName}`;
+  } catch (e) {
+    console.warn('[Inventory] Failed to save receipt photo buffer:', e);
+    return null;
+  }
+}
 
 // 1. Get Ingredients & Stock Levels for a Branch
 inventoryRouter.get('/', authenticate, (req: AuthenticatedRequest, res) => {
@@ -38,123 +73,160 @@ inventoryRouter.get('/', authenticate, (req: AuthenticatedRequest, res) => {
 });
 
 // 2. Receive Stock (Storekeeper purchases/deliveries)
-inventoryRouter.post('/receive', authenticate, authorizeRole(['storekeeper', 'admin', 'owner']), (req: AuthenticatedRequest, res) => {
-  const { branch_id, supplier_id, invoice_number, items, notes, receiving_date, receipt_photo_url } = req.body;
-  // items: Array of { ingredient_id: string, quantity: number, unit_price: number }
+inventoryRouter.post('/receive', authenticate, authorizeRole(['storekeeper', 'admin', 'owner']), async (req: AuthenticatedRequest, res) => {
+  try {
+    const { branch_id, supplier_id, invoice_number, items, notes, receiving_date, receipt_photo_url } = req.body;
 
-  if (!items || !Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ error: 'Items list is required for receiving stock' });
-  }
-
-  const targetBranch = branch_id || req.user!.branch_id;
-  const poId = `po_${uuidv4().substring(0, 8)}`;
-  const poNumber = `PO-${Date.now().toString().slice(-6)}`;
-  const receivingDate = receiving_date && receiving_date.trim() ? receiving_date.trim() : new Date().toISOString().split('T')[0];
-  const receiptPhoto = receipt_photo_url && receipt_photo_url.trim() ? receipt_photo_url.trim() : null;
-
-  let totalCost = 0;
-  for (const it of items) {
-    totalCost += Number(it.quantity) * Number(it.unit_price);
-  }
-
-  const expenseId = `exp_${uuidv4().substring(0, 8)}`;
-
-  const tx = db.transaction(() => {
-    // 1. Create Purchase Order with receiving date and receipt photo
-    db.prepare(`
-      INSERT INTO purchase_orders (id, po_number, branch_id, supplier_id, storekeeper_id, total_cost, invoice_number, receiving_date, receipt_photo_url, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(poId, poNumber, targetBranch, supplier_id || 'sup_01', req.user!.id, totalCost, invoice_number || null, receivingDate, receiptPhoto, notes || null);
-
-    const insertPoItem = db.prepare(`
-      INSERT INTO purchase_order_items (id, purchase_order_id, ingredient_id, quantity, unit_price, total_price)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-
-    const updateStock = db.prepare(`
-      INSERT INTO inventory_stock (id, branch_id, ingredient_id, current_quantity)
-      VALUES (?, ?, ?, ?)
-      ON CONFLICT(branch_id, ingredient_id)
-      DO UPDATE SET current_quantity = current_quantity + excluded.current_quantity, updated_at = CURRENT_TIMESTAMP
-    `);
-
-    const insertMov = db.prepare(`
-      INSERT INTO inventory_movements (id, branch_id, ingredient_id, user_id, movement_type, quantity_change, resulting_quantity, reference_id, notes)
-      VALUES (?, ?, ?, ?, 'PURCHASE_RECEIVE', ?, (SELECT current_quantity FROM inventory_stock WHERE branch_id = ? AND ingredient_id = ?), ?, ?)
-    `);
-
-    for (const it of items) {
-      const lineCost = Number(it.quantity) * Number(it.unit_price);
-      insertPoItem.run(uuidv4(), poId, it.ingredient_id, it.quantity, it.unit_price, lineCost);
-      updateStock.run(`stk_${uuidv4().substring(0, 8)}`, targetBranch, it.ingredient_id, it.quantity);
-      insertMov.run(uuidv4(), targetBranch, it.ingredient_id, req.user!.id, it.quantity, targetBranch, it.ingredient_id, poId, `Received under ${poNumber}`);
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Items list is required for receiving stock' });
     }
 
-    // 2. Automatically record this inventory intake as an operational expense
-    const sampleIng = db.prepare('SELECT category FROM ingredients WHERE id = ?').get(items[0].ingredient_id) as any;
-    const expenseCategory = (sampleIng?.category === 'Beverages' && items.every(it => {
-      const c = db.prepare('SELECT category FROM ingredients WHERE id = ?').get(it.ingredient_id) as any;
-      return c?.category === 'Beverages';
-    })) ? 'Beverages' : 'Food purchases';
+    const targetBranch = branch_id || req.user!.branch_id;
+    const poId = `po_${uuidv4().substring(0, 8)}`;
+    const poNumber = `PO-${Date.now().toString().slice(-6)}`;
+    const receivingDate = receiving_date && receiving_date.trim() ? receiving_date.trim() : new Date().toISOString().split('T')[0];
+    
+    // Save photo to file if base64 dataUrl, preserving URL reference
+    const receiptPhoto = await saveReceiptPhoto(receipt_photo_url);
 
-    const expenseDesc = `Stock Intake: ${poNumber} (${items.length} item${items.length > 1 ? 's' : ''}${invoice_number ? `, Inv: ${invoice_number}` : ''})`;
+    // Verify or ensure supplier exists to avoid Foreign Key violations
+    let finalSupplierId = supplier_id;
+    if (!finalSupplierId) {
+      const anySup = db.prepare('SELECT id FROM suppliers LIMIT 1').get() as any;
+      if (anySup) {
+        finalSupplierId = anySup.id;
+      } else {
+        finalSupplierId = 'sup_01';
+        try {
+          db.prepare(`
+            INSERT INTO suppliers (id, name, contact_person, phone, email, address)
+            VALUES ('sup_01', 'Abyssinia Fresh Agro Farms', 'Kenenisa Bekele', '+251911887766', 'sales@abyssiniafresh.et', 'Debre Zeit Road')
+          `).run();
+        } catch (_) {}
+      }
+    } else {
+      const supExists = db.prepare('SELECT id FROM suppliers WHERE id = ?').get(finalSupplierId);
+      if (!supExists) {
+        const anySup = db.prepare('SELECT id FROM suppliers LIMIT 1').get() as any;
+        finalSupplierId = anySup?.id || 'sup_01';
+      }
+    }
 
-    db.prepare(`
-      INSERT INTO expenses (id, branch_id, user_id, category, amount, expense_date, description, receipt_photo_url, supplier_id, reference_number)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      expenseId,
-      targetBranch,
-      req.user!.id,
-      expenseCategory,
+    let totalCost = 0;
+    for (const it of items) {
+      totalCost += Number(it.quantity) * Number(it.unit_price);
+    }
+
+    const expenseId = `exp_${uuidv4().substring(0, 8)}`;
+
+    const tx = db.transaction(() => {
+      // 1. Create Purchase Order with receiving date and receipt photo
+      db.prepare(`
+        INSERT INTO purchase_orders (id, po_number, branch_id, supplier_id, storekeeper_id, total_cost, invoice_number, receiving_date, receipt_photo_url, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(poId, poNumber, targetBranch, finalSupplierId, req.user!.id, totalCost, invoice_number || null, receivingDate, receiptPhoto, notes || null);
+
+      const insertPoItem = db.prepare(`
+        INSERT INTO purchase_order_items (id, purchase_order_id, ingredient_id, quantity, unit_price, total_price)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+
+      const updateStock = db.prepare(`
+        INSERT INTO inventory_stock (id, branch_id, ingredient_id, current_quantity)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(branch_id, ingredient_id)
+        DO UPDATE SET current_quantity = current_quantity + excluded.current_quantity, updated_at = CURRENT_TIMESTAMP
+      `);
+
+      const insertMov = db.prepare(`
+        INSERT INTO inventory_movements (id, branch_id, ingredient_id, user_id, movement_type, quantity_change, resulting_quantity, reference_id, notes)
+        VALUES (?, ?, ?, ?, 'PURCHASE_RECEIVE', ?, (SELECT current_quantity FROM inventory_stock WHERE branch_id = ? AND ingredient_id = ?), ?, ?)
+      `);
+
+      for (const it of items) {
+        const lineCost = Number(it.quantity) * Number(it.unit_price);
+        insertPoItem.run(uuidv4(), poId, it.ingredient_id, it.quantity, it.unit_price, lineCost);
+        updateStock.run(`stk_${uuidv4().substring(0, 8)}`, targetBranch, it.ingredient_id, it.quantity);
+        insertMov.run(uuidv4(), targetBranch, it.ingredient_id, req.user!.id, it.quantity, targetBranch, it.ingredient_id, poId, `Received under ${poNumber}`);
+      }
+
+      // 2. Automatically record this inventory intake as an operational expense
+      const sampleIng = db.prepare('SELECT category FROM ingredients WHERE id = ?').get(items[0].ingredient_id) as any;
+      const expenseCategory = (sampleIng?.category === 'Beverages' && items.every(it => {
+        const c = db.prepare('SELECT category FROM ingredients WHERE id = ?').get(it.ingredient_id) as any;
+        return c?.category === 'Beverages';
+      })) ? 'Beverages' : 'Food purchases';
+
+      const expenseDesc = `Stock Intake: ${poNumber} (${items.length} item${items.length > 1 ? 's' : ''}${invoice_number ? `, Inv: ${invoice_number}` : ''})`;
+
+      db.prepare(`
+        INSERT INTO expenses (id, branch_id, user_id, category, amount, expense_date, description, receipt_photo_url, supplier_id, reference_number)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        expenseId,
+        targetBranch,
+        req.user!.id,
+        expenseCategory,
+        totalCost,
+        receivingDate,
+        expenseDesc,
+        receiptPhoto,
+        finalSupplierId,
+        invoice_number || poNumber
+      );
+    });
+
+    tx();
+
+    logAudit({
+      branchId: targetBranch,
+      userId: req.user!.id,
+      action: 'STOCK_RECEIVED_EXPENSE_RECORDED',
+      entityType: 'PURCHASE_ORDER',
+      entityId: poId,
+      details: { poNumber, totalCost, expenseId, itemsCount: items.length, receivingDate }
+    });
+
+    // Notify Admin & Owner in real-time
+    notifyRoles({
+      branchId: targetBranch,
+      targetRoles: ['admin', 'owner'],
+      title: '📦 Stock Intake & Expense Recorded',
+      titleAmharic: '📦 ዕቃ ተረክቧል እና ወጪ ተመዝግቧል',
+      message: `${req.user!.full_name || 'Storekeeper'} received ${items.length} inventory item(s) (${poNumber}, ${totalCost.toLocaleString()} ETB). Automatically recorded under expenses.`,
+      messageAmharic: `በ ${req.user!.full_name || 'ስቶር ኪፐር'} ${items.length} ግብዓት ተረክቧል (${poNumber}፣ ${totalCost.toLocaleString()} ብር)። በወጪዎች መዝገብ ላይ ተመዝግቧል።`,
+      type: 'EXPENSE',
+      linkRef: poId
+    });
+
+    broadcastEvent({
+      type: 'STOCK_UPDATED',
+      branchId: targetBranch,
+      payload: { poNumber, totalCost, expenseId }
+    });
+
+    requestDebouncedSync();
+
+    res.status(201).json({
+      message: 'Stock received and automatically recorded as expense',
+      poNumber,
       totalCost,
+      expenseId,
       receivingDate,
-      expenseDesc,
-      receiptPhoto,
-      supplier_id || null,
-      invoice_number || poNumber
-    );
-  });
-
-  tx();
-
-  logAudit({
-    branchId: targetBranch,
-    userId: req.user!.id,
-    action: 'STOCK_RECEIVED_EXPENSE_RECORDED',
-    entityType: 'PURCHASE_ORDER',
-    entityId: poId,
-    details: { poNumber, totalCost, expenseId, itemsCount: items.length, receivingDate }
-  });
-
-  // Notify Admin & Owner in real-time
-  notifyRoles({
-    branchId: targetBranch,
-    targetRoles: ['admin', 'owner'],
-    title: '📦 Stock Intake & Expense Recorded',
-    titleAmharic: '📦 ዕቃ ተረክቧል እና ወጪ ተመዝግቧል',
-    message: `${req.user!.full_name || 'Storekeeper'} received ${items.length} inventory item(s) (${poNumber}, ${totalCost.toLocaleString()} ETB). Automatically recorded under expenses.`,
-    messageAmharic: `በ ${req.user!.full_name || 'ስቶር ኪፐር'} ${items.length} ግብዓት ተረክቧል (${poNumber}፣ ${totalCost.toLocaleString()} ብር)። በወጪዎች መዝገብ ላይ ተመዝግቧል።`,
-    type: 'EXPENSE',
-    linkRef: poId
-  });
-
-  broadcastEvent({
-    type: 'STOCK_UPDATED',
-    branchId: targetBranch,
-    payload: { poNumber, totalCost, expenseId }
-  });
-
-  requestDebouncedSync();
-
-  res.status(201).json({
-    message: 'Stock received and automatically recorded as expense',
-    poNumber,
-    totalCost,
-    expenseId,
-    receivingDate
-  });
+      receiptPhotoUrl: receiptPhoto
+    });
+  } catch (err: any) {
+    console.error('[Inventory Receive Error]:', err);
+    res.status(500).json({
+      success: false,
+      error: {
+        message: err.message || 'Failed to receive stock',
+        code: 'ERR_RECEIVE_STOCK'
+      }
+    });
+  }
 });
+
 
 // 3. Log Waste / Spoilage
 inventoryRouter.post('/waste', authenticate, authorizeRole(['storekeeper', 'chef', 'barista', 'admin', 'owner']), (req: AuthenticatedRequest, res) => {
@@ -404,22 +476,28 @@ inventoryRouter.delete('/ingredients/:id', authenticate, authorizeRole(['admin',
 
 // 8. Get Purchase Orders / Receiving History
 inventoryRouter.get('/purchases', authenticate, (req: AuthenticatedRequest, res) => {
-  const branchId = (req.query.branchId as string) || req.user!.branch_id;
-  const isOwner = req.user!.role === 'owner';
+  try {
+    const branchId = (req.query.branchId as string) || req.user!.branch_id;
+    const isOwner = req.user!.role === 'owner';
 
-  let query = `
-    SELECT po.*, s.name as supplier_name, u.full_name as storekeeper_name
-    FROM purchase_orders po
-    LEFT JOIN suppliers s ON po.supplier_id = s.id
-    LEFT JOIN users u ON po.storekeeper_id = u.id
-  `;
-  const params: any[] = [];
-  if (!isOwner && branchId) {
-    query += ` WHERE po.branch_id = ?`;
-    params.push(branchId);
+    let query = `
+      SELECT po.*, s.name as supplier_name, u.full_name as storekeeper_name
+      FROM purchase_orders po
+      LEFT JOIN suppliers s ON po.supplier_id = s.id
+      LEFT JOIN users u ON po.storekeeper_id = u.id
+    `;
+    const params: any[] = [];
+    if (!isOwner && branchId) {
+      query += ` WHERE po.branch_id = ?`;
+      params.push(branchId);
+    }
+    query += ` ORDER BY po.created_at DESC LIMIT 50`;
+
+    const purchases = db.prepare(query).all(...params);
+    res.json(purchases);
+  } catch (err: any) {
+    console.error('[Inventory Purchases Error]:', err);
+    res.status(500).json({ error: err.message || 'Failed to retrieve purchases' });
   }
-  query += ` ORDER BY COALESCE(po.receiving_date, po.created_at) DESC, po.created_at DESC LIMIT 50`;
-
-  const purchases = db.prepare(query).all(...params);
-  res.json(purchases);
 });
+
