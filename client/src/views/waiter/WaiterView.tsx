@@ -737,7 +737,7 @@ export const WaiterView: React.FC = () => {
               justifyContent: 'center',
               boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
             }}>
-              {cartList.reduce((acc, curr) => acc + curr.quantity, 0)}
+              {cartList.reduce((acc, curr: any) => acc + curr.quantity, 0)}
             </span>
           </div>
         </button>

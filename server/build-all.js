@@ -12,8 +12,14 @@ const publicDir = path.resolve(__dirname, 'public');
 console.log('=== STARTING GOURMETOS UNIFIED BUILD ===');
 
 if (fs.existsSync(clientDir)) {
-  console.log('1. Building frontend web client...');
+  console.log('1. Checking and building frontend web client...');
   try {
+    const clientModules = path.join(clientDir, 'node_modules');
+    if (!fs.existsSync(clientModules)) {
+      console.log('   Installing client dependencies...');
+      execSync('npm install --include=dev', { cwd: clientDir, stdio: 'inherit' });
+    }
+
     execSync('npm run build', { cwd: clientDir, stdio: 'inherit' });
     console.log('   ✓ Client web build completed successfully');
 
