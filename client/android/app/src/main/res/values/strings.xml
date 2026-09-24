@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">GourmetOS</string>
-    <string name="title_activity_main">GourmetOS</string>
+    <string name="app_name">Yo Burger &amp; Restaurant</string>
+    <string name="title_activity_main">Yo Burger &amp; Restaurant</string>
     <string name="package_name">com.gourmetos.restaurant</string>
     <string name="custom_url_scheme">com.gourmetos.restaurant</string>
 </resources>
