@@ -9,7 +9,7 @@ import { gToast } from '../../utils/toast';
 import { formatOrderDateTime } from '../../utils/timezone';
 
 export const CashierView: React.FC = () => {
-  const { currentBranchId, t, language } = useApp();
+  const { currentBranchId, branches, settings, t, language } = useApp();
   const [orders, setOrders] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [modifyingOrder, setModifyingOrder] = useState<any | null>(null);
@@ -964,9 +964,15 @@ export const CashierView: React.FC = () => {
             boxShadow: 'var(--shadow-lg)'
           }}>
             <div style={{ textAlign: 'center', marginBottom: 14 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0' }}>HABESHA GOURMET & LOUNGE</h3>
-              <p style={{ fontSize: 11, color: '#666', margin: 0 }}>Bole Medhanealem Road, Addis Ababa</p>
-              <p style={{ fontSize: 11, color: '#666', margin: 0 }}>TIN: 102948190 • VAT Reg: 015</p>
+              <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', textTransform: 'uppercase' }}>
+                {settings?.restaurant_name || 'Yo Burger & Restaurant'}
+              </h3>
+              <p style={{ fontSize: 11, color: '#666', margin: 0 }}>
+                {branches?.find(b => b.id === currentBranchId)?.address || branches?.find(b => b.id === currentBranchId)?.city || 'Addis Ababa'}
+              </p>
+              <p style={{ fontSize: 11, color: '#666', margin: 0 }}>
+                {settings?.tax_number || 'TIN: 102948190'} • VAT Reg: 015
+              </p>
               <div style={{ borderBottom: '1px dashed #000', margin: '10px 0' }} />
               <p style={{ fontSize: 12, fontWeight: 700, margin: '0 0 2px 0' }}>RECEIPT: {receipt.receiptNumber}</p>
               <p style={{ fontSize: 11, margin: 0 }}>Order #{receipt.orderNumber} • Cashier: {receipt.cashier}</p>
@@ -1004,7 +1010,9 @@ export const CashierView: React.FC = () => {
             </div>
 
             <div style={{ textAlign: 'center', fontSize: 10, color: '#666', borderTop: '1px dashed #000', paddingTop: 8, marginBottom: 14 }}>
-              Thank you for your visit! / በጉብኝትዎ እናመሰግናለን!
+              {language === 'am' && settings?.receipt_footer_amharic
+                ? settings.receipt_footer_amharic
+                : (settings?.receipt_footer || 'Thank you for your visit! / በጉብኝትዎ እናመሰግናለን!')}
             </div>
 
             <div style={{ display: 'flex', gap: 8 }}>

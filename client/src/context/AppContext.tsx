@@ -35,6 +35,8 @@ export interface RestaurantSettings {
   vat_enabled: number;
   vat_percentage: number;
   tax_number?: string;
+  receipt_footer?: string;
+  receipt_footer_amharic?: string;
   timezone_mode?: 'AUTO' | 'MANUAL';
   system_timezone?: string;
   timezone_offset_minutes?: number;

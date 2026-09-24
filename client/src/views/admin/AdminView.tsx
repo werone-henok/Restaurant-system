@@ -986,7 +986,7 @@ export const AdminView: React.FC = () => {
                 className="btn btn-primary"
                 style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 800 }}
               >
-                <Plus size={14} /> {language === 'am' ? 'ምግብ ጨምር' : '+ Add Menu Item'}
+                <Plus size={14} /> {language === 'am' ? 'ምግብ ጨምር' : 'Add Menu Item'}
               </button>
             </div>
           </div>
@@ -1359,7 +1359,7 @@ export const AdminView: React.FC = () => {
                         padding: 0
                       }}
                     >
-                      <Plus size={11} /> {language === 'am' ? 'አዲስ ምድብ' : '+ New'}
+                      <Plus size={11} /> {language === 'am' ? 'አዲስ ምድብ' : 'New'}
                     </button>
                   </div>
                   <select

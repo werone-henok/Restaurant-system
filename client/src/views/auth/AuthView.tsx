@@ -382,33 +382,33 @@ export const AuthView: React.FC = () => {
               ⚡ 1-Tap Demo Switcher (All 7 Roles)
             </span>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-              <button type="button" onClick={() => fillDemo('waiter', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: '#ffffff', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <button type="button" onClick={() => fillDemo('waiter', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
                 <span style={{ fontSize: 16 }}>🍽️</span>
-                <span>Waiter</span>
+                <span style={{ fontWeight: 700 }}>Waiter</span>
               </button>
-              <button type="button" onClick={() => fillDemo('cashier', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: '#ffffff', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <button type="button" onClick={() => fillDemo('cashier', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
                 <span style={{ fontSize: 16 }}>💵</span>
-                <span>Cashier</span>
+                <span style={{ fontWeight: 700 }}>Cashier</span>
               </button>
-              <button type="button" onClick={() => fillDemo('chef', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: '#ffffff', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <button type="button" onClick={() => fillDemo('chef', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
                 <span style={{ fontSize: 16 }}>🔥</span>
-                <span>Chef</span>
+                <span style={{ fontWeight: 700 }}>Chef</span>
               </button>
-              <button type="button" onClick={() => fillDemo('barista', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: '#ffffff', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <button type="button" onClick={() => fillDemo('barista', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
                 <span style={{ fontSize: 16 }}>☕</span>
-                <span>Barista</span>
+                <span style={{ fontWeight: 700 }}>Barista</span>
               </button>
-              <button type="button" onClick={() => fillDemo('storekeeper', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: '#ffffff', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <button type="button" onClick={() => fillDemo('storekeeper', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
                 <span style={{ fontSize: 16 }}>📦</span>
-                <span>Inventory</span>
+                <span style={{ fontWeight: 700 }}>Inventory</span>
               </button>
-              <button type="button" onClick={() => fillDemo('admin', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: '#ffffff', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <button type="button" onClick={() => fillDemo('admin', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
                 <span style={{ fontSize: 16 }}>🛡️</span>
-                <span>Admin</span>
+                <span style={{ fontWeight: 700 }}>Admin</span>
               </button>
-              <button type="button" onClick={() => fillDemo('owner', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: '#ffffff', border: '1.5px solid var(--primary)', borderRadius: 10, gridColumn: 'span 2', fontWeight: 800, color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <span style={{ fontSize: 18 }}>👑</span>
-                <span>Owner (Executive)</span>
+              <button type="button" onClick={() => fillDemo('owner', 'password123')} className="btn" style={{ padding: '8px 6px', fontSize: 11, background: 'var(--bg-card)', border: '2px solid var(--primary)', borderRadius: 10, gridColumn: 'span 2', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--text-main)', fontWeight: 800, cursor: 'pointer' }}>
+                <span style={{ fontSize: 16 }}>👑</span>
+                <span style={{ color: 'var(--text-main)', fontWeight: 800 }}>Owner (Executive)</span>
               </button>
             </div>
           </div>

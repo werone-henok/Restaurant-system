@@ -532,7 +532,7 @@ export const StorekeeperView: React.FC = () => {
                 style={{ height: 40, padding: '0 14px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700 }}
               >
                 <Plus size={16} />
-                <span>{language === 'am' ? '+ አዲስ ግብዓት' : '+ New Item'}</span>
+                <span>{language === 'am' ? 'አዲስ ግብዓት' : 'New Item'}</span>
               </button>
             )}
           </div>

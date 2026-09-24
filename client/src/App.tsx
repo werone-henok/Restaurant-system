@@ -36,6 +36,19 @@ export const App: React.FC = () => {
   const [activeTabOverride, setActiveTabOverride] = useState<string | null>(null);
   const [showProfile, setShowProfile] = useState(false);
 
+  const [waiterSize, setWaiterSize] = useState<string>(() => {
+    return localStorage.getItem('waiter_screen_size') || 'tablet';
+  });
+
+  // Listen to waiter size change events from UI
+  useEffect(() => {
+    const handleWaiterSize = (e: any) => {
+      if (e.detail) setWaiterSize(e.detail);
+    };
+    window.addEventListener('waiter_size_changed', handleWaiterSize);
+    return () => window.removeEventListener('waiter_size_changed', handleWaiterSize);
+  }, []);
+
   // Reset active tab override whenever logged-in user changes
   useEffect(() => {
     setActiveTabOverride(null);
@@ -168,7 +181,13 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className={`app-container ${['cashier', 'owner', 'admin', 'chef', 'storekeeper'].includes(currentTab) ? 'desktop-wide' : ''}`}>
+    <div className={`app-container ${
+      currentTab === 'waiter'
+        ? `size-${waiterSize}`
+        : ['cashier', 'owner', 'admin', 'chef', 'storekeeper'].includes(currentTab)
+          ? 'desktop-wide'
+          : ''
+    }`}>
       <Header onOpenProfile={() => setShowProfile(true)} />
 
       {renderCurrentView()}

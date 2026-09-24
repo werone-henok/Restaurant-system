@@ -232,6 +232,7 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.06);
   position: relative;
   overflow: hidden;
+  transition: max-width 0.25s ease, margin 0.25s ease;
 }
 
 @media (min-width: 900px) {
@@ -244,10 +245,89 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
-@media (max-width: 540px) {
+/* Waiter / Responsive POS adjustable sizes */
+.app-container.size-compact {
+  max-width: 540px !important;
+  margin: 0 auto !important;
+  border-radius: 0 !important;
+}
+
+.app-container.size-tablet {
+  max-width: 960px !important;
+  margin: 12px auto !important;
+  border-radius: 16px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08) !important;
+  min-height: calc(100vh - 24px) !important;
+}
+
+.app-container.size-wide {
+  max-width: 1400px !important;
+  margin: 16px auto !important;
+  border-radius: 16px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08) !important;
+  min-height: calc(100vh - 32px) !important;
+}
+
+.app-container.size-full {
+  max-width: 100% !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  min-height: 100vh !important;
+}
+
+@media (max-width: 600px) {
   .app-container {
-    max-width: 100%;
-    box-shadow: none;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+}
+
+/* ─── Waiter POS 2-Column Desktop/Tablet Layout ────────────────────── */
+.waiter-pos-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .app-container:not(.size-compact) .waiter-pos-grid {
+    display: grid;
+    grid-template-columns: 1.25fr 0.85fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .app-container:not(.size-compact) .waiter-menu-column {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .app-container:not(.size-compact) .waiter-cart-panel {
+    position: sticky;
+    top: 76px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .app-container:not(.size-compact) .waiter-menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+  }
+}
+
+@media (min-width: 1100px) {
+  .app-container:not(.size-compact) .waiter-pos-grid {
+    grid-template-columns: 1.35fr 0.75fr;
+    gap: 24px;
+  }
+
+  .app-container:not(.size-compact) .waiter-menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)) !important;
   }
 }
 
@@ -416,8 +496,53 @@ input:focus, select:focus, textarea:focus {
   color: #ffffff;
 }
 
-.app-header.animated-gradient span {
+.app-header.animated-gradient span:not(.header-badge-text):not(.header-badge) {
   color: #ffffff;
+}
+
+/* Header badges high contrast styling */
+.app-header.animated-gradient .header-badge {
+  padding: 4px 9px;
+  border-radius: var(--radius-full);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  font-size: 11px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.app-header.animated-gradient .header-badge.badge-ready {
+  background: rgba(18, 17, 23, 0.48);
+  color: #4ade80 !important;
+  border: 1px solid rgba(74, 222, 128, 0.45);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.app-header.animated-gradient .header-badge.badge-ready span,
+.app-header.animated-gradient .header-badge.badge-ready svg {
+  color: #4ade80 !important;
+}
+
+.app-header.animated-gradient .header-badge.badge-pending {
+  background: rgba(18, 17, 23, 0.48);
+  color: #facc15 !important;
+  border: 1px solid rgba(250, 204, 21, 0.45);
+}
+
+.app-header.animated-gradient .header-badge.badge-pending span,
+.app-header.animated-gradient .header-badge.badge-pending svg {
+  color: #facc15 !important;
+}
+
+.app-header.animated-gradient .header-badge.badge-cancelled {
+  background: rgba(18, 17, 23, 0.48);
+  color: #f87171 !important;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+}
+
+.app-header.animated-gradient .header-badge.badge-cancelled span,
+.app-header.animated-gradient .header-badge.badge-cancelled svg {
+  color: #f87171 !important;
 }
 
 /* Floating Action Button (FAB) */

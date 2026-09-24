@@ -641,7 +641,7 @@ export const ChefView: React.FC = () => {
                 style={{ padding: '7px 12px', fontSize: 12, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
                 <Plus size={15} />
-                {language === 'am' ? 'አዲስ ምግብ' : '+ New Dish'}
+                {language === 'am' ? 'አዲስ ምግብ' : 'New Dish'}
               </button>
             </div>
           </div>

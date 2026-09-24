@@ -29,6 +29,15 @@ const CATEGORY_NAMES_AM: Record<string, string> = {
   cat_traditional: 'ባህላዊ ምግቦች'
 };
 
+export const WAITER_SIZES = [
+  { id: 'compact', label: '📱 540', tip: 'Phone (540px)' },
+  { id: 'tablet', label: '📟 960', tip: 'Tablet (960px)' },
+  { id: 'wide', label: '🖥️ 1400', tip: 'Desktop (1400px)' },
+  { id: 'full', label: '↔️ Full', tip: 'Full Window (100%)' }
+] as const;
+
+export type WaiterSize = 'compact' | 'tablet' | 'wide' | 'full';
+
 export const WaiterView: React.FC = () => {
   const { currentBranchId, t, user, language } = useApp();
   const [activeTab, setActiveTab] = useState<'create' | 'active' | 'ready' | 'history'>('create');
@@ -50,6 +59,20 @@ export const WaiterView: React.FC = () => {
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(api.isConnected);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const [waiterSize, setWaiterSize] = useState<WaiterSize>(() => {
+    return (localStorage.getItem('waiter_screen_size') as WaiterSize) || 'tablet';
+  });
+
+  const changeWaiterSize = (size: WaiterSize) => {
+    setWaiterSize(size);
+    localStorage.setItem('waiter_screen_size', size);
+    window.dispatchEvent(new CustomEvent('waiter_size_changed', { detail: size }));
+  };
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('waiter_size_changed', { detail: waiterSize }));
+  }, [waiterSize]);
 
 
   // Auto-refresh fallback (30 seconds)
@@ -221,13 +244,240 @@ export const WaiterView: React.FC = () => {
   const readyOrders = myOrders.filter(o => o.status === 'READY');
   const activeOrders = myOrders.filter(o => ['PENDING_CASHIER', 'CONFIRMED', 'PREPARING', 'PARTIALLY_READY'].includes(o.status));
 
+  const renderTablePicker = () => (
+    <div style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: 14, padding: 14, marginBottom: 16, boxShadow: 'var(--shadow-sm)' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        {(['DINE_IN', 'TAKEAWAY', 'DELIVERY'] as const).map(type => (
+          <button
+            key={type}
+            type="button"
+            onClick={() => setOrderType(type)}
+            style={{
+              flex: 1,
+              padding: '8px 4px',
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 700,
+              border: orderType === type ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+              background: orderType === type ? 'var(--primary-light)' : 'transparent',
+              color: orderType === type ? 'var(--primary)' : 'var(--text-muted)'
+            }}
+          >
+            {type === 'DINE_IN' ? t('dine_in') : type === 'TAKEAWAY' ? t('takeaway') : t('delivery')}
+          </button>
+        ))}
+      </div>
+
+      {orderType === 'DINE_IN' && (
+        <div>
+          <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)', display: 'block', marginBottom: 8 }}>
+            📍 {t('select_table')} {selectedTable && <span style={{ color: 'var(--primary)', fontWeight: 800 }}>({tables.find(tb => tb.id === selectedTable)?.table_number || ''})</span>}
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            {tables.map(tbl => {
+              const isSelected = selectedTable === tbl.id;
+              const isOccupied = tbl.status === 'OCCUPIED';
+              return (
+                <button
+                  key={tbl.id}
+                  type="button"
+                  onClick={() => setSelectedTable(tbl.id)}
+                  style={{
+                    padding: '10px 4px',
+                    borderRadius: 12,
+                    textAlign: 'center',
+                    border: isSelected ? '2.5px solid var(--primary)' : '1px solid var(--border)',
+                    background: isSelected ? 'var(--primary-light)' : isOccupied ? '#fef2f2' : 'var(--bg-card)',
+                    color: isSelected ? 'var(--primary)' : 'var(--text-main)',
+                    boxShadow: isSelected ? '0 0 0 2px var(--primary)' : 'var(--shadow-sm)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 3,
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <span style={{ fontSize: 15, fontWeight: 800 }}>
+                    {tbl.table_number}
+                  </span>
+                  <span style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    padding: '2px 6px',
+                    borderRadius: 4,
+                    background: isOccupied ? '#ef4444' : '#10b981',
+                    color: '#ffffff'
+                  }}>
+                    {isOccupied ? (language === 'am' ? 'የተያዘ' : 'Occupied') : (language === 'am' ? 'ነፃ' : 'Available')}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderCartDrawer = () => {
+    if (cartList.length === 0) {
+      if (waiterSize === 'compact') return null;
+      return (
+        <div style={{
+          background: 'var(--bg-card)',
+          border: '1px dashed var(--border)',
+          borderRadius: 16,
+          padding: '28px 16px',
+          textAlign: 'center',
+          color: 'var(--text-muted)',
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          <ShoppingBag size={32} style={{ margin: '0 auto 8px', opacity: 0.4 }} />
+          <div style={{ fontSize: 13, fontWeight: 700 }}>
+            {language === 'am' ? 'ትዕዛዝ አልተመረጠም' : 'No items in order'}
+          </div>
+          <div style={{ fontSize: 11, marginTop: 4 }}>
+            {language === 'am' ? 'ምግቦችን ለመጨመር ካታሎጉን ይጫኑ' : 'Click menu items to add to order'}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{
+        background: '#ffffff',
+        border: '1px solid var(--border)',
+        borderRadius: 16,
+        padding: 16,
+        boxShadow: 'var(--shadow-lg)'
+      }}>
+        <h3 style={{ fontSize: 14, fontWeight: 800, marginBottom: 12 }}>
+          {language === 'am' ? 'የአሁኑ ትዕዛዝ' : 'Current Order'}
+        </h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+          {cartList.map(line => (
+            <div key={line.item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+              <span>{line.quantity}x {line.item.name}</span>
+              <span style={{ fontWeight: 700 }}>{line.item.price * line.quantity} {t('currency')}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Quick Preset Note Chips */}
+        <div style={{ marginBottom: 10 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+            {language === 'am' ? 'ፈጣን ማስታወሻ (ለመምረጥ ይንኩ):' : 'Quick Notes (Tap to add):'}
+          </span>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {[
+              { label: language === 'am' ? '🌶️ ያለ በርበሬ' : '🌶️ No Spice', val: 'ያለ በርበሬ' },
+              { label: language === 'am' ? '🥩 በደንብ የበሰለ' : '🥩 Well Done', val: 'በደንብ የበሰለ' },
+              { label: language === 'am' ? '📦 በፓኬት' : '📦 Packaged', val: 'በፓኬት' },
+              { label: language === 'am' ? '⚡ በአስቸኳይ' : '⚡ Urgent', val: 'በአስቸኳይ' }
+            ].map(chip => (
+              <button
+                key={chip.val}
+                type="button"
+                onClick={() => setSpecialNotes(prev => prev ? `${prev}, ${chip.val}` : chip.val)}
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: 8,
+                  background: 'var(--bg-subtle)',
+                  border: '1px solid var(--border)',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: 'var(--text-main)'
+                }}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <textarea
+          placeholder={t('special_instructions')}
+          value={specialNotes}
+          onChange={e => setSpecialNotes(e.target.value)}
+          style={{ width: '100%', height: 60, marginBottom: 12, resize: 'none' }}
+        />
+
+        <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 10, marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)' }}>
+            <span>{t('subtotal')}</span>
+            <span>{subtotal} {t('currency')}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)' }}>
+            <span>{t('tax_vat')}</span>
+            <span>{vat} {t('currency')}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 800, marginTop: 4 }}>
+            <span>{t('total')}</span>
+            <span style={{ color: 'var(--primary)' }}>{total} {t('currency')}</span>
+          </div>
+        </div>
+
+        <button
+          disabled={loading}
+          onClick={handleSubmitOrder}
+          className="btn btn-primary btn-block"
+          style={{ height: 48 }}
+        >
+          <Send size={16} />
+          {loading ? 'Sending...' : t('place_order_btn')}
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div className="view-body animate-fade-in">
-      {/* Connection Status + Refresh */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: isConnected ? '#065f46' : '#991b1b', background: isConnected ? '#ecfdf5' : '#fef2f2', padding: '3px 8px', borderRadius: 12 }}>
-          {isConnected ? '🟢' : '🔴'} {isConnected ? 'Live' : 'Offline'}
+      {/* Connection Status + Screen Size Switcher + Refresh */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: isConnected ? '#065f46' : '#991b1b', background: isConnected ? '#ecfdf5' : '#fef2f2', padding: '3px 8px', borderRadius: 12 }}>
+            {isConnected ? '🟢' : '🔴'} {isConnected ? 'Live' : 'Offline'}
+          </div>
         </div>
+
+        {/* View Size Switcher (Phone / Tablet / Desktop / Full) */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
+          borderRadius: 20,
+          padding: '2px 4px',
+          gap: 2,
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', padding: '0 4px' }}>
+            {language === 'am' ? 'መጠን:' : 'Size:'}
+          </span>
+          {WAITER_SIZES.map(s => (
+            <button
+              key={s.id}
+              type="button"
+              title={s.tip}
+              onClick={() => changeWaiterSize(s.id)}
+              style={{
+                padding: '3px 8px',
+                borderRadius: 14,
+                fontSize: 10,
+                fontWeight: waiterSize === s.id ? 800 : 600,
+                background: waiterSize === s.id ? 'var(--primary)' : 'transparent',
+                color: waiterSize === s.id ? '#ffffff' : 'var(--text-muted)',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+
         <button onClick={triggerRefresh} disabled={isRefreshing} style={{ padding: '4px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12 }}>
           <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
         </button>
@@ -334,81 +584,11 @@ export const WaiterView: React.FC = () => {
       )}
 
       {activeTab === 'create' && (
-        <div>
-          {/* Order Type & Table Picker */}
-          <div style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: 14, padding: 14, marginBottom: 16, boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-              {(['DINE_IN', 'TAKEAWAY', 'DELIVERY'] as const).map(type => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setOrderType(type)}
-                  style={{
-                    flex: 1,
-                    padding: '8px 4px',
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    border: orderType === type ? '1.5px solid var(--primary)' : '1px solid var(--border)',
-                    background: orderType === type ? 'var(--primary-light)' : 'transparent',
-                    color: orderType === type ? 'var(--primary)' : 'var(--text-muted)'
-                  }}
-                >
-                  {type === 'DINE_IN' ? t('dine_in') : type === 'TAKEAWAY' ? t('takeaway') : t('delivery')}
-                </button>
-              ))}
-            </div>
-
-            {orderType === 'DINE_IN' && (
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)', display: 'block', marginBottom: 8 }}>
-                  📍 {t('select_table')} {selectedTable && <span style={{ color: 'var(--primary)', fontWeight: 800 }}>({tables.find(tb => tb.id === selectedTable)?.table_number || ''})</span>}
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                  {tables.map(tbl => {
-                    const isSelected = selectedTable === tbl.id;
-                    const isOccupied = tbl.status === 'OCCUPIED';
-                    return (
-                      <button
-                        key={tbl.id}
-                        type="button"
-                        onClick={() => setSelectedTable(tbl.id)}
-                        style={{
-                          padding: '10px 4px',
-                          borderRadius: 12,
-                          textAlign: 'center',
-                          border: isSelected ? '2.5px solid var(--primary)' : '1px solid var(--border)',
-                          background: isSelected ? 'var(--primary-light)' : isOccupied ? '#fef2f2' : 'var(--bg-card)',
-                          color: isSelected ? 'var(--primary)' : 'var(--text-main)',
-                          boxShadow: isSelected ? '0 0 0 2px var(--primary)' : 'var(--shadow-sm)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 3,
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        <span style={{ fontSize: 15, fontWeight: 800 }}>
-                          {tbl.table_number}
-                        </span>
-                        <span style={{
-                          fontSize: 9,
-                          fontWeight: 700,
-                          padding: '2px 6px',
-                          borderRadius: 4,
-                          background: isOccupied ? '#ef4444' : '#10b981',
-                          color: '#ffffff'
-                        }}>
-                          {isOccupied ? (language === 'am' ? 'የተያዘ' : 'Occupied') : (language === 'am' ? 'ነፃ' : 'Available')}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
+        <div className="waiter-pos-grid">
+          {/* Left Column: Menu Items */}
+          <div className="waiter-menu-column">
+            {/* If compact/phone view, table picker is at top */}
+            {waiterSize === 'compact' && renderTablePicker()}
 
           {/* Menu Categories Horizontal Scroller with Amharic Labels */}
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 10, marginBottom: 12 }}>
@@ -604,88 +784,15 @@ export const WaiterView: React.FC = () => {
             })}
           </div>
 
-          {/* Current Order Drawer / Summary */}
-          {cartList.length > 0 && (
-            <div style={{
-              background: '#ffffff',
-              border: '1px solid var(--border)',
-              borderRadius: 16,
-              padding: 16,
-              boxShadow: 'var(--shadow-lg)'
-            }}>
-              <h3 style={{ fontSize: 14, fontWeight: 800, marginBottom: 12 }}>Current Order</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-                {cartList.map(line => (
-                  <div key={line.item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                    <span>{line.quantity}x {line.item.name}</span>
-                    <span style={{ fontWeight: 700 }}>{line.item.price * line.quantity} {t('currency')}</span>
-                  </div>
-                ))}
-              </div>
+            {/* If compact/phone view, cart drawer is at bottom */}
+            {waiterSize === 'compact' && cartList.length > 0 && renderCartDrawer()}
+          </div>
 
-              {/* Quick Preset Note Chips */}
-              <div style={{ marginBottom: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-                  {language === 'am' ? 'ፈጣን ማስታወሻ (ለመምረጥ ይንኩ):' : 'Quick Notes (Tap to add):'}
-                </span>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {[
-                    { label: language === 'am' ? '🌶️ ያለ በርበሬ' : '🌶️ No Spice', val: 'ያለ በርበሬ' },
-                    { label: language === 'am' ? '🥩 በደንብ የበሰለ' : '🥩 Well Done', val: 'በደንብ የበሰለ' },
-                    { label: language === 'am' ? '📦 በፓኬት' : '📦 Packaged', val: 'በፓኬት' },
-                    { label: language === 'am' ? '⚡ በአስቸኳይ' : '⚡ Urgent', val: 'በአስቸኳይ' }
-                  ].map(chip => (
-                    <button
-                      key={chip.val}
-                      type="button"
-                      onClick={() => setSpecialNotes(prev => prev ? `${prev}, ${chip.val}` : chip.val)}
-                      style={{
-                        padding: '4px 8px',
-                        borderRadius: 8,
-                        background: 'var(--bg-subtle)',
-                        border: '1px solid var(--border)',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: 'var(--text-main)'
-                      }}
-                    >
-                      {chip.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <textarea
-                placeholder={t('special_instructions')}
-                value={specialNotes}
-                onChange={e => setSpecialNotes(e.target.value)}
-                style={{ width: '100%', height: 60, marginBottom: 12, resize: 'none' }}
-              />
-
-              <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 10, marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)' }}>
-                  <span>{t('subtotal')}</span>
-                  <span>{subtotal} {t('currency')}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)' }}>
-                  <span>{t('tax_vat')}</span>
-                  <span>{vat} {t('currency')}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 800, marginTop: 4 }}>
-                  <span>{t('total')}</span>
-                  <span style={{ color: 'var(--primary)' }}>{total} {t('currency')}</span>
-                </div>
-              </div>
-
-              <button
-                disabled={loading}
-                onClick={handleSubmitOrder}
-                className="btn btn-primary btn-block"
-                style={{ height: 48 }}
-              >
-                <Send size={16} />
-                {loading ? 'Sending...' : t('place_order_btn')}
-              </button>
+          {/* Right Column: Table selector & Sticky Order Drawer on Tablet / Desktop */}
+          {waiterSize !== 'compact' && (
+            <div className="waiter-cart-panel">
+              {renderTablePicker()}
+              {renderCartDrawer()}
             </div>
           )}
         </div>
@@ -693,9 +800,14 @@ export const WaiterView: React.FC = () => {
 
       {/* Ready Orders Tab */}
       {activeTab === 'ready' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: waiterSize === 'compact' ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))',
+          gap: 14,
+          alignItems: 'start'
+        }}>
           {readyOrders.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)' }}>
+            <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)', gridColumn: '1 / -1' }}>
               <Clock size={40} style={{ margin: '0 auto 10px', opacity: 0.4 }} />
               <p style={{ fontWeight: 600 }}>No orders currently waiting for delivery</p>
             </div>
@@ -732,9 +844,14 @@ export const WaiterView: React.FC = () => {
 
       {/* Active Orders Tab */}
       {activeTab === 'active' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: waiterSize === 'compact' ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))',
+          gap: 14,
+          alignItems: 'start'
+        }}>
           {activeOrders.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)' }}>
+            <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)', gridColumn: '1 / -1' }}>
               <UtensilsCrossed size={40} style={{ margin: '0 auto 10px', opacity: 0.4 }} />
               <p style={{ fontWeight: 600 }}>No active pending orders</p>
             </div>
@@ -848,93 +965,100 @@ export const WaiterView: React.FC = () => {
               <span style={{ fontSize: 12 }}>{language === 'am' ? 'የፈጠሯቸው ትዕዛዞች እዚህ በሙሉ በዝርዝር ይመዘገባሉ' : 'Orders you take from tables will automatically appear here.'}</span>
             </div>
           ) : (
-            historyOrders.filter(o => {
-              if (!historySearch.trim()) return true;
-              const q = historySearch.toLowerCase();
-              const matchNum = String(o.order_number).includes(q);
-              const matchTable = (o.table_number && String(o.table_number).toLowerCase().includes(q)) || (o.table_name && o.table_name.toLowerCase().includes(q));
-              const matchItems = o.items?.some((it: any) => it.name?.toLowerCase().includes(q) || it.menu_name?.toLowerCase().includes(q) || it.name_amharic?.includes(q));
-              const matchStatus = o.status?.toLowerCase().includes(q);
-              return matchNum || matchTable || matchItems || matchStatus;
-            }).map(o => (
-              <div
-                key={o.id}
-                onClick={() => setSelectedHistoryOrder(o)}
-                style={{
-                  background: 'var(--surface, #ffffff)',
-                  border: '1px solid var(--border, #e2e8f0)',
-                  borderRadius: 14,
-                  padding: 14,
-                  boxShadow: 'var(--shadow-sm)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{
-                      width: 32, height: 32, borderRadius: 8,
-                      background: '#f97316', color: '#fff',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontWeight: 800, fontSize: 13
-                    }}>
-                      #{o.order_number}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: waiterSize === 'compact' ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))',
+              gap: 12,
+              alignItems: 'start'
+            }}>
+              {historyOrders.filter(o => {
+                if (!historySearch.trim()) return true;
+                const q = historySearch.toLowerCase();
+                const matchNum = String(o.order_number).includes(q);
+                const matchTable = (o.table_number && String(o.table_number).toLowerCase().includes(q)) || (o.table_name && o.table_name.toLowerCase().includes(q));
+                const matchItems = o.items?.some((it: any) => it.name?.toLowerCase().includes(q) || it.menu_name?.toLowerCase().includes(q) || it.name_amharic?.includes(q));
+                const matchStatus = o.status?.toLowerCase().includes(q);
+                return matchNum || matchTable || matchItems || matchStatus;
+              }).map(o => (
+                <div
+                  key={o.id}
+                  onClick={() => setSelectedHistoryOrder(o)}
+                  style={{
+                    background: 'var(--surface, #ffffff)',
+                    border: '1px solid var(--border, #e2e8f0)',
+                    borderRadius: 14,
+                    padding: 14,
+                    boxShadow: 'var(--shadow-sm)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: 8,
+                        background: '#f97316', color: '#fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontWeight: 800, fontSize: 13
+                      }}>
+                        #{o.order_number}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: 14 }}>
+                          {o.table_number ? `Table ${o.table_number}` : (o.table_name || o.order_type)}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                          {formatOrderDateTime(o.created_at, language === 'am' ? 'am-ET' : 'en-US')}
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: 14 }}>
-                        {o.table_number ? `Table ${o.table_number}` : (o.table_name || o.order_type)}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                        {formatOrderDateTime(o.created_at, language === 'am' ? 'am-ET' : 'en-US')}
-                      </div>
+
+                    <UniversalStatusBadge status={o.status} size="sm" />
+                  </div>
+
+                  {/* Items summary */}
+                  <div style={{ fontSize: 12, color: 'var(--text-main)', background: 'var(--bg-subtle, #f8fafc)', padding: '8px 10px', borderRadius: 8, marginBottom: 10 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {o.items?.map((it: any, idx: number) => (
+                        <span key={it.id || idx} style={{ fontWeight: 500 }}>
+                          {it.quantity}x {language === 'am' && it.name_amharic ? it.name_amharic : (it.menu_name || it.name)}{idx < o.items.length - 1 ? ' • ' : ''}
+                        </span>
+                      ))}
                     </div>
                   </div>
 
-                  <UniversalStatusBadge status={o.status} size="sm" />
-                </div>
-
-                {/* Items summary */}
-                <div style={{ fontSize: 12, color: 'var(--text-main)', background: 'var(--bg-subtle, #f8fafc)', padding: '8px 10px', borderRadius: 8, marginBottom: 10 }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                    {o.items?.map((it: any, idx: number) => (
-                      <span key={it.id || idx} style={{ fontWeight: 500 }}>
-                        {it.quantity}x {language === 'am' && it.name_amharic ? it.name_amharic : (it.menu_name || it.name)}{idx < o.items.length - 1 ? ' • ' : ''}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
-                    {o.items?.length || 0} {language === 'am' ? 'ዓይነት ምግቦች' : 'items'}
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: '#059669' }}>
-                      {(o.total_amount || 0).toLocaleString()} ETB
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
+                      {o.items?.length || 0} {language === 'am' ? 'ዓይነት ምግቦች' : 'items'}
                     </span>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setSelectedHistoryOrder(o); }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 4,
-                        padding: '4px 10px', borderRadius: 8,
-                        background: '#eff6ff', color: '#1d4ed8',
-                        border: '1px solid #bfdbfe', fontSize: 12, fontWeight: 700,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Eye size={13} /> {language === 'am' ? 'ዝርዝር' : 'View'}
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 15, fontWeight: 800, color: '#059669' }}>
+                        {(o.total_amount || 0).toLocaleString()} ETB
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setSelectedHistoryOrder(o); }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 4,
+                          padding: '4px 10px', borderRadius: 8,
+                          background: '#eff6ff', color: '#1d4ed8',
+                          border: '1px solid #bfdbfe', fontSize: 12, fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Eye size={13} /> {language === 'am' ? 'ዝርዝር' : 'View'}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
       )}
 
       {/* Floating Action Button for Cart Review */}
-      {activeTab === 'create' && cartList.length > 0 && (
+      {activeTab === 'create' && waiterSize === 'compact' && cartList.length > 0 && (
         <button
           className="fab-button"
           onClick={() => {
