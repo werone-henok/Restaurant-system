@@ -415,7 +415,13 @@ export function runMigrations() {
         // Timezone settings
         "ALTER TABLE restaurant_settings ADD COLUMN timezone_mode TEXT DEFAULT 'AUTO'",
         "ALTER TABLE restaurant_settings ADD COLUMN system_timezone TEXT DEFAULT 'Africa/Addis_Ababa'",
-        "ALTER TABLE restaurant_settings ADD COLUMN timezone_offset_minutes INTEGER DEFAULT 180"
+        "ALTER TABLE restaurant_settings ADD COLUMN timezone_offset_minutes INTEGER DEFAULT 180",
+        // Account brute-force lockout protection
+        "ALTER TABLE users ADD COLUMN login_attempts INTEGER DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN login_locked_until DATETIME",
+        // Payment idempotency & receipt verification hash
+        "ALTER TABLE receipts ADD COLUMN verification_hash TEXT",
+        "ALTER TABLE payments ADD COLUMN client_tx_id TEXT"
     ];
     for (const sql of migrations) {
         try {

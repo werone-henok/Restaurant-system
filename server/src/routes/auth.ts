@@ -55,23 +55,95 @@ authRouter.post('/login', validate(loginSchema), async (req, res) => {
     return res.status(401).json({ error: 'Invalid username or password.' });
   }
 
+  // Check if account is temporarily locked due to password attempts
+  if (user.login_locked_until) {
+    const lockExpiry = new Date(user.login_locked_until);
+    if (lockExpiry > new Date()) {
+      const remainingMinutes = Math.ceil((lockExpiry.getTime() - Date.now()) / 60000);
+      return res.status(429).json({
+        error: `Account is temporarily locked due to excessive failed login attempts. Try again in ${remainingMinutes} minute(s).`
+      });
+    }
+  }
+
   // Verify credential (bcrypt-aware, SHA-256 backward-compatible)
   if (password) {
     const valid = await verifySecret(password, user.password_hash);
     if (!valid) {
+      const attempts = (user.login_attempts || 0) + 1;
+      if (attempts >= 5) {
+        const lockTime = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+        db.prepare('UPDATE users SET login_attempts = ?, login_locked_until = ? WHERE id = ?').run(attempts, lockTime, user.id);
+        handleFailedLogin(user.id, username, user.branch_id, req.ip);
+        broadcastEvent({
+          type: 'SUSPICIOUS_ACTIVITY',
+          branchId: user.branch_id || 'branch_addis',
+          targetRole: ['admin', 'owner'],
+          payload: {
+            userId: user.id,
+            username: user.username,
+            attempts: 5,
+            message: `Account "${user.username}" locked for 15 minutes due to 5 consecutive failed password attempts.`
+          }
+        });
+        return res.status(429).json({ error: 'Account locked due to 5 failed password attempts. Try again in 15 minutes.' });
+      }
+
+      db.prepare('UPDATE users SET login_attempts = ? WHERE id = ?').run(attempts, user.id);
       handleFailedLogin(user.id, username, user.branch_id, req.ip);
-      return res.status(401).json({ error: 'Invalid username or password.' });
+      return res.status(401).json({
+        error: `Invalid username or password. ${5 - attempts} attempt(s) remaining before temporary lockout.`
+      });
     }
+
+    // Password valid — reset attempts counter and lockout
+    db.prepare('UPDATE users SET login_attempts = 0, login_locked_until = NULL WHERE id = ?').run(user.id);
   } else if (pin) {
+    // Check if account PIN is currently locked
+    if (user.pin_locked_until) {
+      const lockExpiry = new Date(user.pin_locked_until);
+      if (lockExpiry > new Date()) {
+        const remainingMinutes = Math.ceil((lockExpiry.getTime() - Date.now()) / 60000);
+        return res.status(429).json({
+          error: `PIN login locked due to excessive failed attempts. Try again in ${remainingMinutes} minute(s).`
+        });
+      }
+    }
+
     if (!user.pin_hash) {
       handleFailedLogin(user.id, username, user.branch_id, req.ip);
       return res.status(401).json({ error: 'Invalid PIN.' });
     }
     const valid = await verifySecret(pin, user.pin_hash);
     if (!valid) {
+      const attempts = (user.pin_attempts || 0) + 1;
+      if (attempts >= 5) {
+        const lockTime = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+        db.prepare('UPDATE users SET pin_attempts = ?, pin_locked_until = ? WHERE id = ?').run(attempts, lockTime, user.id);
+        handleFailedLogin(user.id, username, user.branch_id, req.ip);
+        broadcastEvent({
+          type: 'SUSPICIOUS_ACTIVITY',
+          branchId: user.branch_id || 'branch_addis',
+          targetRole: ['admin', 'owner'],
+          payload: {
+            userId: user.id,
+            username: user.username,
+            attempts: 5,
+            message: `Account "${user.username}" PIN locked for 15 minutes due to 5 consecutive failed PIN attempts.`
+          }
+        });
+        return res.status(429).json({ error: 'PIN login locked due to 5 failed attempts. Locked for 15 minutes.' });
+      }
+
+      db.prepare('UPDATE users SET pin_attempts = ? WHERE id = ?').run(attempts, user.id);
       handleFailedLogin(user.id, username, user.branch_id, req.ip);
-      return res.status(401).json({ error: 'Invalid PIN.' });
+      return res.status(401).json({
+        error: `Invalid PIN. ${5 - attempts} attempt(s) remaining before 15-minute lockout.`
+      });
     }
+
+    // PIN valid — reset attempts counter and lockout
+    db.prepare('UPDATE users SET pin_attempts = 0, pin_locked_until = NULL WHERE id = ?').run(user.id);
   } else {
     return res.status(400).json({ error: 'Password or PIN required.' });
   }

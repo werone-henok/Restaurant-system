@@ -48,6 +48,10 @@ async function bootstrap() {
     // ── Security headers ──────────────────────────────────────────────
     app.use(helmet({
         crossOriginResourcePolicy: { policy: 'cross-origin' },
+        xContentTypeOptions: true,
+        xDnsPrefetchControl: { allow: false },
+        xFrameOptions: { action: 'sameorigin' },
+        hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
         contentSecurityPolicy: {
             directives: {
                 defaultSrc: ["'self'"],
@@ -63,6 +67,23 @@ async function bootstrap() {
             }
         }
     }));
+    // ── Sensitive File & Path Traversal Protection ────────────────────
+    app.use((req, res, next) => {
+        let rawPath = '';
+        try {
+            rawPath = decodeURI(req.path).toLowerCase();
+        }
+        catch {
+            return res.status(400).json({ error: 'Malformed request path' });
+        }
+        const BLOCKED_EXTENSIONS = ['.db', '.sqlite', '.sqlite3', '.env', '.git', '.bak', '.map', '.ts', '.yml', '.yaml', '.sh', '.bat', '.log'];
+        const hasBlockedExt = BLOCKED_EXTENSIONS.some(ext => rawPath.endsWith(ext) || rawPath.includes(`${ext}/`));
+        const isHiddenOrTraversal = rawPath.includes('/.') || rawPath.includes('..') || rawPath.includes('//');
+        if (hasBlockedExt || isHiddenOrTraversal) {
+            return res.status(403).json({ error: 'Access denied: protected resource.' });
+        }
+        next();
+    });
     // ── CORS ──────────────────────────────────────────────────────────
     const allowedOrigins = new Set(CONFIG.CORS_ORIGINS);
     app.use(cors({
@@ -119,11 +140,22 @@ async function bootstrap() {
     if (!fs.existsSync(CONFIG.UPLOAD_DIR)) {
         fs.mkdirSync(CONFIG.UPLOAD_DIR, { recursive: true });
     }
-    // 1. Fast static delivery if file is cached locally
-    app.use('/uploads', express.static(CONFIG.UPLOAD_DIR));
+    const ALLOWED_IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg']);
+    // 1. Fast static delivery if file is cached locally (image extensions only)
+    app.use('/uploads', (req, res, next) => {
+        const ext = path.extname(req.path).toLowerCase();
+        if (ext && !ALLOWED_IMAGE_EXTS.has(ext)) {
+            return res.status(403).json({ error: 'Direct access to non-image files in uploads is forbidden.' });
+        }
+        next();
+    }, express.static(CONFIG.UPLOAD_DIR));
     // 2. Cloud fallback: if file was wiped from container disk (e.g. Render restart/redeploy)
     app.get('/uploads/:filename', async (req, res) => {
         const filename = path.basename(req.params.filename);
+        const ext = path.extname(filename).toLowerCase();
+        if (!ALLOWED_IMAGE_EXTS.has(ext)) {
+            return res.status(403).json({ error: 'Invalid file extension requested.' });
+        }
         const localPath = path.join(CONFIG.UPLOAD_DIR, filename);
         if (fs.existsSync(localPath) && fs.statSync(localPath).size > 100) {
             return res.sendFile(localPath);
