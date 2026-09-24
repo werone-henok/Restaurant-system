@@ -188,192 +188,202 @@ export const NotificationCenter: React.FC = () => {
       </button>
 
       {isOpen && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 42,
-            right: 0,
-            width: 340,
-            maxWidth: '90vw',
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-md)',
-            boxShadow: 'var(--shadow-floating)',
-            zIndex: 100,
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-          className="animate-scale-up"
-        >
-          {/* Header */}
+        <>
           <div
+            className="notification-backdrop"
+            onClick={() => setIsOpen(false)}
+          />
+          <div
+            className="notification-dropdown animate-scale-up"
             style={{
-              padding: '12px 16px',
-              borderBottom: '1px solid var(--border)',
+              position: 'absolute',
+              top: 42,
+              right: 0,
+              width: 350,
+              maxWidth: 'calc(100vw - 20px)',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-lg)',
+              boxShadow: 'var(--shadow-floating)',
+              zIndex: 1000,
+              overflow: 'hidden',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: 'var(--bg-subtle)'
+              flexDirection: 'column'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Bell size={15} color="var(--primary)" />
-              <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--text-main)' }}>
-                {t('notifications')}
-              </span>
-              {unreadCount > 0 && (
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    background: 'var(--primary-light)',
-                    color: 'var(--primary)',
-                    padding: '1px 6px',
-                    borderRadius: 10
-                  }}
-                >
-                  {unreadCount} {t('unread')}
+            {/* Header */}
+            <div
+              className="notif-header"
+              style={{
+                padding: '12px 16px',
+                borderBottom: '1px solid var(--border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'var(--bg-subtle)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Bell size={15} color="var(--primary)" />
+                <span className="notif-title">
+                  {t('notifications')}
                 </span>
-              )}
-            </div>
+                {unreadCount > 0 && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      background: 'var(--primary-light)',
+                      color: 'var(--primary)',
+                      padding: '1px 6px',
+                      borderRadius: 10
+                    }}
+                  >
+                    {unreadCount} {t('unread')}
+                  </span>
+                )}
+              </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {unreadCount > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllAsRead}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--primary)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 3,
+                      padding: '2px 6px',
+                      borderRadius: 4
+                    }}
+                    title={t('mark_all_read')}
+                  >
+                    <CheckCheck size={14} />
+                    <span>{t('mark_all_read')}</span>
+                  </button>
+                )}
                 <button
-                  onClick={markAllAsRead}
+                  onClick={() => setIsOpen(false)}
                   style={{
                     background: 'transparent',
                     border: 'none',
-                    color: 'var(--primary)',
-                    fontSize: 11,
-                    fontWeight: 700,
+                    color: 'var(--text-muted)',
                     cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 3,
-                    padding: '2px 6px',
-                    borderRadius: 4
+                    padding: 2
                   }}
-                  title={t('mark_all_read')}
                 >
-                  <CheckCheck size={14} />
-                  <span>{t('mark_all_read')}</span>
+                  <X size={15} />
                 </button>
-              )}
-              <button
-                onClick={() => setIsOpen(false)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  padding: 2
-                }}
-              >
-                <X size={15} />
-              </button>
-            </div>
-          </div>
-
-          {/* List */}
-          <div style={{ maxHeight: 360, overflowY: 'auto' }}>
-            {notifications.length === 0 ? (
-              <div
-                style={{
-                  padding: '36px 16px',
-                  textAlign: 'center',
-                  color: 'var(--text-muted)'
-                }}
-              >
-                <Bell size={28} style={{ opacity: 0.3, margin: '0 auto 8px' }} />
-                <p style={{ fontSize: 13, fontWeight: 600 }}>{t('no_notifications')}</p>
               </div>
-            ) : (
-              notifications.map((item) => {
-                const title = language === 'am' && item.title_amharic ? item.title_amharic : item.title;
-                const message = language === 'am' && item.message_amharic ? item.message_amharic : item.message;
+            </div>
 
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => {
-                      if (!item.is_read) markAsRead(item.id);
-                    }}
-                    style={{
-                      padding: '12px 14px',
-                      display: 'flex',
-                      gap: 10,
-                      alignItems: 'flex-start',
-                      borderBottom: '1px solid var(--border)',
-                      cursor: 'pointer',
-                      background: item.is_read ? 'transparent' : 'rgba(249, 115, 22, 0.05)',
-                      transition: 'background 0.15s ease'
-                    }}
-                  >
+            {/* List */}
+            <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+              {notifications.length === 0 ? (
+                <div
+                  style={{
+                    padding: '36px 16px',
+                    textAlign: 'center',
+                    color: 'var(--text-muted)'
+                  }}
+                >
+                  <Bell size={28} style={{ opacity: 0.3, margin: '0 auto 8px' }} />
+                  <p style={{ fontSize: 13, fontWeight: 600 }}>{t('no_notifications')}</p>
+                </div>
+              ) : (
+                notifications.map((item) => {
+                  const title = language === 'am' && item.title_amharic ? item.title_amharic : item.title;
+                  const message = language === 'am' && item.message_amharic ? item.message_amharic : item.message;
+
+                  return (
                     <div
+                      key={item.id}
+                      onClick={() => {
+                        if (!item.is_read) markAsRead(item.id);
+                      }}
+                      className="notif-item"
                       style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: '50%',
-                        background: 'var(--bg-subtle)',
+                        padding: '12px 14px',
                         display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        marginTop: 2
+                        gap: 10,
+                        alignItems: 'flex-start',
+                        borderBottom: '1px solid var(--border)',
+                        cursor: 'pointer',
+                        background: item.is_read ? 'transparent' : 'rgba(249, 115, 22, 0.05)',
+                        transition: 'background 0.15s ease'
                       }}
                     >
-                      {getNotificationIcon(item.type)}
-                    </div>
-
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
-                        <span
-                          style={{
-                            fontWeight: item.is_read ? 600 : 800,
-                            fontSize: 13,
-                            color: 'var(--text-main)',
-                            lineHeight: 1.3
-                          }}
-                        >
-                          {title}
-                        </span>
-                        <span style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                          {formatRelativeTime(item.created_at)}
-                        </span>
-                      </div>
-                      <p
+                      <div
                         style={{
-                          fontSize: 12,
-                          color: 'var(--text-muted)',
-                          marginTop: 3,
-                          lineHeight: 1.35,
-                          wordBreak: 'break-word'
+                          width: 30,
+                          height: 30,
+                          borderRadius: '50%',
+                          background: 'var(--bg-subtle)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          marginTop: 2
                         }}
                       >
-                        {message}
-                      </p>
-                    </div>
+                        {getNotificationIcon(item.type)}
+                      </div>
 
-                    {!item.is_read && (
-                      <span
-                        style={{
-                          width: 7,
-                          height: 7,
-                          borderRadius: '50%',
-                          background: 'var(--primary)',
-                          flexShrink: 0,
-                          marginTop: 6
-                        }}
-                      />
-                    )}
-                  </div>
-                );
-              })
-            )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+                          <span
+                            className="notif-item-title"
+                            style={{
+                              fontWeight: item.is_read ? 600 : 800,
+                              fontSize: 13,
+                              color: 'var(--text-main)',
+                              lineHeight: 1.3
+                            }}
+                          >
+                            {title}
+                          </span>
+                          <span className="notif-item-time" style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                            {formatRelativeTime(item.created_at)}
+                          </span>
+                        </div>
+                        <p
+                          className="notif-item-desc"
+                          style={{
+                            fontSize: 12,
+                            color: 'var(--text-muted)',
+                            marginTop: 3,
+                            lineHeight: 1.35,
+                            wordBreak: 'break-word'
+                          }}
+                        >
+                          {message}
+                        </p>
+                      </div>
+
+                      {!item.is_read && (
+                        <span
+                          style={{
+                            width: 7,
+                            height: 7,
+                            borderRadius: '50%',
+                            background: 'var(--primary)',
+                            flexShrink: 0,
+                            marginTop: 6
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
