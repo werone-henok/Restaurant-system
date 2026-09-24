@@ -24,12 +24,13 @@ export function seedDatabase() {
   const tx = db.transaction(() => {
     // 1. Settings
     db.prepare(`
-      INSERT INTO restaurant_settings (id, restaurant_name, slogan, primary_color, secondary_color, vat_enabled, vat_percentage, tax_number, receipt_footer, receipt_footer_amharic, default_currency)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO restaurant_settings (id, restaurant_name, slogan, logo_url, primary_color, secondary_color, vat_enabled, vat_percentage, tax_number, receipt_footer, receipt_footer_amharic, default_currency)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       'settings_1',
-      'Habesha Gourmet & Lounge',
-      'Authentic Flavors, Elevated Hospitality',
+      'Yo Burger & Restaurant',
+      'Delicious Burgers & Seamless Hospitality',
+      '/logo.png',
       '#f97316',
       '#0f172a',
       1,

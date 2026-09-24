@@ -351,9 +351,9 @@ export function initDatabase() {
     -- Restaurant and Branding Settings
     CREATE TABLE IF NOT EXISTS restaurant_settings (
       id TEXT PRIMARY KEY,
-      restaurant_name TEXT NOT NULL DEFAULT 'GourmetOS Restaurant & Lounge',
-      slogan TEXT DEFAULT 'Exquisite Taste & Seamless Hospitality',
-      logo_url TEXT,
+      restaurant_name TEXT NOT NULL DEFAULT 'Yo Burger & Restaurant',
+      slogan TEXT DEFAULT 'Delicious Burgers & Seamless Hospitality',
+      logo_url TEXT DEFAULT '/logo.png',
       primary_color TEXT DEFAULT '#f97316',
       secondary_color TEXT DEFAULT '#0f172a',
       vat_enabled INTEGER DEFAULT 1,
@@ -449,23 +449,36 @@ export function runMigrations() {
     db.exec("UPDATE purchase_orders SET receiving_date = date(created_at) WHERE receiving_date IS NULL");
   } catch (_) {}
 
-  // Ensure default restaurant_settings row exists
+  // Ensure default restaurant_settings row exists and is up to date
   try {
-    const existing = db.prepare('SELECT id FROM restaurant_settings LIMIT 1').get();
+    const existing = db.prepare('SELECT id, restaurant_name, logo_url FROM restaurant_settings LIMIT 1').get() as { id: string; restaurant_name: string; logo_url?: string } | undefined;
     if (!existing) {
       db.prepare(`
         INSERT INTO restaurant_settings (
-          id, restaurant_name, slogan, primary_color, secondary_color, 
+          id, restaurant_name, slogan, logo_url, primary_color, secondary_color, 
           vat_enabled, vat_percentage, tax_number, receipt_footer, receipt_footer_amharic, 
           default_currency, timezone_mode, system_timezone, timezone_offset_minutes
         ) VALUES (
-          'settings_default', 'GourmetOS Restaurant & Lounge', 'Exquisite Taste & Seamless Hospitality',
+          'settings_default', 'Yo Burger & Restaurant', 'Delicious Burgers & Seamless Hospitality', '/logo.png',
           '#f97316', '#0f172a', 1, 15.0, 'TIN-0098471201',
           'Thank you for dining with us! Come again soon.', 'ስለመረጡን እናመሰግናለን! እንደገና ይምጡ።',
           'ETB', 'AUTO', 'Africa/Addis_Ababa', 180
         )
       `).run();
       console.log('[Migration] ✓ Initialized default restaurant_settings row');
+    } else {
+      db.prepare(`
+        UPDATE restaurant_settings
+        SET restaurant_name = 'Yo Burger & Restaurant',
+            slogan = 'Delicious Burgers & Seamless Hospitality',
+            logo_url = '/logo.png'
+        WHERE restaurant_name LIKE '%GourmetOS%'
+           OR restaurant_name LIKE '%Habesha%'
+           OR restaurant_name LIKE '%Yo Coffee%'
+           OR logo_url IS NULL
+           OR logo_url = ''
+      `).run();
+      console.log('[Migration] ✓ Verified/updated restaurant_settings branding');
     }
   } catch (e) {
     console.error('[Migration] Failed to initialize default settings:', e);

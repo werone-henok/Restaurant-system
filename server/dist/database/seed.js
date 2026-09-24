@@ -21,9 +21,9 @@ export function seedDatabase() {
     const tx = db.transaction(() => {
         // 1. Settings
         db.prepare(`
-      INSERT INTO restaurant_settings (id, restaurant_name, slogan, primary_color, secondary_color, vat_enabled, vat_percentage, tax_number, receipt_footer, receipt_footer_amharic, default_currency)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run('settings_1', 'Habesha Gourmet & Lounge', 'Authentic Flavors, Elevated Hospitality', '#f97316', '#0f172a', 1, 15.0, 'TIN-102948190', 'Thank you for your visit! / በጉብኝትዎ እናመሰግናለን!', 'በጉብኝትዎ ከልብ እናመሰግናለን! እንደገና ይምጡ።', 'ETB');
+      INSERT INTO restaurant_settings (id, restaurant_name, slogan, logo_url, primary_color, secondary_color, vat_enabled, vat_percentage, tax_number, receipt_footer, receipt_footer_amharic, default_currency)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run('settings_1', 'Yo Burger & Restaurant', 'Delicious Burgers & Seamless Hospitality', '/logo.png', '#f97316', '#0f172a', 1, 15.0, 'TIN-102948190', 'Thank you for your visit! / በጉብኝትዎ እናመሰግናለን!', 'በጉብኝትዎ ከልብ እናመሰግናለን! እንደገና ይምጡ።', 'ETB');
         // 2. Branches
         const branches = [
             { id: 'branch_addis', name: 'Addis Ababa Bole Branch', city: 'Addis Ababa', address: 'Bole Medhanealem Road, Tower 2', phone: '+251911223344' },

@@ -10,9 +10,9 @@ export const OnboardingSlider: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   const slides = [
     {
-      emoji: '🏪',
-      title: "GourmetOS Restaurant",
-      titleAm: "የጎርሜት ኦኤስ ሬስቶራንት",
+      emoji: '🍔',
+      title: "Yo Burger & Restaurant",
+      titleAm: "ዮ በርገር እና ሬስቶራንት",
       subtitle: "Smart hospitality platform built for every team member.",
       subtitleAm: "ለሁሉም ሠራተኞች የተዘጋጀ ቀላልና ዘመናዊ አሰራር።",
       bg: '#ffedd5',

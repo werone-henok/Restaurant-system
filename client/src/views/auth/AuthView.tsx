@@ -136,23 +136,21 @@ export const AuthView: React.FC = () => {
       {/* Brand Heading */}
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <div style={{
-          width: 58,
-          height: 58,
-          borderRadius: 18,
-          background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+          width: 70,
+          height: 70,
+          borderRadius: 20,
           margin: '0 auto 12px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#ffffff',
-          fontWeight: 800,
-          fontSize: 28,
-          boxShadow: '0 8px 16px rgba(249, 115, 22, 0.3)'
+          overflow: 'hidden',
+          boxShadow: '0 8px 18px rgba(0, 0, 0, 0.15)',
+          background: '#000000'
         }}>
-          G
+          <img src="/logo.png" alt="Yo Burger & Restaurant Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </div>
         <h1 style={{ fontSize: 24, fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
-          GourmetOS Restaurant
+          Yo Burger & Restaurant
         </h1>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
           {isForgot

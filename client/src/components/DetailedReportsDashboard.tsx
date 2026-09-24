@@ -93,7 +93,7 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
     if (!dashboard) return;
     try {
       const currency = t('currency') || 'ETB';
-      let csv = `GOURMETOS EXECUTIVE RESTAURANT REPORT\n`;
+      let csv = `YO BURGER & RESTAURANT EXECUTIVE REPORT\n`;
       csv += `Generated At,${new Date().toLocaleString()}\n`;
       csv += `Period,${range.toUpperCase()}\n`;
       csv += `Branch ID,${dashboard.selectedBranch}\n\n`;
@@ -132,7 +132,7 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.setAttribute('href', url);
-      link.setAttribute('download', `GourmetOS_Report_${range}_${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute('download', `Yo_Burger_Report_${range}_${new Date().toISOString().split('T')[0]}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

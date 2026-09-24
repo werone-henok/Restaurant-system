@@ -21,17 +21,18 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
     return () => clearInterval(timer);
   }, []);
 
-  const logoInitial = settings?.restaurant_name?.charAt(0)?.toUpperCase() || 'G';
+  const logoInitial = settings?.restaurant_name?.charAt(0)?.toUpperCase() || 'Y';
+  const logoSrc = settings?.logo_url ? resolveImageUrl(settings.logo_url) : '/logo.png';
 
   return (
     <header className="app-header animated-gradient">
       {/* Branch Selector or Logo */}
       <div className="header-left">
         <div style={{
-          width: 32,
-          height: 32,
-          borderRadius: 8,
-          background: settings?.primary_color ? `linear-gradient(135deg, ${settings.primary_color} 0%, #ea580c 100%)` : 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+          width: 34,
+          height: 34,
+          borderRadius: 9,
+          background: '#000000',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -39,13 +40,17 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
           fontWeight: 800,
           fontSize: 14,
           overflow: 'hidden',
-          flexShrink: 0
+          flexShrink: 0,
+          boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
         }}>
-          {settings?.logo_url ? (
-            <img src={resolveImageUrl(settings.logo_url)} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            logoInitial
-          )}
+          <img
+            src={logoSrc}
+            alt="Yo Burger Logo"
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            onError={(e) => {
+              (e.currentTarget as HTMLElement).style.display = 'none';
+            }}
+          />
         </div>
 
         {user?.role === 'owner' ? (

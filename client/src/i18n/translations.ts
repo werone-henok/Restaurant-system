@@ -3,7 +3,7 @@ export type Language = 'en' | 'am';
 export const translations: Record<Language, Record<string, string>> = {
   en: {
     // App Header & Common
-    app_title: 'GourmetOS Restaurant',
+    app_title: 'Yo Burger & Restaurant',
     online: 'Online',
     offline: 'Offline',
     syncing: 'Syncing...',
@@ -135,7 +135,7 @@ export const translations: Record<Language, Record<string, string>> = {
   },
   am: {
     // App Header & Common
-    app_title: 'ጎርሜትኦኤስ ሬስቶራንት',
+    app_title: 'ዮ በርገር እና ሬስቶራንት',
     online: 'ኦንላይን',
     offline: 'ከመስመር ውጭ (ኦፍላይን)',
     syncing: 'በማመሳሰል ላይ...',

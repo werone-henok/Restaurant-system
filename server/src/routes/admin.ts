@@ -135,11 +135,11 @@ adminRouter.get('/settings', authenticate, (_req, res) => {
   if (!settings) {
     db.prepare(`
       INSERT INTO restaurant_settings (
-        id, restaurant_name, slogan, primary_color, secondary_color, 
+        id, restaurant_name, slogan, logo_url, primary_color, secondary_color, 
         vat_enabled, vat_percentage, tax_number, receipt_footer, receipt_footer_amharic, 
         default_currency, timezone_mode, system_timezone, timezone_offset_minutes
       ) VALUES (
-        'settings_default', 'GourmetOS Restaurant & Lounge', 'Exquisite Taste & Seamless Hospitality',
+        'settings_default', 'Yo Burger & Restaurant', 'Delicious Burgers & Seamless Hospitality', '/logo.png',
         '#f97316', '#0f172a', 1, 15.0, 'TIN-0098471201',
         'Thank you for dining with us! Come again soon.', 'ስለመረጡን እናመሰግናለን! እንደገና ይምጡ።',
         'ETB', 'AUTO', 'Africa/Addis_Ababa', 180

@@ -67,9 +67,9 @@ export const AdminView: React.FC = () => {
   const [branchVatRate, setBranchVatRate] = useState<number>(0.15);
 
   // App Name & Branding Settings State
-  const [appName, setAppName] = useState(settings?.restaurant_name || 'GourmetOS Restaurant & Lounge');
-  const [appSlogan, setAppSlogan] = useState(settings?.slogan || 'Exquisite Taste & Seamless Hospitality');
-  const [appLogo, setAppLogo] = useState<string | null>(settings?.logo_url || null);
+  const [appName, setAppName] = useState(settings?.restaurant_name || 'Yo Burger & Restaurant');
+  const [appSlogan, setAppSlogan] = useState(settings?.slogan || 'Delicious Burgers & Seamless Hospitality');
+  const [appLogo, setAppLogo] = useState<string | null>(settings?.logo_url || '/logo.png');
   const [primaryColor, setPrimaryColor] = useState(settings?.primary_color || '#f97316');
   const [adminTzMode, setAdminTzMode] = useState<'AUTO' | 'MANUAL'>(settings?.timezone_mode || 'AUTO');
   const [adminSysTz, setAdminSysTz] = useState<string>(settings?.system_timezone || 'Africa/Addis_Ababa');
