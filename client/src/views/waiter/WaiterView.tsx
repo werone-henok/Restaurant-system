@@ -5,6 +5,7 @@ import { Plus, Minus, Send, CheckCircle2, Clock, UtensilsCrossed, AlertCircle, S
 import { OrderProgressStepper } from '../../components/OrderProgressStepper';
 import { UniversalStatusBadge } from '../../components/UniversalStatusBadge';
 import { OrderHistoryModal } from '../../components/OrderHistoryModal';
+import { ModifyOrderModal } from '../../components/ModifyOrderModal';
 import { tactileFeedback, speak } from '../../utils/feedback';
 import { gToast } from '../../utils/toast';
 import { resolveImageUrl } from '../../utils/imageUrl';
@@ -41,6 +42,7 @@ export const WaiterView: React.FC = () => {
   const [specialNotes, setSpecialNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [myOrders, setMyOrders] = useState<any[]>([]);
+  const [modifyingOrder, setModifyingOrder] = useState<any | null>(null);
   const [historyOrders, setHistoryOrders] = useState<any[]>([]);
   const [historySearch, setHistorySearch] = useState('');
   const [selectedHistoryOrder, setSelectedHistoryOrder] = useState<any | null>(null);
@@ -765,6 +767,20 @@ export const WaiterView: React.FC = () => {
                     </div>
                   ))}
                 </div>
+
+                {['PENDING_CASHIER', 'CONFIRMED', 'PREPARING', 'PARTIALLY_READY'].includes(o.status) && (
+                  <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={() => setModifyingOrder(o)}
+                      className="btn btn-secondary"
+                      style={{ padding: '6px 12px', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}
+                    >
+                      <span>✏️</span>
+                      {language === 'am' ? 'ትዕዛዝ አስተካክል / ምግብ ቀይር' : 'Modify Order'}
+                    </button>
+                  </div>
+                )}
               </div>
             ))
           )}
@@ -957,6 +973,19 @@ export const WaiterView: React.FC = () => {
           order={selectedHistoryOrder}
           onClose={() => setSelectedHistoryOrder(null)}
           role="waiter"
+        />
+      )}
+
+      {/* Modify Order Modal */}
+      {modifyingOrder && (
+        <ModifyOrderModal
+          order={modifyingOrder}
+          onClose={() => setModifyingOrder(null)}
+          onSuccess={() => {
+            setModifyingOrder(null);
+            // Refresh waiter orders
+            api.request<any[]>('/orders?myOrders=true').then(res => setMyOrders(res || [])).catch(() => {});
+          }}
         />
       )}
     </div>

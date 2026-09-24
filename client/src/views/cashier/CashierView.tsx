@@ -4,6 +4,7 @@ import { api } from '../../api/client';
 import { Check, Printer, DollarSign, Tag, ShieldAlert, ArrowRight, CreditCard, Banknote, Smartphone, Search, Filter, ShoppingBag, Clock, Sparkles, History, Eye, CheckCircle2 } from 'lucide-react';
 import { UniversalStatusBadge } from '../../components/UniversalStatusBadge';
 import { OrderHistoryModal } from '../../components/OrderHistoryModal';
+import { ModifyOrderModal } from '../../components/ModifyOrderModal';
 import { gToast } from '../../utils/toast';
 import { formatOrderDateTime } from '../../utils/timezone';
 
@@ -11,6 +12,7 @@ export const CashierView: React.FC = () => {
   const { currentBranchId, t, language } = useApp();
   const [orders, setOrders] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [modifyingOrder, setModifyingOrder] = useState<any | null>(null);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [discountReason, setDiscountReason] = useState<string>('');
   const [paymentSplits, setPaymentSplits] = useState<{ method: string; amount: number }[]>([
@@ -118,6 +120,9 @@ export const CashierView: React.FC = () => {
       loadOrders();
     } catch (err: any) {
       gToast.error(err.message || 'Confirmation failed');
+      if (err.code === 'INSUFFICIENT_STOCK' || err.message?.toLowerCase().includes('insufficient stock')) {
+        setModifyingOrder(selectedOrder);
+      }
     } finally {
       setLoading(false);
     }
@@ -306,9 +311,42 @@ export const CashierView: React.FC = () => {
               <Check size={20} />
               {loading ? (language === 'am' ? 'በማረጋገጥ ላይ...' : 'Confirming...') : (language === 'am' ? 'ትዕዛዙን አረጋግጥና ላክ' : t('confirm_and_route'))}
             </button>
+
+            <button
+              type="button"
+              onClick={() => setModifyingOrder(selectedOrder)}
+              className="btn btn-secondary btn-block"
+              style={{ height: 42, fontSize: 13, fontWeight: 700, marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+            >
+              <span>✏️</span>
+              {language === 'am' ? 'ትዕዛዝ አስተካክል / ምግብ ቀይር' : 'Modify Order / Change Items'}
+            </button>
           </div>
         ) : (
           <div>
+            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setModifyingOrder(selectedOrder)}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  padding: '6px 12px',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}
+              >
+                <span>✏️</span>
+                {language === 'am' ? 'ትዕዛዝ አስተካክል' : 'Modify Order'}
+              </button>
+            </div>
+
             {/* 1-Tap Payment Selector */}
             <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)', display: 'block', marginBottom: 10 }}>
               {language === 'am' ? 'የክፍያ ዘዴ ይምረጡ (አንድ ጊዜ ይንኩ)' : 'Select Payment Method (1-Tap)'}
@@ -987,6 +1025,19 @@ export const CashierView: React.FC = () => {
           order={selectedHistoryOrder}
           onClose={() => setSelectedHistoryOrder(null)}
           role="cashier"
+        />
+      )}
+
+      {/* Modify Order Modal */}
+      {modifyingOrder && (
+        <ModifyOrderModal
+          order={modifyingOrder}
+          onClose={() => setModifyingOrder(null)}
+          onSuccess={() => {
+            setModifyingOrder(null);
+            setSelectedOrder(null);
+            loadOrders();
+          }}
         />
       )}
     </div>

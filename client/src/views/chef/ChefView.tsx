@@ -5,6 +5,7 @@ import { ChefHat, Clock, CheckCircle2, Play, Flame, RefreshCw, Wifi, WifiOff, Se
 import { UniversalStatusBadge } from '../../components/UniversalStatusBadge';
 import { OrderHistoryModal } from '../../components/OrderHistoryModal';
 import { CreateCategoryModal } from '../../components/CreateCategoryModal';
+import { ModifyOrderModal } from '../../components/ModifyOrderModal';
 import { ImageUploadCompressor } from '../../components/ImageUploadCompressor';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import { gToast } from '../../utils/toast';
@@ -14,6 +15,7 @@ export const ChefView: React.FC = () => {
   const { currentBranchId, t, language } = useApp();
   const [activeTab, setActiveTab] = useState<'queue' | 'history' | 'catalog'>('queue');
   const [kitchenOrders, setKitchenOrders] = useState<any[]>([]);
+  const [modifyingOrder, setModifyingOrder] = useState<any | null>(null);
   const [prepHistory, setPrepHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
@@ -436,6 +438,30 @@ export const ChefView: React.FC = () => {
                           </div>
                         </div>
                       ))}
+                    </div>
+
+                    {/* Modify / Substitute button if an ingredient ran out */}
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
+                      <button
+                        type="button"
+                        onClick={() => setModifyingOrder(order)}
+                        style={{
+                          background: '#fff7ed',
+                          border: '1.5px solid #fed7aa',
+                          color: '#c2410c',
+                          padding: '6px 12px',
+                          borderRadius: 8,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6
+                        }}
+                      >
+                        <span>✏️</span>
+                        {language === 'am' ? 'የግብዓት እጥረት ካለ ምግብ ቀይር / አስተካክል' : 'Modify / Replace Missing Item'}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -907,6 +933,18 @@ export const ChefView: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Modify Order Modal */}
+      {modifyingOrder && (
+        <ModifyOrderModal
+          order={modifyingOrder}
+          onClose={() => setModifyingOrder(null)}
+          onSuccess={() => {
+            setModifyingOrder(null);
+            loadKitchenQueue();
+          }}
+        />
       )}
     </div>
   );

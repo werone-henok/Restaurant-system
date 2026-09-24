@@ -610,7 +610,199 @@ orderRouter.post('/:id/cancel', authenticate, (req: AuthenticatedRequest, res) =
   res.json({ message: 'Order cancelled successfully', status: 'CANCELLED' });
 });
 
-// ── 9. Role-Restricted History Views ─────────────────────────────────
+// 9. Modify Order Items (Designated Users: Waiter, Cashier, Chef, Barista, Admin, Owner)
+// Allows updating items if a customer ordered an item that ran out of ingredients
+orderRouter.put('/:id', authenticate, authorizeRole(['waiter', 'cashier', 'chef', 'barista', 'admin', 'owner']), (req: AuthenticatedRequest, res) => {
+  const orderId = req.params.id;
+  const { items, table_id, special_notes, modification_reason } = req.body;
+
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'Modified order must contain at least one item' });
+  }
+
+  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId) as any;
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+
+  // Only allow modification before completion or cancellation
+  const MODIFIABLE_STATUSES = ['PENDING_CASHIER', 'CONFIRMED', 'PREPARING', 'PARTIALLY_READY'];
+  if (!MODIFIABLE_STATUSES.includes(order.status)) {
+    return res.status(400).json({
+      error: `Orders in status "${order.status}" cannot be modified. Only pending or in-preparation orders can be adjusted.`
+    });
+  }
+
+  // If waiter is modifying, ensure they belong to the same branch
+  if (req.user!.role === 'waiter' && req.user!.branch_id && order.branch_id !== req.user!.branch_id) {
+    return res.status(403).json({ error: 'You are only authorized to modify orders from your assigned branch.' });
+  }
+
+  // Calculate new totals
+  let subtotal = 0;
+  for (const item of items) {
+    if (!item.menu_item_id || !item.name || typeof item.price !== 'number' || typeof item.quantity !== 'number' || item.quantity <= 0) {
+      return res.status(400).json({ error: 'Each order item must have a valid menu item, name, price, and quantity greater than zero.' });
+    }
+    subtotal += item.price * item.quantity;
+  }
+
+  const branchInfo = db.prepare('SELECT vat_rate FROM branches WHERE id = ?').get(order.branch_id) as any;
+  const vatRate = branchInfo?.vat_rate ?? 0.15;
+  const taxAmount = +(subtotal * vatRate).toFixed(2);
+  const discountAmount = order.discount_amount || 0;
+  const totalAmount = +(Math.max(0, subtotal + taxAmount - discountAmount)).toFixed(2);
+
+  const reason = modification_reason || 'Ingredient shortage / Item substitution';
+  const targetTableId = table_id !== undefined ? table_id : order.table_id;
+
+  try {
+    const tx = db.transaction(() => {
+      // 1. If order was already confirmed/in production and had BOM stock deducted, restore previous movements
+      if (['CONFIRMED', 'PREPARING', 'PARTIALLY_READY'].includes(order.status)) {
+        const prevMovements = db.prepare(
+          "SELECT * FROM inventory_movements WHERE reference_id = ? AND movement_type = 'ORDER_CONSUMPTION'"
+        ).all(orderId) as any[];
+
+        for (const mov of prevMovements) {
+          db.prepare(
+            "UPDATE inventory_stock SET current_quantity = current_quantity - ?, updated_at = CURRENT_TIMESTAMP WHERE branch_id = ? AND ingredient_id = ?"
+          ).run(mov.quantity_change, mov.branch_id, mov.ingredient_id);
+        }
+
+        db.prepare(
+          "DELETE FROM inventory_movements WHERE reference_id = ? AND movement_type = 'ORDER_CONSUMPTION'"
+        ).run(orderId);
+      }
+
+      // 2. Replace order items
+      db.prepare('DELETE FROM order_items WHERE order_id = ?').run(orderId);
+
+      const insertItem = db.prepare(`
+        INSERT INTO order_items (id, order_id, menu_item_id, name, price, quantity, notes, routing_destination, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')
+      `);
+
+      for (const it of items) {
+        insertItem.run(
+          `item_${uuidv4().substring(0, 8)}`,
+          orderId,
+          it.menu_item_id,
+          it.name,
+          it.price,
+          it.quantity,
+          it.notes || null,
+          it.routing_destination || 'KITCHEN'
+        );
+      }
+
+      // 3. Update orders table
+      db.prepare(`
+        UPDATE orders
+        SET subtotal = ?,
+            tax_amount = ?,
+            total_amount = ?,
+            table_id = ?,
+            special_notes = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(
+        subtotal,
+        taxAmount,
+        totalAmount,
+        targetTableId || null,
+        special_notes !== undefined ? special_notes : order.special_notes,
+        orderId
+      );
+
+      // 4. If order was already confirmed, re-deduct BOM stock for the new items
+      if (['CONFIRMED', 'PREPARING', 'PARTIALLY_READY'].includes(order.status)) {
+        deductBomStock(String(orderId), String(order.branch_id), String(req.user!.id));
+      }
+
+      // 5. Record status history
+      db.prepare(`
+        INSERT INTO order_status_history (id, order_id, user_id, previous_status, new_status, notes)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(uuidv4(), orderId, req.user!.id, order.status, order.status, `Modified by ${req.user!.full_name} (${req.user!.role}): ${reason}`);
+    });
+
+    tx();
+
+    logAudit({
+      branchId: order.branch_id,
+      userId: req.user!.id,
+      action: 'ORDER_MODIFIED',
+      entityType: 'ORDER',
+      entityId: orderId,
+      details: {
+        orderNumber: order.order_number,
+        modifiedBy: req.user!.full_name,
+        role: req.user!.role,
+        reason,
+        oldTotal: order.total_amount,
+        newTotal: totalAmount,
+        itemsCount: items.length
+      }
+    });
+
+    // Broadcast update across the system to all roles (Waiter, Cashier, Chef, Barista)
+    broadcastEvent({
+      type: 'ORDER_MODIFIED',
+      branchId: order.branch_id,
+      payload: {
+        orderId,
+        orderNumber: order.order_number,
+        status: order.status,
+        subtotal,
+        taxAmount,
+        totalAmount,
+        itemsCount: items.length,
+        modifiedBy: req.user!.full_name,
+        role: req.user!.role,
+        reason
+      }
+    });
+
+    // Also trigger role-specific refresh signals so kitchen/bar queues and cashier update live
+    if (order.status === 'PENDING_CASHIER') {
+      broadcastEvent({
+        type: 'ORDER_PENDING_CASHIER',
+        branchId: order.branch_id,
+        targetRole: ['cashier', 'admin', 'owner'],
+        payload: { orderId, orderNumber: order.order_number, totalAmount }
+      });
+    } else {
+      broadcastEvent({
+        type: 'KITCHEN_NEW_ORDER',
+        branchId: order.branch_id,
+        targetRole: ['chef'],
+        payload: { orderId, orderNumber: order.order_number }
+      });
+      broadcastEvent({
+        type: 'BAR_NEW_ORDER',
+        branchId: order.branch_id,
+        targetRole: ['barista'],
+        payload: { orderId, orderNumber: order.order_number }
+      });
+    }
+
+    res.json({
+      message: 'Order modified successfully',
+      orderId,
+      orderNumber: order.order_number,
+      subtotal,
+      taxAmount,
+      totalAmount,
+      itemsCount: items.length
+    });
+  } catch (err: any) {
+    return res.status(409).json({
+      error: `Failed to modify order: ${err.message}`,
+      code: 'INSUFFICIENT_STOCK'
+    });
+  }
+});
+
+// ── 10. Role-Restricted History Views ─────────────────────────────────
 
 // 9A. Waiter Order History (Only orders created by logged-in waiter)
 orderRouter.get('/history/waiter', authenticate, authorizeRole(['waiter', 'admin', 'owner']), (req: AuthenticatedRequest, res) => {
