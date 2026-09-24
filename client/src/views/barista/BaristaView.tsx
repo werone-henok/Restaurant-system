@@ -5,6 +5,7 @@ import { Coffee, Clock, CheckCircle2, RefreshCw, Wifi, WifiOff, Search, History,
 import { UniversalStatusBadge } from '../../components/UniversalStatusBadge';
 import { OrderHistoryModal } from '../../components/OrderHistoryModal';
 import { gToast } from '../../utils/toast';
+import { formatOrderTime, formatOrderDateTime } from '../../utils/timezone';
 
 export const BaristaView: React.FC = () => {
   const { currentBranchId, t, language } = useApp();
@@ -217,9 +218,16 @@ export const BaristaView: React.FC = () => {
                         {order.table_number ? `Table ${order.table_number}` : order.order_type} • {order.waiter_name}
                       </span>
                     </div>
-                    <span className="badge badge-preparing" style={{ fontSize: 12, padding: '4px 8px' }}>
-                      <Clock size={12} /> {order.status}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {order.created_at && (
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#0284c7', display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <Clock size={12} /> {formatOrderTime(order.created_at, language === 'am' ? 'am-ET' : 'en-US')}
+                        </span>
+                      )}
+                      <span className="badge badge-preparing" style={{ fontSize: 12, padding: '4px 8px' }}>
+                        {order.status}
+                      </span>
+                    </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {order.items?.map((item: any) => (
@@ -341,10 +349,10 @@ export const BaristaView: React.FC = () => {
                     <span>
                       {o.completion_time ? (
                         <span style={{ color: '#059669', fontWeight: 600 }}>
-                          ✓ {language === 'am' ? 'የተጠናቀቀበት:' : 'Completed:'} {new Date(o.completion_time).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          ✓ {language === 'am' ? 'የተጠናቀቀበት:' : 'Completed:'} {formatOrderDateTime(o.completion_time, language === 'am' ? 'am-ET' : 'en-US')}
                         </span>
                       ) : (
-                        new Date(o.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                        formatOrderDateTime(o.created_at, language === 'am' ? 'am-ET' : 'en-US')
                       )}
                     </span>
                   </div>

@@ -8,6 +8,7 @@ import { CreateCategoryModal } from '../../components/CreateCategoryModal';
 import { ImageUploadCompressor } from '../../components/ImageUploadCompressor';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import { gToast } from '../../utils/toast';
+import { formatOrderTime, formatOrderDateTime } from '../../utils/timezone';
 
 export const ChefView: React.FC = () => {
   const { currentBranchId, t, language } = useApp();
@@ -367,7 +368,7 @@ export const ChefView: React.FC = () => {
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#ea580c', fontSize: 12, fontWeight: 700 }}>
                         <Clock size={13} />
-                        {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {formatOrderTime(order.created_at, language === 'am' ? 'am-ET' : 'en-US')}
                       </div>
                     </div>
 
@@ -523,10 +524,10 @@ export const ChefView: React.FC = () => {
                     <span>
                       {o.completion_time ? (
                         <span style={{ color: '#059669', fontWeight: 600 }}>
-                          ✓ {language === 'am' ? 'የተጠናቀቀበት:' : 'Completed:'} {new Date(o.completion_time).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          ✓ {language === 'am' ? 'የተጠናቀቀበት:' : 'Completed:'} {formatOrderDateTime(o.completion_time, language === 'am' ? 'am-ET' : 'en-US')}
                         </span>
                       ) : (
-                        new Date(o.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                        formatOrderDateTime(o.created_at, language === 'am' ? 'am-ET' : 'en-US')
                       )}
                     </span>
                   </div>

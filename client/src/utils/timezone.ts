@@ -29,3 +29,38 @@ export function getDeviceTimezone(): string {
 export function getDeviceOffsetMinutes(): number {
   return -new Date().getTimezoneOffset();
 }
+
+/**
+ * Safely parse a date string from the database (which SQLite returns in UTC as 'YYYY-MM-DD HH:MM:SS')
+ * and ensure it is treated as UTC so the browser converts it to the user's local timezone.
+ */
+export function parseDbDate(dateStr: string | null | undefined | Date): Date {
+  if (!dateStr) return new Date();
+  if (dateStr instanceof Date) return dateStr;
+  let normalized = String(dateStr).trim();
+  // If it's already an ISO string with Z or timezone offset (+XX:XX or -XX:XX), parse directly
+  if (normalized.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(normalized)) {
+    return new Date(normalized);
+  }
+  // If it's "YYYY-MM-DD HH:MM:SS" or "YYYY-MM-DDTHH:MM:SS" from SQLite, append Z so it is treated as UTC
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/.test(normalized)) {
+    normalized = normalized.replace(' ', 'T') + 'Z';
+  }
+  return new Date(normalized);
+}
+
+/**
+ * Format a database timestamp to local time string (e.g. "11:59 AM" or "12:07 ከሰዓት")
+ */
+export function formatOrderTime(dateStr: string | null | undefined | Date, locale?: string | string[]): string {
+  const d = parseDbDate(dateStr);
+  return d.toLocaleTimeString(locale || [], { hour: '2-digit', minute: '2-digit' });
+}
+
+/**
+ * Format a database timestamp to local date-time string (e.g. "Sep 24, 11:59 AM")
+ */
+export function formatOrderDateTime(dateStr: string | null | undefined | Date, locale?: string | string[]): string {
+  const d = parseDbDate(dateStr);
+  return d.toLocaleString(locale || [], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}

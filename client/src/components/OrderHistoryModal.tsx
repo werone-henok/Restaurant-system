@@ -4,6 +4,7 @@ import { X, Clock, MapPin, User, Calendar, DollarSign, CheckCircle2, AlertTriang
 import { UniversalStatusBadge } from './UniversalStatusBadge';
 import { useApp } from '../context/AppContext';
 import { resolveImageUrl } from '../utils/imageUrl';
+import { parseDbDate, formatOrderTime } from '../utils/timezone';
 
 interface OrderHistoryModalProps {
   order: any | null;
@@ -19,7 +20,7 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({ order, onC
   const formatDate = (isoString?: string) => {
     if (!isoString) return '—';
     try {
-      const d = new Date(isoString);
+      const d = parseDbDate(isoString);
       return d.toLocaleString(language === 'am' ? 'am-ET' : 'en-US', {
         month: 'short',
         day: 'numeric',
@@ -350,7 +351,7 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({ order, onC
                             {it.status === 'READY' && (
                               <span style={{ color: '#059669', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 2 }}>
                                 <CheckCircle2 size={11} /> {language === 'am' ? 'ተጠናቋል' : 'Ready'}
-                                {it.ready_at && ` (${new Date(it.ready_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`}
+                                {it.ready_at && ` (${formatOrderTime(it.ready_at, language === 'am' ? 'am-ET' : 'en-US')})`}
                               </span>
                             )}
                           </div>

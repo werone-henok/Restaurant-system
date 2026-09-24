@@ -8,6 +8,7 @@ import { OrderHistoryModal } from '../../components/OrderHistoryModal';
 import { tactileFeedback, speak } from '../../utils/feedback';
 import { gToast } from '../../utils/toast';
 import { resolveImageUrl } from '../../utils/imageUrl';
+import { formatOrderDateTime } from '../../utils/timezone';
 
 const CATEGORY_EMOJIS: Record<string, string> = {
   cat_burgers: '🍔',
@@ -868,7 +869,7 @@ export const WaiterView: React.FC = () => {
                         {o.table_number ? `Table ${o.table_number}` : (o.table_name || o.order_type)}
                       </div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                        {new Date(o.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {formatOrderDateTime(o.created_at, language === 'am' ? 'am-ET' : 'en-US')}
                       </div>
                     </div>
                   </div>

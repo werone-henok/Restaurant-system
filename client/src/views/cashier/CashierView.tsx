@@ -5,6 +5,7 @@ import { Check, Printer, DollarSign, Tag, ShieldAlert, ArrowRight, CreditCard, B
 import { UniversalStatusBadge } from '../../components/UniversalStatusBadge';
 import { OrderHistoryModal } from '../../components/OrderHistoryModal';
 import { gToast } from '../../utils/toast';
+import { formatOrderDateTime } from '../../utils/timezone';
 
 export const CashierView: React.FC = () => {
   const { currentBranchId, t, language } = useApp();
@@ -824,10 +825,10 @@ export const CashierView: React.FC = () => {
                         <span>
                           {o.approval_at ? (
                             <span style={{ color: '#0369a1', fontWeight: 600 }}>
-                              ✓ {language === 'am' ? 'የተረጋገጠበት:' : 'Approved:'} {new Date(o.approval_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              ✓ {language === 'am' ? 'የተረጋገጠበት:' : 'Approved:'} {formatOrderDateTime(o.approval_at, language === 'am' ? 'am-ET' : 'en-US')}
                             </span>
                           ) : (
-                            new Date(o.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                            formatOrderDateTime(o.created_at, language === 'am' ? 'am-ET' : 'en-US')
                           )}
                         </span>
                         <span style={{ fontWeight: 600 }}>
