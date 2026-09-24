@@ -70,7 +70,8 @@ export const AdminView: React.FC = () => {
   const [appName, setAppName] = useState(settings?.restaurant_name || 'Yo Burger & Restaurant');
   const [appSlogan, setAppSlogan] = useState(settings?.slogan || 'Delicious Burgers & Seamless Hospitality');
   const [appLogo, setAppLogo] = useState<string | null>(settings?.logo_url || '/logo.png');
-  const [primaryColor, setPrimaryColor] = useState(settings?.primary_color || '#f97316');
+  const [primaryColor, setPrimaryColor] = useState(settings?.primary_color || '#ff9e01');
+  const [secondaryColor, setSecondaryColor] = useState(settings?.secondary_color || '#940500');
   const [adminTzMode, setAdminTzMode] = useState<'AUTO' | 'MANUAL'>(settings?.timezone_mode || 'AUTO');
   const [adminSysTz, setAdminSysTz] = useState<string>(settings?.system_timezone || 'Africa/Addis_Ababa');
 
@@ -80,6 +81,7 @@ export const AdminView: React.FC = () => {
       if (settings.slogan) setAppSlogan(settings.slogan);
       if (settings.logo_url) setAppLogo(settings.logo_url);
       if (settings.primary_color) setPrimaryColor(settings.primary_color);
+      if (settings.secondary_color) setSecondaryColor(settings.secondary_color);
       if (settings.timezone_mode) setAdminTzMode(settings.timezone_mode);
       if (settings.system_timezone) setAdminSysTz(settings.system_timezone);
     }
@@ -246,7 +248,8 @@ export const AdminView: React.FC = () => {
       setAppName(settings.restaurant_name);
       setAppSlogan(settings.slogan || '');
       setAppLogo(settings.logo_url || null);
-      setPrimaryColor(settings.primary_color || '#f97316');
+      setPrimaryColor(settings.primary_color || '#ff9e01');
+      setSecondaryColor(settings.secondary_color || '#940500');
     }
   }, [settings]);
 
@@ -360,6 +363,7 @@ export const AdminView: React.FC = () => {
           slogan: appSlogan,
           logo_url: appLogo,
           primary_color: primaryColor,
+          secondary_color: secondaryColor,
           timezone_mode: adminTzMode,
           system_timezone: adminSysTz,
           timezone_offset_minutes: offsetMin
@@ -701,18 +705,78 @@ export const AdminView: React.FC = () => {
             />
           </div>
 
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-              Primary Brand Accent Color
+          <div style={{ marginBottom: 18, background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 12, padding: 14 }}>
+            <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)', display: 'block', marginBottom: 10 }}>
+              🎨 Brand Theme Colors (Extracted from Brand Logo)
             </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <input
-                type="color"
-                value={primaryColor}
-                onChange={e => setPrimaryColor(e.target.value)}
-                style={{ width: 44, height: 44, padding: 2, cursor: 'pointer' }}
-              />
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>{primaryColor}</span>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 12 }}>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                  Primary (Top Ring & Arrow)
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="color"
+                    value={primaryColor}
+                    onChange={e => setPrimaryColor(e.target.value)}
+                    style={{ width: 40, height: 40, padding: 2, cursor: 'pointer', borderRadius: 8 }}
+                  />
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-main)' }}>{primaryColor}</span>
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                  Secondary (Bottom Ring Crimson)
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="color"
+                    value={secondaryColor}
+                    onChange={e => setSecondaryColor(e.target.value)}
+                    style={{ width: 40, height: 40, padding: 2, cursor: 'pointer', borderRadius: 8 }}
+                  />
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-main)' }}>{secondaryColor}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Logo Palette Swatches */}
+            <div>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                Logo Palette Presets:
+              </span>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {[
+                  { name: 'Burger Amber', hex: '#ff9e01' },
+                  { name: 'Crimson Wine', hex: '#940500' },
+                  { name: 'Lettuce Green', hex: '#3db048' },
+                  { name: 'Cheddar Gold', hex: '#eac249' },
+                  { name: 'Obsidian Noir', hex: '#121117' }
+                ].map(sw => (
+                  <button
+                    key={sw.hex}
+                    type="button"
+                    onClick={() => setPrimaryColor(sw.hex)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '4px 10px',
+                      borderRadius: 16,
+                      background: 'var(--bg-card)',
+                      border: primaryColor.toLowerCase() === sw.hex.toLowerCase() ? '2px solid var(--primary)' : '1px solid var(--border)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <span style={{ width: 12, height: 12, borderRadius: '50%', background: sw.hex, display: 'inline-block' }} />
+                    <span>{sw.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

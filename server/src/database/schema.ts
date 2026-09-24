@@ -354,8 +354,8 @@ export function initDatabase() {
       restaurant_name TEXT NOT NULL DEFAULT 'Yo Burger & Restaurant',
       slogan TEXT DEFAULT 'Delicious Burgers & Seamless Hospitality',
       logo_url TEXT DEFAULT '/logo.png',
-      primary_color TEXT DEFAULT '#f97316',
-      secondary_color TEXT DEFAULT '#0f172a',
+      primary_color TEXT DEFAULT '#ff9e01',
+      secondary_color TEXT DEFAULT '#940500',
       vat_enabled INTEGER DEFAULT 1,
       vat_percentage REAL DEFAULT 15.0,
       tax_number TEXT DEFAULT 'TIN-0098471201',
@@ -460,7 +460,7 @@ export function runMigrations() {
           default_currency, timezone_mode, system_timezone, timezone_offset_minutes
         ) VALUES (
           'settings_default', 'Yo Burger & Restaurant', 'Delicious Burgers & Seamless Hospitality', '/logo.png',
-          '#f97316', '#0f172a', 1, 15.0, 'TIN-0098471201',
+          '#ff9e01', '#940500', 1, 15.0, 'TIN-0098471201',
           'Thank you for dining with us! Come again soon.', 'ስለመረጡን እናመሰግናለን! እንደገና ይምጡ።',
           'ETB', 'AUTO', 'Africa/Addis_Ababa', 180
         )
@@ -471,14 +471,18 @@ export function runMigrations() {
         UPDATE restaurant_settings
         SET restaurant_name = 'Yo Burger & Restaurant',
             slogan = 'Delicious Burgers & Seamless Hospitality',
-            logo_url = '/logo.png'
+            logo_url = '/logo.png',
+            primary_color = '#ff9e01',
+            secondary_color = '#940500'
         WHERE restaurant_name LIKE '%GourmetOS%'
            OR restaurant_name LIKE '%Habesha%'
            OR restaurant_name LIKE '%Yo Coffee%'
+           OR primary_color = '#f97316'
+           OR secondary_color = '#0f172a'
            OR logo_url IS NULL
            OR logo_url = ''
       `).run();
-      console.log('[Migration] ✓ Verified/updated restaurant_settings branding');
+      console.log('[Migration] ✓ Verified/updated restaurant_settings branding & theme colors');
     }
   } catch (e) {
     console.error('[Migration] Failed to initialize default settings:', e);

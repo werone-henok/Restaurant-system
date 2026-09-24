@@ -131,7 +131,7 @@ export const AuthView: React.FC = () => {
       flexDirection: 'column',
       justifyContent: 'center',
       padding: '32px 20px',
-      background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)'
+      background: 'linear-gradient(180deg, rgba(255, 158, 1, 0.08) 0%, var(--bg-app) 28%, var(--bg-app) 100%)'
     }}>
       {/* Brand Heading */}
       <div style={{ textAlign: 'center', marginBottom: 24 }}>

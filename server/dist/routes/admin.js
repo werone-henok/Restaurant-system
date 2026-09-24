@@ -118,7 +118,7 @@ adminRouter.get('/settings', authenticate, (_req, res) => {
         default_currency, timezone_mode, system_timezone, timezone_offset_minutes
       ) VALUES (
         'settings_default', 'Yo Burger & Restaurant', 'Delicious Burgers & Seamless Hospitality', '/logo.png',
-        '#f97316', '#0f172a', 1, 15.0, 'TIN-0098471201',
+        '#ff9e01', '#940500', 1, 15.0, 'TIN-0098471201',
         'Thank you for dining with us! Come again soon.', 'ስለመረጡን እናመሰግናለን! እንደገና ይምጡ።',
         'ETB', 'AUTO', 'Africa/Addis_Ababa', 180
       )
@@ -139,7 +139,7 @@ adminRouter.put('/settings', authenticate, authorizeRole(['admin', 'owner']), (r
       ) VALUES (
         'settings_default', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
-    `).run(restaurant_name || 'GourmetOS Restaurant & Lounge', slogan || 'Exquisite Taste & Seamless Hospitality', primary_color || '#f97316', secondary_color || '#0f172a', vat_enabled ?? 1, vat_percentage ?? 15.0, tax_number || 'TIN-0098471201', receipt_footer || 'Thank you for dining with us! Come again soon.', receipt_footer_amharic || 'ስለመረጡን እናመሰግናለን! እንደገና ይምጡ።', default_currency || 'ETB', timezone_mode || 'AUTO', system_timezone || 'Africa/Addis_Ababa', timezone_offset_minutes ?? 180);
+    `).run(restaurant_name || 'Yo Burger & Restaurant', slogan || 'Delicious Burgers & Seamless Hospitality', primary_color || '#ff9e01', secondary_color || '#940500', vat_enabled ?? 1, vat_percentage ?? 15.0, tax_number || 'TIN-0098471201', receipt_footer || 'Thank you for dining with us! Come again soon.', receipt_footer_amharic || 'ስለመረጡን እናመሰግናለን! እንደገና ይምጡ።', default_currency || 'ETB', timezone_mode || 'AUTO', system_timezone || 'Africa/Addis_Ababa', timezone_offset_minutes ?? 180);
     }
     else {
         db.prepare(`

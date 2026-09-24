@@ -1,42 +1,50 @@
 /* ═══════════════════════════════════════════════════════════════════
-   GourmetOS Design System — index.css
-   Light Mode (default) + Dark Mode (.dark class on <html>)
+   Yo Burger & Restaurant Design System — index.css
+   Signature Palette Extracted Directly from Brand Logo:
+   - Primary Golden Amber: #ff9e01
+   - Deep Crimson Burgundy: #940500
+   - Fresh Ingredient Green: #3db048
+   - Cheddar Cheese Gold: #eac249
+   - Sleek Obsidian Noir: #121117
    ═══════════════════════════════════════════════════════════════════ */
 
 :root {
   --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-family-am: 'Noto Sans Ethiopic', 'Plus Jakarta Sans', sans-serif;
 
-  /* Brand Colors (shared) */
-  --primary: #f97316;
-  --primary-hover: #ea580c;
-  --primary-light: #ffedd5;
-  --accent: #10b981;
-  --accent-light: #d1fae5;
-  --danger: #ef4444;
+  /* Brand Colors (Yo Burger & Restaurant) */
+  --primary: #ff9e01;
+  --primary-hover: #ea8c00;
+  --primary-light: #fff6e8;
+  --secondary-brand: #940500;
+  --secondary-brand-hover: #7b0400;
+  --secondary-brand-light: #fef2f2;
+  --accent: #3db048;
+  --accent-light: #eaf8ec;
+  --danger: #940500;
   --danger-light: #fee2e2;
-  --warning: #f59e0b;
-  --warning-light: #fef3c7;
-  --info: #0ea5e9;
+  --warning: #eac249;
+  --warning-light: #fef9e8;
+  --info: #0284c7;
   --info-light: #e0f2fe;
 
-  /* Light Mode Surfaces */
-  --secondary: #0f172a;
-  --secondary-light: #1e293b;
-  --bg-app: #f8fafc;
+  /* Surfaces & Structural */
+  --secondary: #121117;
+  --secondary-light: #1e1d24;
+  --bg-app: #f9f9fb;
   --bg-card: #ffffff;
-  --bg-subtle: #f1f5f9;
-  --border: #e2e8f0;
-  --border-focus: #f97316;
-  --text-main: #0f172a;
+  --bg-subtle: #f2f2f6;
+  --border: #e4e4eb;
+  --border-focus: #ff9e01;
+  --text-main: #121117;
   --text-muted: #64748b;
   --text-inverse: #ffffff;
 
   /* Elevations */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-floating: 0 20px 25px -5px rgb(0 0 0 / 0.15), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+  --shadow-floating: 0 20px 25px -5px rgb(0 0 0 / 0.12), 0 8px 10px -6px rgb(0 0 0 / 0.08);
 
   /* Radii */
   --radius-sm: 8px;
@@ -50,38 +58,39 @@
   --nav-height: 68px;
 
   /* Skeleton shimmer */
-  --skeleton-base: #e2e8f0;
-  --skeleton-highlight: #f8fafc;
+  --skeleton-base: #e4e4eb;
+  --skeleton-highlight: #f9f9fb;
 }
 
 /* ─── Dark Mode overrides ──────────────────────────────────────────── */
 html.dark {
   color-scheme: dark;
 
-  --bg-app: #0a0f1e;
-  --bg-card: #111827;
-  --bg-subtle: #1a2236;
-  --border: #1e2d45;
-  --border-focus: #f97316;
-  --text-main: #f1f5f9;
-  --text-muted: #94a3b8;
-  --text-inverse: #0f172a;
-  --secondary: #e2e8f0;
-  --secondary-light: #f1f5f9;
+  --bg-app: #0c0b0e;
+  --bg-card: #141318;
+  --bg-subtle: #1e1c24;
+  --border: #292733;
+  --border-focus: #ff9e01;
+  --text-main: #f8fafc;
+  --text-muted: #9ba3af;
+  --text-inverse: #0c0b0e;
+  --secondary: #f1f5f9;
+  --secondary-light: #ffffff;
 
-  --primary-light: rgba(249, 115, 22, 0.15);
-  --accent-light: rgba(16, 185, 129, 0.15);
-  --danger-light: rgba(239, 68, 68, 0.15);
-  --warning-light: rgba(245, 158, 11, 0.15);
-  --info-light: rgba(14, 165, 233, 0.15);
+  --primary-light: rgba(255, 158, 1, 0.16);
+  --secondary-brand-light: rgba(148, 5, 0, 0.22);
+  --accent-light: rgba(61, 176, 72, 0.18);
+  --danger-light: rgba(148, 5, 0, 0.24);
+  --warning-light: rgba(234, 194, 73, 0.18);
+  --info-light: rgba(2, 132, 199, 0.18);
 
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.3);
-  --shadow-floating: 0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.4);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.6), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+  --shadow-floating: 0 20px 25px -5px rgb(0 0 0 / 0.7), 0 8px 10px -6px rgb(0 0 0 / 0.5);
 
-  --skeleton-base: #1e2d45;
-  --skeleton-highlight: #253551;
+  --skeleton-base: #1e1c24;
+  --skeleton-highlight: #2c2938;
 }
 
 /* ─── Reset ─────────────────────────────────────────────────────────── */
@@ -127,7 +136,7 @@ input, select, textarea {
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+  box-shadow: 0 0 0 3px rgba(255, 158, 1, 0.2);
 }
 
 /* ─── Scrollbar ──────────────────────────────────────────────────────── */
@@ -387,10 +396,11 @@ input:focus, select:focus, textarea:focus {
 }
 
 .app-header.animated-gradient {
-  background: linear-gradient(135deg, #f97316, #ea580c, #c2410c);
+  background: linear-gradient(135deg, #ff9e01 0%, #db5806 48%, #940500 100%);
   background-size: 200% 200%;
   animation: gradientShift 8s ease infinite;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 20px rgba(148, 5, 0, 0.18);
   color: #ffffff;
 }
 
@@ -418,12 +428,12 @@ input:focus, select:focus, textarea:focus {
   width: 54px;
   height: 54px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), #ea580c);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--primary), #ea8c00);
+  color: #121117;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px rgba(249, 115, 22, 0.45);
+  box-shadow: 0 8px 24px rgba(255, 158, 1, 0.45);
   z-index: 39;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
   cursor: pointer;
@@ -598,11 +608,26 @@ html.dark .glass-card {
 .btn:active { transform: scale(0.98); }
 
 .btn-primary {
-  background: var(--primary);
-  color: white;
-  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);
+  background: linear-gradient(135deg, #ff9e01, #f28b00);
+  color: #121117;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(255, 158, 1, 0.35);
 }
-.btn-primary:hover { background: var(--primary-hover); }
+.btn-primary:hover {
+  background: linear-gradient(135deg, #ea8c00, #d97706);
+  color: #121117;
+}
+
+.btn-crimson {
+  background: linear-gradient(135deg, #940500, #7b0400);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(148, 5, 0, 0.32);
+}
+.btn-crimson:hover {
+  background: #7b0400;
+  color: #ffffff;
+}
 
 .btn-secondary {
   background: var(--bg-subtle);
@@ -614,10 +639,14 @@ html.dark .glass-card {
 .btn-danger {
   background: var(--danger);
   color: white;
+  box-shadow: 0 4px 12px rgba(148, 5, 0, 0.25);
 }
+.btn-danger:hover { background: var(--secondary-brand-hover); }
+
 .btn-success {
   background: var(--accent);
   color: white;
+  box-shadow: 0 4px 12px rgba(61, 176, 72, 0.25);
 }
 .btn-block { width: 100%; }
 

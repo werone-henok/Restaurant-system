@@ -152,6 +152,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [token]);
 
+  // Dynamically synchronize theme colors from settings
+  useEffect(() => {
+    if (settings?.primary_color) {
+      document.documentElement.style.setProperty('--primary', settings.primary_color);
+      document.documentElement.style.setProperty('--border-focus', settings.primary_color);
+    }
+    if (settings?.secondary_color) {
+      document.documentElement.style.setProperty('--secondary-brand', settings.secondary_color);
+    }
+  }, [settings]);
+
   const login = (newUser: User, newToken: string) => {
     setUser(newUser);
     setToken(newToken);
