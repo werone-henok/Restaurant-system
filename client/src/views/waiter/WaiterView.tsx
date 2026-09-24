@@ -29,15 +29,6 @@ const CATEGORY_NAMES_AM: Record<string, string> = {
   cat_traditional: 'ባህላዊ ምግቦች'
 };
 
-export const WAITER_SIZES = [
-  { id: 'compact', label: '📱 540', tip: 'Phone (540px)' },
-  { id: 'tablet', label: '📟 960', tip: 'Tablet (960px)' },
-  { id: 'wide', label: '🖥️ 1400', tip: 'Desktop (1400px)' },
-  { id: 'full', label: '↔️ Full', tip: 'Full Window (100%)' }
-] as const;
-
-export type WaiterSize = 'compact' | 'tablet' | 'wide' | 'full';
-
 export const WaiterView: React.FC = () => {
   const { currentBranchId, t, user, language } = useApp();
   const [activeTab, setActiveTab] = useState<'create' | 'active' | 'ready' | 'history'>('create');
@@ -60,19 +51,13 @@ export const WaiterView: React.FC = () => {
   const [isConnected, setIsConnected] = useState(api.isConnected);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const [waiterSize, setWaiterSize] = useState<WaiterSize>(() => {
-    return (localStorage.getItem('waiter_screen_size') as WaiterSize) || 'tablet';
-  });
-
-  const changeWaiterSize = (size: WaiterSize) => {
-    setWaiterSize(size);
-    localStorage.setItem('waiter_screen_size', size);
-    window.dispatchEvent(new CustomEvent('waiter_size_changed', { detail: size }));
-  };
+  const [isWide, setIsWide] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 860);
 
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent('waiter_size_changed', { detail: waiterSize }));
-  }, [waiterSize]);
+    const handleResize = () => setIsWide(window.innerWidth >= 860);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
 
   // Auto-refresh fallback (30 seconds)
@@ -245,35 +230,40 @@ export const WaiterView: React.FC = () => {
   const activeOrders = myOrders.filter(o => ['PENDING_CASHIER', 'CONFIRMED', 'PREPARING', 'PARTIALLY_READY'].includes(o.status));
 
   const renderTablePicker = () => (
-    <div style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: 14, padding: 14, marginBottom: 16, boxShadow: 'var(--shadow-sm)' }}>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        {(['DINE_IN', 'TAKEAWAY', 'DELIVERY'] as const).map(type => (
-          <button
-            key={type}
-            type="button"
-            onClick={() => setOrderType(type)}
-            style={{
-              flex: 1,
-              padding: '8px 4px',
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: 700,
-              border: orderType === type ? '1.5px solid var(--primary)' : '1px solid var(--border)',
-              background: orderType === type ? 'var(--primary-light)' : 'transparent',
-              color: orderType === type ? 'var(--primary)' : 'var(--text-muted)'
-            }}
-          >
-            {type === 'DINE_IN' ? t('dine_in') : type === 'TAKEAWAY' ? t('takeaway') : t('delivery')}
-          </button>
-        ))}
+    <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 16, padding: 16, marginBottom: 16, boxShadow: 'var(--shadow-sm)' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        {(['DINE_IN', 'TAKEAWAY', 'DELIVERY'] as const).map(type => {
+          const isSelected = orderType === type;
+          return (
+            <button
+              key={type}
+              type="button"
+              onClick={() => setOrderType(type)}
+              style={{
+                flex: 1,
+                padding: '10px 4px',
+                borderRadius: 10,
+                fontSize: 12,
+                fontWeight: 800,
+                border: isSelected ? '2px solid #ea580c' : '1px solid var(--border, #e2e8f0)',
+                background: isSelected ? '#fff7ed' : 'var(--bg-subtle, #f8fafc)',
+                color: isSelected ? '#ea580c' : 'var(--text-main, #334155)',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              {type === 'DINE_IN' ? t('dine_in') : type === 'TAKEAWAY' ? t('takeaway') : t('delivery')}
+            </button>
+          );
+        })}
       </div>
 
       {orderType === 'DINE_IN' && (
         <div>
-          <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)', display: 'block', marginBottom: 8 }}>
-            📍 {t('select_table')} {selectedTable && <span style={{ color: 'var(--primary)', fontWeight: 800 }}>({tables.find(tb => tb.id === selectedTable)?.table_number || ''})</span>}
+          <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main, #0f172a)', display: 'block', marginBottom: 10 }}>
+            📍 {t('select_table')} {selectedTable && <span style={{ color: '#ea580c', fontWeight: 900 }}>({tables.find(tb => tb.id === selectedTable)?.table_number || ''})</span>}
           </label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 8 }}>
             {tables.map(tbl => {
               const isSelected = selectedTable === tbl.id;
               const isOccupied = tbl.status === 'OCCUPIED';
@@ -286,24 +276,25 @@ export const WaiterView: React.FC = () => {
                     padding: '10px 4px',
                     borderRadius: 12,
                     textAlign: 'center',
-                    border: isSelected ? '2.5px solid var(--primary)' : '1px solid var(--border)',
-                    background: isSelected ? 'var(--primary-light)' : isOccupied ? '#fef2f2' : 'var(--bg-card)',
-                    color: isSelected ? 'var(--primary)' : 'var(--text-main)',
-                    boxShadow: isSelected ? '0 0 0 2px var(--primary)' : 'var(--shadow-sm)',
+                    border: isSelected ? '2.5px solid #ea580c' : '1px solid var(--border, #e2e8f0)',
+                    background: isSelected ? '#fff7ed' : isOccupied ? '#fef2f2' : 'var(--bg-card, #ffffff)',
+                    color: isSelected ? '#ea580c' : 'var(--text-main, #0f172a)',
+                    boxShadow: isSelected ? '0 0 0 2px rgba(234, 88, 12, 0.25)' : 'var(--shadow-sm)',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 3,
+                    cursor: 'pointer',
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  <span style={{ fontSize: 15, fontWeight: 800 }}>
+                  <span style={{ fontSize: 16, fontWeight: 900 }}>
                     {tbl.table_number}
                   </span>
                   <span style={{
                     fontSize: 9,
-                    fontWeight: 700,
+                    fontWeight: 800,
                     padding: '2px 6px',
                     borderRadius: 4,
                     background: isOccupied ? '#ef4444' : '#10b981',
@@ -320,24 +311,229 @@ export const WaiterView: React.FC = () => {
     </div>
   );
 
+  const renderCategories = () => (
+    <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 10, marginBottom: 12 }}>
+      <button
+        onClick={() => setSelectedCategory('all')}
+        style={{
+          padding: '8px 16px',
+          borderRadius: 20,
+          fontSize: 13,
+          fontWeight: 800,
+          whiteSpace: 'nowrap',
+          background: selectedCategory === 'all' ? '#1e293b' : 'var(--bg-subtle, #f1f5f9)',
+          color: selectedCategory === 'all' ? '#ffffff' : 'var(--text-main, #334155)',
+          border: selectedCategory === 'all' ? '1px solid #1e293b' : '1px solid var(--border, #e2e8f0)',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          cursor: 'pointer',
+          transition: 'all 0.15s ease'
+        }}
+      >
+        <span>🍽️</span> {language === 'am' ? 'ሁሉም' : 'All Items'}
+      </button>
+      {categories.map(c => {
+        const isSelected = selectedCategory === c.id;
+        return (
+          <button
+            key={c.id}
+            onClick={() => setSelectedCategory(c.id)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 20,
+              fontSize: 13,
+              fontWeight: 800,
+              whiteSpace: 'nowrap',
+              background: isSelected ? '#1e293b' : 'var(--bg-subtle, #f1f5f9)',
+              color: isSelected ? '#ffffff' : 'var(--text-main, #334155)',
+              border: isSelected ? '1px solid #1e293b' : '1px solid var(--border, #e2e8f0)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span>{CATEGORY_EMOJIS[c.id] || '🍴'}</span>
+            <span>{language === 'am' ? (c.name_amharic || CATEGORY_NAMES_AM[c.id] || c.name) : c.name}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const renderMenuItems = () => (
+    <div className="waiter-menu-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14, marginBottom: 20 }}>
+      {filteredMenuItems.map(m => {
+        const inCart = cart[m.id]?.quantity || 0;
+        return (
+          <div
+            key={m.id}
+            style={{
+              background: 'var(--bg-card, #ffffff)',
+              border: '1px solid var(--border, #e2e8f0)',
+              borderRadius: 14,
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+            }}
+          >
+            {/* Photo or Gradient Avatar Banner */}
+            <div style={{ position: 'relative', width: '100%', height: 120, background: 'linear-gradient(135deg, #f97316, #ea580c)', overflow: 'hidden' }}>
+              {m.photo_url ? (
+                <img
+                  src={resolveImageUrl(m.photo_url)}
+                  alt={m.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const fallback = target.parentElement?.querySelector('.waiter-item-initial') as HTMLElement;
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+              ) : null}
+              {/* Fallback initial if no photo */}
+              <div
+                className="waiter-item-initial"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: m.photo_url ? 'none' : 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ffffff',
+                  fontSize: 32,
+                  fontWeight: 800
+                }}
+              >
+                {m.name.charAt(0)}
+              </div>
+
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 8,
+                  left: 8,
+                  fontSize: 9,
+                  fontWeight: 800,
+                  color: m.routing_destination === 'KITCHEN' ? '#b45309' : '#0284c7',
+                  background: m.routing_destination === 'KITCHEN' ? 'rgba(254, 243, 199, 0.95)' : 'rgba(224, 242, 254, 0.95)',
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  backdropFilter: 'blur(4px)'
+                }}
+              >
+                {m.routing_destination}
+              </span>
+            </div>
+
+            <div style={{ padding: 12, display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
+              <div>
+                {/* Amharic name primary, English subtitle secondary */}
+                <h4 style={{ fontSize: 15, fontWeight: 800, margin: '2px 0 2px', lineHeight: 1.3, color: 'var(--text-main, #0f172a)' }}>
+                  {m.name_amharic || m.name}
+                </h4>
+                {m.name_amharic && (
+                  <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', display: 'block', marginBottom: 4 }}>
+                    {m.name}
+                  </span>
+                )}
+                <p style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', margin: '0 0 8px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {m.description}
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+                <div>
+                  <span style={{ fontSize: 17, fontWeight: 900, color: 'var(--text-main, #0f172a)' }}>
+                    {m.price}
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #64748b)', marginLeft: 3 }}>
+                    {t('currency')}
+                  </span>
+                </div>
+
+                {inCart > 0 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff7ed', border: '1.5px solid #ea580c', borderRadius: 20, padding: '4px 8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        tactileFeedback('click');
+                        removeFromCart(m.id);
+                      }}
+                      style={{ color: '#ea580c', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer' }}
+                    >
+                      <Minus size={16} strokeWidth={3} />
+                    </button>
+                    <span style={{ fontSize: 15, fontWeight: 900, color: '#ea580c', minWidth: 18, textAlign: 'center' }}>
+                      {inCart}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        tactileFeedback('pop');
+                        addToCart(m);
+                      }}
+                      style={{ color: '#ea580c', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer' }}
+                    >
+                      <Plus size={16} strokeWidth={3} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      tactileFeedback('pop');
+                      addToCart(m);
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, #ff9e01, #ea580c)',
+                      color: '#ffffff',
+                      borderRadius: 12,
+                      width: 44,
+                      height: 40,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 3px 10px rgba(234, 88, 12, 0.35)',
+                      border: 'none',
+                      cursor: 'pointer'
+                    }}
+                    title="Add item"
+                  >
+                    <Plus size={22} strokeWidth={3} color="#ffffff" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
   const renderCartDrawer = () => {
     if (cartList.length === 0) {
-      if (waiterSize === 'compact') return null;
+      if (!isWide) return null;
       return (
         <div style={{
-          background: 'var(--bg-card)',
-          border: '1px dashed var(--border)',
+          background: 'var(--bg-card, #ffffff)',
+          border: '1.5px dashed var(--border, #cbd5e1)',
           borderRadius: 16,
-          padding: '28px 16px',
+          padding: '32px 16px',
           textAlign: 'center',
-          color: 'var(--text-muted)',
+          color: 'var(--text-muted, #64748b)',
           boxShadow: 'var(--shadow-sm)'
         }}>
-          <ShoppingBag size={32} style={{ margin: '0 auto 8px', opacity: 0.4 }} />
-          <div style={{ fontSize: 13, fontWeight: 700 }}>
-            {language === 'am' ? 'ትዕዛዝ አልተመረጠም' : 'No items in order'}
+          <ShoppingBag size={36} style={{ margin: '0 auto 10px', opacity: 0.4, color: '#ea580c' }} />
+          <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-main, #1e293b)' }}>
+            {language === 'am' ? 'ምንም ትዕዛዝ አልተመረጠም' : 'No items selected'}
           </div>
-          <div style={{ fontSize: 11, marginTop: 4 }}>
+          <div style={{ fontSize: 12, marginTop: 4, color: 'var(--text-muted, #64748b)' }}>
             {language === 'am' ? 'ምግቦችን ለመጨመር ካታሎጉን ይጫኑ' : 'Click menu items to add to order'}
           </div>
         </div>
@@ -347,19 +543,19 @@ export const WaiterView: React.FC = () => {
     return (
       <div style={{
         background: '#ffffff',
-        border: '1px solid var(--border)',
+        border: '1px solid var(--border, #e2e8f0)',
         borderRadius: 16,
         padding: 16,
         boxShadow: 'var(--shadow-lg)'
       }}>
-        <h3 style={{ fontSize: 14, fontWeight: 800, marginBottom: 12 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 800, marginBottom: 12, color: 'var(--text-main, #0f172a)' }}>
           {language === 'am' ? 'የአሁኑ ትዕዛዝ' : 'Current Order'}
         </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
           {cartList.map(line => (
             <div key={line.item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
               <span>{line.quantity}x {line.item.name}</span>
-              <span style={{ fontWeight: 700 }}>{line.item.price * line.quantity} {t('currency')}</span>
+              <span style={{ fontWeight: 800 }}>{line.item.price * line.quantity} {t('currency')}</span>
             </div>
           ))}
         </div>
@@ -383,11 +579,12 @@ export const WaiterView: React.FC = () => {
                 style={{
                   padding: '4px 8px',
                   borderRadius: 8,
-                  background: 'var(--bg-subtle)',
-                  border: '1px solid var(--border)',
+                  background: 'var(--bg-subtle, #f1f5f9)',
+                  border: '1px solid var(--border, #e2e8f0)',
                   fontSize: 11,
                   fontWeight: 700,
-                  color: 'var(--text-main)'
+                  color: 'var(--text-main, #334155)',
+                  cursor: 'pointer'
                 }}
               >
                 {chip.label}
@@ -400,10 +597,10 @@ export const WaiterView: React.FC = () => {
           placeholder={t('special_instructions')}
           value={specialNotes}
           onChange={e => setSpecialNotes(e.target.value)}
-          style={{ width: '100%', height: 60, marginBottom: 12, resize: 'none' }}
+          style={{ width: '100%', height: 60, marginBottom: 12, resize: 'none', padding: 8, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}
         />
 
-        <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 10, marginBottom: 12 }}>
+        <div style={{ borderTop: '1px dashed var(--border, #e2e8f0)', paddingTop: 10, marginBottom: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)' }}>
             <span>{t('subtotal')}</span>
             <span>{subtotal} {t('currency')}</span>
@@ -412,9 +609,9 @@ export const WaiterView: React.FC = () => {
             <span>{t('tax_vat')}</span>
             <span>{vat} {t('currency')}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 800, marginTop: 4 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 900, marginTop: 4 }}>
             <span>{t('total')}</span>
-            <span style={{ color: 'var(--primary)' }}>{total} {t('currency')}</span>
+            <span style={{ color: '#ea580c' }}>{total} {t('currency')}</span>
           </div>
         </div>
 
@@ -422,7 +619,7 @@ export const WaiterView: React.FC = () => {
           disabled={loading}
           onClick={handleSubmitOrder}
           className="btn btn-primary btn-block"
-          style={{ height: 48 }}
+          style={{ height: 48, background: 'linear-gradient(135deg, #ff9e01, #ea580c)', color: '#ffffff', fontWeight: 800, fontSize: 15 }}
         >
           <Send size={16} />
           {loading ? 'Sending...' : t('place_order_btn')}
@@ -433,53 +630,14 @@ export const WaiterView: React.FC = () => {
 
   return (
     <div className="view-body animate-fade-in">
-      {/* Connection Status + Screen Size Switcher + Refresh */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: isConnected ? '#065f46' : '#991b1b', background: isConnected ? '#ecfdf5' : '#fef2f2', padding: '3px 8px', borderRadius: 12 }}>
-            {isConnected ? '🟢' : '🔴'} {isConnected ? 'Live' : 'Offline'}
-          </div>
+      {/* Connection Status + Refresh */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: isConnected ? '#065f46' : '#991b1b', background: isConnected ? '#ecfdf5' : '#fef2f2', padding: '4px 10px', borderRadius: 20 }}>
+          {isConnected ? '🟢 Live' : '🔴 Offline'}
         </div>
-
-        {/* View Size Switcher (Phone / Tablet / Desktop / Full) */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border)',
-          borderRadius: 20,
-          padding: '2px 4px',
-          gap: 2,
-          boxShadow: 'var(--shadow-sm)'
-        }}>
-          <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', padding: '0 4px' }}>
-            {language === 'am' ? 'መጠን:' : 'Size:'}
-          </span>
-          {WAITER_SIZES.map(s => (
-            <button
-              key={s.id}
-              type="button"
-              title={s.tip}
-              onClick={() => changeWaiterSize(s.id)}
-              style={{
-                padding: '3px 8px',
-                borderRadius: 14,
-                fontSize: 10,
-                fontWeight: waiterSize === s.id ? 800 : 600,
-                background: waiterSize === s.id ? 'var(--primary)' : 'transparent',
-                color: waiterSize === s.id ? '#ffffff' : 'var(--text-muted)',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-
-        <button onClick={triggerRefresh} disabled={isRefreshing} style={{ padding: '4px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12 }}>
+        <button onClick={triggerRefresh} disabled={isRefreshing} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
           <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
+          <span style={{ fontSize: 11, fontWeight: 700 }}>{language === 'am' ? 'አድስ' : 'Refresh'}</span>
         </button>
       </div>
 
@@ -498,15 +656,16 @@ export const WaiterView: React.FC = () => {
           onClick={() => setActiveTab('create')}
           style={{
             flex: 1,
-            padding: '10px 4px',
+            padding: '10px 6px',
             fontSize: 13,
-            fontWeight: 700,
+            fontWeight: 800,
             borderRadius: 8,
-            background: activeTab === 'create' ? '#ffffff' : 'transparent',
-            color: activeTab === 'create' ? 'var(--primary)' : 'var(--text-muted)',
-            boxShadow: activeTab === 'create' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+            background: activeTab === 'create' ? '#1e293b' : 'transparent',
+            color: activeTab === 'create' ? '#ffffff' : 'var(--text-muted)',
+            boxShadow: activeTab === 'create' ? '0 2px 6px rgba(0,0,0,0.15)' : 'none',
             border: 'none',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
           }}
         >
           {language === 'am' ? 'ትዕዛዝ መውሰጃ' : 'Take Order'}
@@ -516,21 +675,22 @@ export const WaiterView: React.FC = () => {
           onClick={() => setActiveTab('ready')}
           style={{
             flex: 1,
-            padding: '10px 4px',
+            padding: '10px 6px',
             fontSize: 13,
-            fontWeight: 700,
+            fontWeight: 800,
             borderRadius: 8,
-            background: activeTab === 'ready' ? '#ffffff' : 'transparent',
-            color: activeTab === 'ready' ? 'var(--accent)' : 'var(--text-muted)',
-            boxShadow: activeTab === 'ready' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+            background: activeTab === 'ready' ? '#059669' : 'transparent',
+            color: activeTab === 'ready' ? '#ffffff' : 'var(--text-muted)',
+            boxShadow: activeTab === 'ready' ? '0 2px 6px rgba(0,0,0,0.15)' : 'none',
             border: 'none',
             cursor: 'pointer',
-            position: 'relative'
+            position: 'relative',
+            transition: 'all 0.15s ease'
           }}
         >
           {language === 'am' ? 'የደረሱ' : 'Ready'} ({readyOrders.length})
           {readyOrders.length > 0 && (
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', position: 'absolute', top: 6, right: 10 }} />
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', position: 'absolute', top: 6, right: 10 }} />
           )}
         </button>
         <button
@@ -538,15 +698,16 @@ export const WaiterView: React.FC = () => {
           onClick={() => setActiveTab('active')}
           style={{
             flex: 1,
-            padding: '10px 4px',
+            padding: '10px 6px',
             fontSize: 13,
-            fontWeight: 700,
+            fontWeight: 800,
             borderRadius: 8,
-            background: activeTab === 'active' ? '#ffffff' : 'transparent',
-            color: activeTab === 'active' ? 'var(--primary)' : 'var(--text-muted)',
-            boxShadow: activeTab === 'active' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+            background: activeTab === 'active' ? '#ea580c' : 'transparent',
+            color: activeTab === 'active' ? '#ffffff' : 'var(--text-muted)',
+            boxShadow: activeTab === 'active' ? '0 2px 6px rgba(0,0,0,0.15)' : 'none',
             border: 'none',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
           }}
         >
           {language === 'am' ? 'ንቁ' : 'Active'} ({activeOrders.length})
@@ -556,19 +717,20 @@ export const WaiterView: React.FC = () => {
           onClick={() => { setActiveTab('history'); loadHistory(); }}
           style={{
             flex: 1,
-            padding: '10px 4px',
+            padding: '10px 6px',
             fontSize: 13,
-            fontWeight: 700,
+            fontWeight: 800,
             borderRadius: 8,
-            background: activeTab === 'history' ? '#ffffff' : 'transparent',
-            color: activeTab === 'history' ? 'var(--primary)' : 'var(--text-muted)',
-            boxShadow: activeTab === 'history' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+            background: activeTab === 'history' ? '#4f46e5' : 'transparent',
+            color: activeTab === 'history' ? '#ffffff' : 'var(--text-muted)',
+            boxShadow: activeTab === 'history' ? '0 2px 6px rgba(0,0,0,0.15)' : 'none',
             border: 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 4
+            gap: 4,
+            transition: 'all 0.15s ease'
           }}
         >
           <History size={14} />
@@ -584,213 +746,18 @@ export const WaiterView: React.FC = () => {
       )}
 
       {activeTab === 'create' && (
-        <div className="waiter-pos-grid">
-          {/* Left Column: Menu Items */}
-          <div className="waiter-menu-column">
-            {/* If compact/phone view, table picker is at top */}
-            {waiterSize === 'compact' && renderTablePicker()}
-
-          {/* Menu Categories Horizontal Scroller with Amharic Labels */}
-          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 10, marginBottom: 12 }}>
-            <button
-              onClick={() => setSelectedCategory('all')}
-              style={{
-                padding: '8px 16px',
-                borderRadius: 20,
-                fontSize: 13,
-                fontWeight: 800,
-                whiteSpace: 'nowrap',
-                background: selectedCategory === 'all' ? 'var(--primary)' : 'var(--bg-subtle)',
-                color: selectedCategory === 'all' ? '#ffffff' : 'var(--text-main)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6
-              }}
-            >
-              <span>🍽️</span> {language === 'am' ? 'ሁሉም' : 'All Items'}
-            </button>
-            {categories.map(c => (
-              <button
-                key={c.id}
-                onClick={() => setSelectedCategory(c.id)}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: 20,
-                  fontSize: 13,
-                  fontWeight: 800,
-                  whiteSpace: 'nowrap',
-                  background: selectedCategory === c.id ? 'var(--primary)' : 'var(--bg-subtle)',
-                  color: selectedCategory === c.id ? '#ffffff' : 'var(--text-main)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6
-                }}
-              >
-                <span>{CATEGORY_EMOJIS[c.id] || '🍴'}</span>
-                <span>{language === 'am' ? (c.name_amharic || CATEGORY_NAMES_AM[c.id] || c.name) : c.name}</span>
-              </button>
-            ))}
+        <div className="waiter-view-layout">
+          {/* Main Column: Categories & Menu Grid (plus Table Picker on mobile) */}
+          <div className="waiter-main-column">
+            {!isWide && renderTablePicker()}
+            {renderCategories()}
+            {renderMenuItems()}
+            {!isWide && cartList.length > 0 && renderCartDrawer()}
           </div>
 
-          {/* Menu Items Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-            {filteredMenuItems.map(m => {
-              const inCart = cart[m.id]?.quantity || 0;
-              return (
-                <div
-                  key={m.id}
-                  style={{
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 14,
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    boxShadow: 'var(--shadow-sm)'
-                  }}
-                >
-                  {/* Photo or Gradient Avatar Banner */}
-                  <div style={{ position: 'relative', width: '100%', height: 120, background: 'linear-gradient(135deg, #f97316, #ea580c)', overflow: 'hidden' }}>
-                    {m.photo_url ? (
-                      <img
-                        src={resolveImageUrl(m.photo_url)}
-                        alt={m.name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          const fallback = target.parentElement?.querySelector('.waiter-item-initial') as HTMLElement;
-                          if (fallback) fallback.style.display = 'flex';
-                        }}
-                      />
-                    ) : null}
-                    {/* Fallback initial if no photo */}
-                    <div
-                      className="waiter-item-initial"
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        display: m.photo_url ? 'none' : 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#ffffff',
-                        fontSize: 32,
-                        fontWeight: 800
-                      }}
-                    >
-                      {m.name.charAt(0)}
-                    </div>
-
-                    <span
-                      style={{
-                        position: 'absolute',
-                        top: 8,
-                        left: 8,
-                        fontSize: 9,
-                        fontWeight: 800,
-                        color: m.routing_destination === 'KITCHEN' ? '#b45309' : '#0284c7',
-                        background: m.routing_destination === 'KITCHEN' ? 'rgba(254, 243, 199, 0.95)' : 'rgba(224, 242, 254, 0.95)',
-                        padding: '2px 6px',
-                        borderRadius: 4,
-                        backdropFilter: 'blur(4px)'
-                      }}
-                    >
-                      {m.routing_destination}
-                    </span>
-                  </div>
-
-                  <div style={{ padding: 10, display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
-                    <div>
-                      {/* Amharic name primary, English subtitle secondary */}
-                      <h4 style={{ fontSize: 15, fontWeight: 800, margin: '2px 0 2px', lineHeight: 1.3, color: 'var(--text-main)' }}>
-                        {m.name_amharic || m.name}
-                      </h4>
-                      {m.name_amharic && (
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-                          {m.name}
-                        </span>
-                      )}
-                      <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 8px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {m.description}
-                      </p>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-                      <div>
-                        <span style={{ fontSize: 16, fontWeight: 900, color: 'var(--primary)' }}>
-                          {m.price}
-                        </span>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginLeft: 3 }}>
-                          {t('currency')}
-                        </span>
-                      </div>
-
-                      {inCart > 0 ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--primary-light)', borderRadius: 20, padding: '4px 8px' }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              tactileFeedback('click');
-                              removeFromCart(m.id);
-                            }}
-                            style={{ color: 'var(--primary)', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          >
-                            <Minus size={16} strokeWidth={3} />
-                          </button>
-                          <span style={{ fontSize: 15, fontWeight: 900, color: 'var(--primary)', minWidth: 18, textAlign: 'center' }}>
-                            {inCart}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              tactileFeedback('pop');
-                              addToCart(m);
-                            }}
-                            style={{ color: 'var(--primary)', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          >
-                            <Plus size={16} strokeWidth={3} />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            tactileFeedback('pop');
-                            addToCart(m);
-                          }}
-                          style={{
-                            background: 'var(--primary)',
-                            color: '#ffffff',
-                            borderRadius: 12,
-                            width: 44,
-                            height: 40,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: '0 2px 8px rgba(249, 115, 22, 0.35)',
-                            border: 'none',
-                            cursor: 'pointer'
-                          }}
-                          title="Add item"
-                        >
-                          <Plus size={22} strokeWidth={3} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-            {/* If compact/phone view, cart drawer is at bottom */}
-            {waiterSize === 'compact' && cartList.length > 0 && renderCartDrawer()}
-          </div>
-
-          {/* Right Column: Table selector & Sticky Order Drawer on Tablet / Desktop */}
-          {waiterSize !== 'compact' && (
-            <div className="waiter-cart-panel">
+          {/* Sticky Side Column on Tablet / Desktop: Table Picker + Live Cart */}
+          {isWide && (
+            <div className="waiter-side-column">
               {renderTablePicker()}
               {renderCartDrawer()}
             </div>
@@ -802,7 +769,7 @@ export const WaiterView: React.FC = () => {
       {activeTab === 'ready' && (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: waiterSize === 'compact' ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
           gap: 14,
           alignItems: 'start'
         }}>
@@ -846,7 +813,7 @@ export const WaiterView: React.FC = () => {
       {activeTab === 'active' && (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: waiterSize === 'compact' ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
           gap: 14,
           alignItems: 'start'
         }}>
@@ -967,8 +934,8 @@ export const WaiterView: React.FC = () => {
           ) : (
             <div style={{
               display: 'grid',
-              gridTemplateColumns: waiterSize === 'compact' ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))',
-              gap: 12,
+              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              gap: 14,
               alignItems: 'start'
             }}>
               {historyOrders.filter(o => {
@@ -1057,8 +1024,8 @@ export const WaiterView: React.FC = () => {
         </div>
       )}
 
-      {/* Floating Action Button for Cart Review */}
-      {activeTab === 'create' && waiterSize === 'compact' && cartList.length > 0 && (
+      {/* Floating Action Button for Cart Review on mobile */}
+      {activeTab === 'create' && !isWide && cartList.length > 0 && (
         <button
           className="fab-button"
           onClick={() => {
