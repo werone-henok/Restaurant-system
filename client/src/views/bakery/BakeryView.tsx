@@ -276,6 +276,21 @@ export const BakeryView: React.FC = () => {
     }
   };
 
+  // 1-Tap: Mark a bake REQUEST as Ready (done baking, ready to send to counter)
+  const handleMarkRequestReady = async (requestId: string) => {
+    tactileFeedback('success');
+    try {
+      await api.request(`/bakery/requests/${requestId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'READY' })
+      });
+      gToast.success('✅ ኬኩ ተጋግሯል! ለካውንተር ዝግጁ ነው (Ready to Send to Counter!)');
+      loadData();
+    } catch (err: any) {
+      gToast.error(err.message || 'ማዘመን አልተቻለም');
+    }
+  };
+
   // 1-Tap: Start a New Bake Batch
   const handleStartNewBake = async () => {
     if (!selectedCakeForBake) return;
@@ -748,23 +763,53 @@ export const BakeryView: React.FC = () => {
                       🔥 መጋገር ጀምር (START BAKING)
                     </button>
                   ) : (
-                    <div
-                      style={{
-                        background: '#fef3c7',
-                        color: '#92400e',
-                        padding: '14px',
-                        borderRadius: 14,
-                        textAlign: 'center',
-                        fontWeight: 900,
-                        fontSize: 15,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8
-                      }}
-                    >
-                      <Flame size={20} className="animate-bounce" />
-                      እየተጋገረ ነው... (Currently Baking in Oven)
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {/* Oven status indicator */}
+                      <div
+                        style={{
+                          background: '#fef3c7',
+                          color: '#92400e',
+                          padding: '12px 14px',
+                          borderRadius: 14,
+                          textAlign: 'center',
+                          fontWeight: 900,
+                          fontSize: 15,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8
+                        }}
+                      >
+                        <Flame size={20} className="animate-bounce" />
+                        እየተጋገረ ነው... (Currently Baking in Oven)
+                      </div>
+
+                      {/* Mark as Ready button */}
+                      <button
+                        onClick={() => handleMarkRequestReady(req.id)}
+                        style={{
+                          background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: 14,
+                          padding: '14px',
+                          fontSize: 15,
+                          fontWeight: 900,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          cursor: 'pointer',
+                          boxShadow: '0 6px 16px rgba(22, 163, 74, 0.3)',
+                          transition: 'transform 0.1s ease, box-shadow 0.1s ease'
+                        }}
+                        onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.97)')}
+                        onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+                        onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                      >
+                        <CheckCircle2 size={20} />
+                        ✅ ተጋግሯል! ለካውንተር ዝግጁ (Mark as Ready)
+                      </button>
                     </div>
                   )}
                 </div>
