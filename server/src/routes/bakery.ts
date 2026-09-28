@@ -888,8 +888,8 @@ bakeryRouter.post('/requests', authenticate, authorizeRole(['front_counter', 'ad
   res.status(201).json(created);
 });
 
-// Update request status (Bakery responds: Accept, Start Baking, Ready, Fulfill, Reject)
-bakeryRouter.patch('/requests/:id/status', authenticate, authorizeRole(['bakery', 'admin', 'owner']), (req: AuthenticatedRequest, res) => {
+// Update request status (Bakery responds: Accept, Start Baking, Ready, Fulfill, Reject; Counter can Cancel)
+bakeryRouter.patch('/requests/:id/status', authenticate, authorizeRole(['bakery', 'front_counter', 'admin', 'owner']), (req: AuthenticatedRequest, res) => {
   const { id } = req.params;
   const { status, notes, quantity_fulfilled } = req.body;
 
@@ -937,7 +937,7 @@ bakeryRouter.get('/requests', authenticate, (req: AuthenticatedRequest, res) => 
   const status = req.query.status as string;
 
   let query = `
-    SELECT r.*, p.name as product_name, p.photo_url as product_photo,
+    SELECT r.*, p.name as product_name, p.name_amharic as product_name_amharic, p.photo_url as product_photo,
            v.variation_name, v.flavor_type, v.size, v.price,
            u1.full_name as requested_by_name, u2.full_name as handled_by_name
     FROM bakery_requests r

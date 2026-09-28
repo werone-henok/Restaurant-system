@@ -33,7 +33,7 @@ export const AdminView: React.FC = () => {
   const [menuNameAmharic, setMenuNameAmharic] = useState('');
   const [menuPrice, setMenuPrice] = useState<number>(100);
   const [menuCategory, setMenuCategory] = useState('');
-  const [menuRouting, setMenuRouting] = useState<'KITCHEN' | 'BAR' | 'BOTH'>('KITCHEN');
+  const [menuRouting, setMenuRouting] = useState<'KITCHEN' | 'BAR' | 'BOTH' | 'BAKERY' | 'FRONT_COUNTER'>('KITCHEN');
   const [menuDesc, setMenuDesc] = useState('');
   const [menuPhoto, setMenuPhoto] = useState<string>('');
 
@@ -1100,7 +1100,14 @@ export const AdminView: React.FC = () => {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
                     <h5 style={{ fontSize: 13, fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{item.name}</h5>
-                    <span style={{ fontSize: 9, fontWeight: 800, padding: '1px 6px', borderRadius: 4, background: item.routing_destination === 'KITCHEN' ? '#fef3c7' : '#e0f2fe', color: item.routing_destination === 'KITCHEN' ? '#b45309' : '#0284c7' }}>
+                    <span style={{
+                      fontSize: 9,
+                      fontWeight: 800,
+                      padding: '1px 6px',
+                      borderRadius: 4,
+                      background: item.routing_destination === 'KITCHEN' ? '#fef3c7' : item.routing_destination === 'BAR' ? '#e0f2fe' : item.routing_destination === 'BAKERY' ? '#fdf2f8' : item.routing_destination === 'FRONT_COUNTER' ? '#f0fdf4' : '#f3e8ff',
+                      color: item.routing_destination === 'KITCHEN' ? '#b45309' : item.routing_destination === 'BAR' ? '#0284c7' : item.routing_destination === 'BAKERY' ? '#be185d' : item.routing_destination === 'FRONT_COUNTER' ? '#15803d' : '#7e22ce'
+                    }}>
                       {item.routing_destination}
                     </span>
                     {item.category_name && (
@@ -1394,6 +1401,8 @@ export const AdminView: React.FC = () => {
                   <option value="KITCHEN">🍳 KITCHEN (Main Cooking Station)</option>
                   <option value="BAR">☕ BAR (Drinks & Coffee Station)</option>
                   <option value="BOTH">⚡ BOTH (Split Stations)</option>
+                  <option value="BAKERY">🍰 BAKERY (Bakery & Pastry Kitchen / የዳቦና ኬክ ክፍል)</option>
+                  <option value="FRONT_COUNTER">🧁 FRONT COUNTER (Cake Display / የፊት ኬክ ካውንተር)</option>
                 </select>
               </div>
 
