@@ -42,6 +42,8 @@ interface Variation {
   counter_stock: number;
   min_stock_level: number;
   selling_price: number;
+  price?: number;
+  variation_name?: string;
   cost_price: number;
   sku?: string;
   product_name?: string;
@@ -217,19 +219,26 @@ export const FrontCounterView: React.FC = () => {
 
   // All flat variations for easy listing
   const allVariations: Variation[] = products.flatMap(p =>
-    (p.variations || []).map(v => ({
+    (p.variations || []).map((v: any) => ({
       ...v,
-      product_name: p.name,
-      product_category: p.category,
-      image_url: p.image_url
+      name: v.name || v.variation_name || 'Standard',
+      selling_price: Number(v.selling_price ?? v.price ?? 0),
+      cost_price: Number(v.cost_price ?? 0),
+      counter_stock: Number(v.counter_stock ?? 0),
+      bakery_stock: Number(v.bakery_stock ?? 0),
+      in_transit_stock: Number(v.in_transit_stock ?? 0),
+      min_stock_level: Number(v.min_stock_level ?? 3),
+      product_name: p.name || 'Bakery Product',
+      product_category: p.category || 'Cakes',
+      image_url: p.image_url || v.photo_url
     }))
   );
 
   // Filtered variations for inventory
   const filteredVariations = allVariations.filter(v => {
     const matchesSearch =
-      v.product_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (v.product_name && v.product_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (v.name && v.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (v.size && v.size.toLowerCase().includes(searchQuery.toLowerCase()));
 
     if (!matchesSearch) return false;
@@ -924,7 +933,7 @@ export const FrontCounterView: React.FC = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
                       <span>Bakery Reserve: <strong style={{ color: 'var(--text-main)' }}>{variation.bakery_stock}</strong></span>
                       <span style={{ fontSize: 15, fontWeight: 900, color: '#10b981' }}>
-                        {variation.selling_price.toLocaleString()} ETB
+                        {(variation.selling_price || 0).toLocaleString()} ETB
                       </span>
                     </div>
                   </div>
@@ -1134,7 +1143,7 @@ export const FrontCounterView: React.FC = () => {
                       </div>
 
                       <div style={{ fontWeight: 900, color: '#10b981' }}>
-                        {(item.quantity * item.variation.selling_price).toLocaleString()} ETB
+                        {((item.quantity || 1) * (item.variation?.selling_price || item.variation?.price || 0)).toLocaleString()} ETB
                       </div>
                     </div>
                   ))
@@ -2240,15 +2249,19 @@ export const FrontCounterView: React.FC = () => {
             <div style={{ borderBottom: '1px dashed var(--border)', paddingBottom: 12, marginBottom: 12 }}>
               {(lastSaleReceipt.items || []).map((it: any, idx: number) => (
                 <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
-                  <span>{it.quantity}x {it.variation.product_name} ({it.variation.name})</span>
-                  <strong style={{ color: 'var(--text-main)' }}>{(it.quantity * it.variation.selling_price).toLocaleString()} ETB</strong>
+                  <span>{it.quantity}x {it.variation?.product_name} ({it.variation?.name})</span>
+                  <strong style={{ color: 'var(--text-main)' }}>
+                    {((it.quantity || 1) * (it.variation?.selling_price || it.variation?.price || 0)).toLocaleString()} ETB
+                  </strong>
                 </div>
               ))}
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <span style={{ fontSize: 14, fontWeight: 800 }}>Total Paid ({lastSaleReceipt.paymentMethod}):</span>
-              <strong style={{ fontSize: 20, fontWeight: 900, color: '#10b981' }}>{lastSaleReceipt.total.toLocaleString()} ETB</strong>
+              <strong style={{ fontSize: 20, fontWeight: 900, color: '#10b981' }}>
+                {(lastSaleReceipt.total || 0).toLocaleString()} ETB
+              </strong>
             </div>
 
             <button

@@ -35,6 +35,8 @@ bakeryRouter.get('/products', authenticate, (req, res) => {
     const products = db.prepare(sql).all(...params);
     const getVariations = db.prepare(`
     SELECT v.*,
+      v.variation_name as name,
+      v.price as selling_price,
       CASE
         WHEN v.counter_stock <= 0 THEN 'OUT_OF_STOCK'
         WHEN v.counter_stock <= v.min_stock_level THEN 'LOW_STOCK'
@@ -57,6 +59,8 @@ bakeryRouter.get('/products/:id', authenticate, (req, res) => {
         return res.status(404).json({ error: 'Product not found' });
     const variations = db.prepare(`
     SELECT v.*,
+      v.variation_name as name,
+      v.price as selling_price,
       CASE
         WHEN v.counter_stock <= 0 THEN 'OUT_OF_STOCK'
         WHEN v.counter_stock <= v.min_stock_level THEN 'LOW_STOCK'
@@ -1236,4 +1240,61 @@ bakeryRouter.get('/inventory/summary', authenticate, (req, res) => {
         metrics,
         variations
     });
+});
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. CAKE ORDERS QUEUE (Waiter Cake Orders)
+// ─────────────────────────────────────────────────────────────────────────────
+bakeryRouter.get('/cake-queue', authenticate, (req, res) => {
+    const branchId = getBranch(req);
+    try {
+        const items = db.prepare(`
+      SELECT 
+        oi.id,
+        oi.order_id,
+        oi.menu_item_id,
+        oi.bakery_variation_id,
+        oi.quantity,
+        oi.notes,
+        oi.status,
+        oi.created_at,
+        o.order_number,
+        o.order_type,
+        t.table_number,
+        u.full_name as waiter_name,
+        COALESCE(bp.name, mi.name) as item_name,
+        COALESCE(bv.variation_name, 'Standard') as variation_name,
+        bv.size,
+        bv.weight_kg
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.id
+      LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+      LEFT JOIN bakery_product_variations bv ON oi.bakery_variation_id = bv.id
+      LEFT JOIN bakery_products bp ON bv.product_id = bp.id
+      LEFT JOIN restaurant_tables t ON o.table_id = t.id
+      LEFT JOIN users u ON o.waiter_id = u.id
+      WHERE (oi.routing_destination IN ('FRONT_COUNTER', 'BAKERY') OR oi.bakery_variation_id IS NOT NULL OR mi.category_id = 'cat_bakery')
+        AND o.status IN ('CONFIRMED', 'PREPARING', 'PARTIALLY_READY')
+        AND oi.status != 'DELIVERED'
+      ORDER BY oi.created_at ASC
+    `).all();
+        res.json(items);
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+bakeryRouter.patch('/cake-queue/:itemId/status', authenticate, (req, res) => {
+    const itemId = String(req.params.itemId);
+    const { status } = req.body;
+    try {
+        db.prepare(`UPDATE order_items SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(status, itemId);
+        broadcastEvent({
+            type: 'CAKE_ORDER_UPDATED',
+            payload: { itemId, status }
+        });
+        res.json({ success: true, message: `Status updated to ${status}` });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
