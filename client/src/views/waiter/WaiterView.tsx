@@ -621,12 +621,19 @@ export const WaiterView: React.FC = () => {
                     </div>
 
                     {/* Variations Buttons List */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {group.variations.map(v => {
                         const qty = cart[v.id]?.quantity || 0;
-                        const isUnavailable = v.is_available === 0 || v.bakery_variation_available === 0;
                         const stock = v.bakery_counter_stock ?? v.counter_stock;
+                        const hasStock = stock !== undefined && stock !== null && stock > 0;
+                        const isOutOfStock = stock !== undefined && stock !== null && stock <= 0;
+                        const isItemDisabled = v.is_available === 0;
+                        const isBakeryPaused = v.bakery_variation_available === 0;
+
+                        // Can sell if counter stock exists, even if bakery paused new baking batches
+                        const isUnavailable = isItemDisabled || isOutOfStock || (isBakeryPaused && !hasStock);
                         const title = formatVariationTitle(v.variationTitle);
+                        const reason = v.bakery_unavailable_reason || v.unavailable_reason;
 
                         return (
                           <div
@@ -635,14 +642,19 @@ export const WaiterView: React.FC = () => {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
-                              padding: '5px 8px',
-                              borderRadius: 8,
+                              padding: '7px 9px',
+                              borderRadius: 9,
                               border: qty > 0 
                                 ? '1.5px solid #ea580c' 
-                                : '1px solid var(--border, #e2e8f0)',
+                                : isUnavailable
+                                  ? '1px dashed #fca5a5'
+                                  : '1px solid var(--border, #e2e8f0)',
                               background: qty > 0 
                                 ? '#fff7ed' 
-                                : 'var(--bg-subtle, #f8fafc)',
+                                : isUnavailable
+                                  ? '#fff1f2'
+                                  : 'var(--bg-subtle, #f8fafc)',
+                              opacity: isUnavailable ? 0.75 : 1,
                               transition: 'all 0.15s ease'
                             }}
                           >
@@ -651,20 +663,26 @@ export const WaiterView: React.FC = () => {
                               <div style={{
                                 fontSize: 11.5,
                                 fontWeight: 800,
-                                color: qty > 0 ? '#c2410c' : 'var(--text-main, #0f172a)',
+                                color: qty > 0 ? '#c2410c' : isUnavailable ? '#991b1b' : 'var(--text-main, #0f172a)',
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis'
                               }}>
                                 {title}
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1, flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: 11, fontWeight: 900, color: qty > 0 ? '#ea580c' : 'var(--text-main, #334155)' }}>
                                   {v.price} <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-muted, #64748b)' }}>{t('currency')}</span>
                                 </span>
-                                {stock !== undefined && stock !== null && (
+                                {!isUnavailable && stock !== undefined && stock !== null && (
                                   <span style={{ fontSize: 9.5, fontWeight: 700, color: stock <= 2 ? '#dc2626' : '#16a34a' }}>
-                                    {stock <= 0 ? (language === 'am' ? 'አልቋል' : 'Out') : `${stock} left`}
+                                    {stock} {language === 'am' ? 'ቀሪ' : 'left'}
+                                    {isBakeryPaused && <span style={{ color: '#d97706', marginLeft: 3 }}>({language === 'am' ? 'የመጨረሻ' : 'Last batch'})</span>}
+                                  </span>
+                                )}
+                                {isUnavailable && reason && (
+                                  <span style={{ fontSize: 9, fontWeight: 600, color: '#dc2626' }}>
+                                    ({reason})
                                   </span>
                                 )}
                               </div>
@@ -672,7 +690,7 @@ export const WaiterView: React.FC = () => {
 
                             {/* Right: Add Button or Stepper */}
                             {isUnavailable ? (
-                              <span style={{ fontSize: 9.5, fontWeight: 700, color: '#ef4444', background: '#fee2e2', padding: '2px 5px', borderRadius: 4 }}>
+                              <span style={{ fontSize: 9.5, fontWeight: 800, color: '#ef4444', background: '#fee2e2', padding: '3px 6px', borderRadius: 5 }}>
                                 {language === 'am' ? 'አልቋል' : 'Unavailable'}
                               </span>
                             ) : qty > 0 ? (
@@ -683,7 +701,7 @@ export const WaiterView: React.FC = () => {
                                 background: '#ffffff',
                                 border: '1.5px solid #ea580c',
                                 borderRadius: 16,
-                                padding: '1px 4px',
+                                padding: '2px 5px',
                                 boxShadow: '0 1px 3px rgba(234, 88, 12, 0.15)'
                               }}>
                                 <button
@@ -694,8 +712,8 @@ export const WaiterView: React.FC = () => {
                                   }}
                                   style={{
                                     color: '#ea580c',
-                                    width: 20,
-                                    height: 20,
+                                    width: 22,
+                                    height: 22,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -708,7 +726,7 @@ export const WaiterView: React.FC = () => {
                                 >
                                   <Minus size={13} strokeWidth={3} />
                                 </button>
-                                <span style={{ fontSize: 12, fontWeight: 900, color: '#ea580c', minWidth: 14, textAlign: 'center' }}>
+                                <span style={{ fontSize: 12.5, fontWeight: 900, color: '#ea580c', minWidth: 16, textAlign: 'center' }}>
                                   {qty}
                                 </span>
                                 <button
@@ -719,8 +737,8 @@ export const WaiterView: React.FC = () => {
                                   }}
                                   style={{
                                     color: '#ea580c',
-                                    width: 20,
-                                    height: 20,
+                                    width: 22,
+                                    height: 22,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -745,20 +763,20 @@ export const WaiterView: React.FC = () => {
                                   background: 'linear-gradient(135deg, #ff9e01, #ea580c)',
                                   color: '#ffffff',
                                   border: 'none',
-                                  borderRadius: 7,
-                                  padding: '4px 8px',
+                                  borderRadius: 8,
+                                  padding: '5px 11px',
                                   fontSize: 11,
                                   fontWeight: 800,
                                   cursor: 'pointer',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: 2,
+                                  gap: 3,
                                   boxShadow: '0 2px 5px rgba(234, 88, 12, 0.25)',
                                   transition: 'all 0.15s ease'
                                 }}
                                 title={`Add ${title}`}
                               >
-                                <Plus size={12} strokeWidth={3} />
+                                <Plus size={13} strokeWidth={3} />
                                 <span>{language === 'am' ? 'ጨምር' : 'Add'}</span>
                               </button>
                             )}
@@ -766,6 +784,55 @@ export const WaiterView: React.FC = () => {
                         );
                       })}
                     </div>
+                  </div>
+
+                  {/* Card Bottom Summary Footer (eliminates bottom empty space) */}
+                  <div style={{
+                    marginTop: 12,
+                    paddingTop: 8,
+                    borderTop: '1px solid var(--border, #f1f5f9)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    {totalInCart > 0 ? (
+                      <div style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        background: '#fff7ed',
+                        border: '1px solid #fdba74',
+                        borderRadius: 8,
+                        padding: '5px 9px'
+                      }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: '#c2410c' }}>
+                          🛒 {totalInCart} {language === 'am' ? 'በትዕዛዝ' : 'in order'}
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 900, color: '#ea580c' }}>
+                          {group.variations.reduce((sum, v) => sum + (v.price || 0) * (cart[v.id]?.quantity || 0), 0)} {t('currency')}
+                        </span>
+                      </div>
+                    ) : (
+                      <div style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        color: 'var(--text-muted, #64748b)',
+                        fontSize: 11
+                      }}>
+                        <span style={{ fontWeight: 600 }}>{language === 'am' ? 'የዋጋ ክልል' : 'Price range'}</span>
+                        <span style={{ fontWeight: 800, color: 'var(--text-main, #334155)' }}>
+                          {(() => {
+                            const prices = group.variations.map(v => v.price || 0).filter(p => p > 0);
+                            const min = Math.min(...prices);
+                            const max = Math.max(...prices);
+                            return min === max ? `${min} ${t('currency')}` : `${min} – ${max} ${t('currency')}`;
+                          })()}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
