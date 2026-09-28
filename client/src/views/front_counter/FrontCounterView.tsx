@@ -1004,34 +1004,67 @@ export const FrontCounterView: React.FC = () => {
                           <Bell size={14} /> ከዳቦ ቤት እዘዝ
                         </button>
                       ) : (
-                        <button
-                          onClick={() => {
-                            tactileFeedback('click');
-                            const cakeObj: Variation = {
-                              ...activeVar,
-                              product_name: product.name,
-                              product_name_amharic: product.name_amharic,
-                              photo_url: product.photo_url
-                            };
-                            handleTapCake(cakeObj);
-                          }}
-                          style={{
-                            background: 'linear-gradient(135deg, #db2777 0%, #be185d 100%)',
-                            color: '#ffffff',
-                            border: 'none',
-                            fontSize: 13,
-                            fontWeight: 900,
-                            padding: '8px 16px',
-                            borderRadius: 12,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            boxShadow: '0 3px 8px rgba(219, 39, 119, 0.25)'
-                          }}
-                        >
-                          <Plus size={16} /> ወደ ቅርጫት (Add)
-                        </button>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <button
+                            title="ከዳቦ ቤት ተጨማሪ ጠይቅ (Request Bake)"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              tactileFeedback('click');
+                              const cakeObj: Variation = {
+                                ...activeVar,
+                                product_name: product.name,
+                                product_name_amharic: product.name_amharic,
+                                photo_url: product.photo_url
+                              };
+                              setRequestTarget(cakeObj);
+                              setRequestQty(5);
+                            }}
+                            style={{
+                              background: '#fff1f2',
+                              color: '#e11d48',
+                              border: '1.5px solid #fecdd3',
+                              borderRadius: 12,
+                              padding: '8px 10px',
+                              fontSize: 12,
+                              fontWeight: 900,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Bell size={13} /> ጠይቅ
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              tactileFeedback('click');
+                              const cakeObj: Variation = {
+                                ...activeVar,
+                                product_name: product.name,
+                                product_name_amharic: product.name_amharic,
+                                photo_url: product.photo_url
+                              };
+                              handleTapCake(cakeObj);
+                            }}
+                            style={{
+                              background: 'linear-gradient(135deg, #db2777 0%, #be185d 100%)',
+                              color: '#ffffff',
+                              border: 'none',
+                              fontSize: 13,
+                              fontWeight: 900,
+                              padding: '8px 14px',
+                              borderRadius: 12,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              boxShadow: '0 3px 8px rgba(219, 39, 119, 0.25)'
+                            }}
+                          >
+                            <Plus size={16} /> ወደ ቅርጫት
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
