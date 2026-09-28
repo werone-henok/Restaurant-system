@@ -14,6 +14,9 @@ import { StorekeeperView } from './views/storekeeper/StorekeeperView';
 import { AdminView } from './views/admin/AdminView';
 import { OwnerView } from './views/owner/OwnerView';
 
+import { BakeryView } from './views/bakery/BakeryView';
+import { FrontCounterView } from './views/front_counter/FrontCounterView';
+
 import {
   UtensilsCrossed,
   DollarSign,
@@ -25,7 +28,9 @@ import {
   LogOut,
   User as UserIcon,
   Flame,
-  Building2
+  Building2,
+  Cake,
+  ShoppingBag
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -55,13 +60,15 @@ export const App: React.FC = () => {
 
   // Allowed tabs per role to prevent lower-permission roles from being trapped in admin/owner views
   const roleAllowedTabs: Record<string, string[]> = {
-    owner: ['owner', 'cashier', 'chef', 'storekeeper', 'admin', 'waiter', 'barista'],
-    admin: ['admin', 'cashier', 'storekeeper', 'owner', 'waiter', 'chef', 'barista'],
+    owner: ['owner', 'cashier', 'chef', 'storekeeper', 'admin', 'waiter', 'barista', 'bakery', 'front_counter'],
+    admin: ['admin', 'cashier', 'storekeeper', 'owner', 'waiter', 'chef', 'barista', 'bakery', 'front_counter'],
     waiter: ['waiter'],
     cashier: ['cashier'],
     chef: ['chef'],
     barista: ['barista'],
-    storekeeper: ['storekeeper']
+    storekeeper: ['storekeeper'],
+    bakery: ['bakery'],
+    front_counter: ['front_counter']
   };
 
   const allowedTabs = roleAllowedTabs[role] || [role];
@@ -76,6 +83,8 @@ export const App: React.FC = () => {
       navItems.push(
         { id: 'owner', label: 'Executive', emoji: '👑', icon: <Building2 size={24} /> },
         { id: 'cashier', label: 'Cashier', emoji: '💵', icon: <DollarSign size={24} /> },
+        { id: 'bakery', label: 'Bakery', emoji: '🍰', icon: <Cake size={24} /> },
+        { id: 'front_counter', label: 'Cake Counter', emoji: '🧁', icon: <ShoppingBag size={24} /> },
         { id: 'chef', label: 'Kitchen', emoji: '🔥', icon: <Flame size={24} /> },
         { id: 'storekeeper', label: 'Inventory', emoji: '📦', icon: <Store size={24} /> },
         { id: 'admin', label: 'Admin', emoji: '🛡️', icon: <Shield size={24} /> }
@@ -83,9 +92,19 @@ export const App: React.FC = () => {
     } else if (role === 'admin') {
       navItems.push(
         { id: 'admin', label: 'Admin', emoji: '🛡️', icon: <Shield size={24} /> },
+        { id: 'bakery', label: 'Bakery', emoji: '🍰', icon: <Cake size={24} /> },
+        { id: 'front_counter', label: 'Cake Counter', emoji: '🧁', icon: <ShoppingBag size={24} /> },
         { id: 'cashier', label: 'Cashier', emoji: '💵', icon: <DollarSign size={24} /> },
         { id: 'storekeeper', label: 'Inventory', emoji: '📦', icon: <Store size={24} /> },
         { id: 'owner', label: 'Reports', emoji: '📊', icon: <BarChart3 size={24} /> }
+      );
+    } else if (role === 'bakery') {
+      navItems.push(
+        { id: 'bakery', label: 'Bakery Dept', emoji: '🍰', icon: <Cake size={26} /> }
+      );
+    } else if (role === 'front_counter') {
+      navItems.push(
+        { id: 'front_counter', label: 'Cake Counter', emoji: '🧁', icon: <ShoppingBag size={26} /> }
       );
     } else if (role === 'waiter') {
       navItems.push(
@@ -148,6 +167,10 @@ export const App: React.FC = () => {
 
   const renderCurrentView = () => {
     switch (currentTab) {
+      case 'bakery':
+        return <BakeryView />;
+      case 'front_counter':
+        return <FrontCounterView />;
       case 'waiter':
         return <WaiterView />;
       case 'cashier':
@@ -168,7 +191,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className={`app-container ${['cashier', 'owner', 'admin', 'chef', 'storekeeper', 'waiter'].includes(currentTab) ? 'desktop-wide' : ''}`}>
+    <div className={`app-container ${['cashier', 'owner', 'admin', 'chef', 'storekeeper', 'waiter', 'bakery', 'front_counter'].includes(currentTab) ? 'desktop-wide' : ''}`}>
       <Header onOpenProfile={() => setShowProfile(true)} />
 
       {renderCurrentView()}

@@ -164,6 +164,54 @@ paymentRouter.post('/', authenticate, authorizeRole(['cashier', 'admin', 'owner'
       }
     }
 
+    // 4b. AUTOMATIC FRONT CAKE COUNTER INVENTORY DEDUCTION (Auditable & Duplicate-safe)
+    const alreadyCakeDeducted = db.prepare(
+      "SELECT COUNT(*) as count FROM bakery_inventory_transactions WHERE reference_id = ? AND transaction_type = 'SALE_DEDUCTION'"
+    ).get(order_id) as { count: number };
+
+    if (!alreadyCakeDeducted || alreadyCakeDeducted.count === 0) {
+      const cakeOrderItems = db.prepare(`
+        SELECT oi.*, COALESCE(oi.bakery_variation_id, mi.bakery_variation_id) as variation_id
+        FROM order_items oi
+        LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+        WHERE oi.order_id = ? AND (oi.bakery_variation_id IS NOT NULL OR mi.bakery_variation_id IS NOT NULL)
+      `).all(order_id) as any[];
+
+      for (const coi of cakeOrderItems) {
+        if (!coi.variation_id) continue;
+        const variation = db.prepare('SELECT * FROM bakery_product_variations WHERE id = ?').get(coi.variation_id) as any;
+        if (variation) {
+          const qtyToDeduct = Number(coi.quantity);
+          const newCounterStock = Math.max(0, variation.counter_stock - qtyToDeduct);
+
+          db.prepare(`
+            UPDATE bakery_product_variations
+            SET counter_stock = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `).run(newCounterStock, coi.variation_id);
+
+          db.prepare(`
+            INSERT INTO bakery_inventory_transactions (
+              id, branch_id, product_id, variation_id, batch_id, user_id,
+              department, transaction_type, quantity_change, resulting_quantity, reference_id, reason
+            ) VALUES (?, ?, ?, ?, NULL, ?, 'FRONT_COUNTER', 'SALE_DEDUCTION', ?, ?, ?, ?)
+          `).run(
+            uuidv4(), order.branch_id, variation.product_id, coi.variation_id, req.user!.id,
+            -qtyToDeduct, newCounterStock, order_id, `Restaurant Order #${order.order_number} settlement`
+          );
+
+          if (newCounterStock <= variation.min_stock_level) {
+            lowStockAlerts.push({
+              ingredient: `${variation.variation_name} (Cake)`,
+              currentQuantity: newCounterStock,
+              minStockLevel: variation.min_stock_level
+            });
+          }
+        }
+      }
+    }
+
     // 5. Generate Receipt
     const receiptContent = {
       orderNumber: order.order_number,

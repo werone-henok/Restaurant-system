@@ -12,7 +12,7 @@ export const registerSchema = z.object({
     pin: z.string().length(4, 'PIN must be exactly 4 digits').regex(/^\d{4}$/, 'PIN must be 4 digits').optional(),
     phone: z.string().optional(),
     employee_id: z.string().optional(),
-    requested_role: z.enum(['owner', 'admin', 'cashier', 'chef', 'barista', 'waiter', 'storekeeper']),
+    requested_role: z.enum(['owner', 'admin', 'cashier', 'chef', 'barista', 'waiter', 'storekeeper', 'bakery', 'front_counter']),
     branch_id: z.string().min(1, 'Branch is required'),
     profile_photo: z.string().url().optional().nullable()
 });
@@ -27,7 +27,8 @@ const orderItemSchema = z.object({
     price: z.number().positive(),
     quantity: z.number().int().positive(),
     notes: z.string().optional(),
-    routing_destination: z.enum(['KITCHEN', 'BAR', 'BOTH']).default('KITCHEN')
+    routing_destination: z.enum(['KITCHEN', 'BAR', 'BOTH', 'BAKERY', 'FRONT_COUNTER']).default('KITCHEN'),
+    bakery_variation_id: z.string().optional().nullable()
 });
 export const createOrderSchema = z.object({
     branch_id: z.string().optional(),
@@ -65,12 +66,12 @@ export const createStaffSchema = z.object({
     pin: z.string().length(4).regex(/^\d{4}$/).optional(),
     phone: z.string().optional(),
     employee_id: z.string().optional(),
-    role: z.enum(['owner', 'admin', 'cashier', 'chef', 'barista', 'waiter', 'storekeeper']),
+    role: z.enum(['owner', 'admin', 'cashier', 'chef', 'barista', 'waiter', 'storekeeper', 'bakery', 'front_counter']),
     branch_id: z.string().min(1)
 });
 export const updateUserStatusSchema = z.object({
     status: z.enum(['ACTIVE', 'PENDING_APPROVAL', 'SUSPENDED', 'DEACTIVATED']),
-    role: z.enum(['owner', 'admin', 'cashier', 'chef', 'barista', 'waiter', 'storekeeper']).optional(),
+    role: z.enum(['owner', 'admin', 'cashier', 'chef', 'barista', 'waiter', 'storekeeper', 'bakery', 'front_counter']).optional(),
     branch_id: z.string().optional()
 });
 // ─── Inventory Schemas ───────────────────────────────────────────────

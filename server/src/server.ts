@@ -27,6 +27,7 @@ import { reportRouter } from './routes/reports.js';
 import { adminRouter } from './routes/admin.js';
 import { uploadRouter } from './routes/upload.js';
 import { notificationRouter } from './routes/notifications.js';
+import { bakeryRouter } from './routes/bakery.js';
 import { initBackupScheduler } from './services/backupService.js';
 import { restoreLatestFromCloud, initAutoSync, downloadImageFromCloud, uploadImageToCloud, healMissingUploadedImages } from './services/cloudSyncService.js';
 
@@ -245,6 +246,7 @@ async function bootstrap() {
   app.use('/api/admin', adminRouter);
   app.use('/api/upload', uploadRouter);
   app.use('/api/notifications', notificationRouter);
+  app.use('/api/bakery', bakeryRouter);
 
   // ── 404 catch-all for unmatched API routes ─────────────────────────
   app.all('/api/*', notFoundHandler);

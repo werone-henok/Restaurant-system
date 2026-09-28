@@ -37,7 +37,7 @@ export const CONFIG = {
   CLOUD_SYNC_INTERVAL_MS: parseInt(process.env.CLOUD_SYNC_INTERVAL_MS || '300000', 10),
   DEFAULT_CURRENCY: 'ETB',
   DEFAULT_TAX_RATE: 0.15, // 15% VAT standard Ethiopian tax
-  ROLES: ['owner', 'admin', 'cashier', 'chef', 'barista', 'waiter', 'storekeeper'] as const,
+  ROLES: ['owner', 'admin', 'cashier', 'chef', 'barista', 'waiter', 'storekeeper', 'bakery', 'front_counter'] as const,
   PERMISSIONS: [
     'view_sales',
     'view_expenses',
@@ -52,6 +52,8 @@ export const CONFIG = {
     'adjust_inventory',
     'manage_suppliers',
     'manage_recipes',
+    'manage_bakery',
+    'counter_sales',
     'approve_discounts',
     'cancel_orders',
     'modify_confirmed_orders',

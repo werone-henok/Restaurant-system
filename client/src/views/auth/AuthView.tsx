@@ -11,6 +11,8 @@ const ROLE_OPTIONS = [
   { id: 'chef', label: 'Chef', labelAm: 'ሼፍ', emoji: '🔥', bg: '#fee2e2', color: '#b91c1c' },
   { id: 'barista', label: 'Barista', labelAm: 'ባሪስታ', emoji: '☕', bg: '#f3e8ff', color: '#7e22ce' },
   { id: 'storekeeper', label: 'Inventory', labelAm: 'ዕቃ ክፍል', emoji: '📦', bg: '#d1fae5', color: '#047857' },
+  { id: 'bakery', label: 'Bakery', labelAm: 'ዳቦና ኬክ መጋገሪያ', emoji: '🍰', bg: '#fef3c7', color: '#b45309' },
+  { id: 'front_counter', label: 'Cake Counter', labelAm: 'ኬክ ሽያጭ ቆጣሪ', emoji: '🧁', bg: '#fce7f3', color: '#be185d' },
   { id: 'admin', label: 'Admin', labelAm: 'አስተዳዳሪ', emoji: '🛡️', bg: '#f1f5f9', color: '#334155' }
 ];
 
@@ -34,7 +36,7 @@ export const AuthView: React.FC = () => {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [employeeId, setEmployeeId] = useState('');
-  const [role, setRole] = useState<'waiter' | 'cashier' | 'chef' | 'barista' | 'storekeeper' | 'admin'>('waiter');
+  const [role, setRole] = useState<'waiter' | 'cashier' | 'chef' | 'barista' | 'storekeeper' | 'admin' | 'bakery' | 'front_counter'>('waiter');
   const [branchId, setBranchId] = useState('branch_addis');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [forgotUsername, setForgotUsername] = useState('');
@@ -379,9 +381,17 @@ export const AuthView: React.FC = () => {
           {/* Quick Demo Preload Buttons */}
           <div style={{ marginTop: 20, padding: 14, background: 'var(--bg-subtle)', borderRadius: 14, border: '1px solid var(--border)' }}>
             <span style={{ display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.05em' }}>
-              ⚡ 1-Tap Demo Switcher (All 7 Roles)
+              ⚡ 1-Tap Demo Switcher (All Roles)
             </span>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+              <button type="button" onClick={() => fillDemo('bakery', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
+                <span style={{ fontSize: 16 }}>🍰</span>
+                <span style={{ fontWeight: 800 }}>Bakery</span>
+              </button>
+              <button type="button" onClick={() => fillDemo('front_counter', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: '#fce7f3', color: '#9d174d', border: '1px solid #fbcfe8', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
+                <span style={{ fontSize: 16 }}>🧁</span>
+                <span style={{ fontWeight: 800 }}>Counter</span>
+              </button>
               <button type="button" onClick={() => fillDemo('waiter', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
                 <span style={{ fontSize: 16 }}>🍽️</span>
                 <span style={{ fontWeight: 700 }}>Waiter</span>
@@ -406,7 +416,7 @@ export const AuthView: React.FC = () => {
                 <span style={{ fontSize: 16 }}>🛡️</span>
                 <span style={{ fontWeight: 700 }}>Admin</span>
               </button>
-              <button type="button" onClick={() => fillDemo('owner', 'password123')} className="btn" style={{ padding: '8px 6px', fontSize: 11, background: 'var(--bg-card)', border: '2px solid var(--primary)', borderRadius: 10, gridColumn: 'span 2', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--text-main)', fontWeight: 800, cursor: 'pointer' }}>
+              <button type="button" onClick={() => fillDemo('owner', 'password123')} className="btn" style={{ padding: '8px 6px', fontSize: 11, background: 'var(--bg-card)', border: '2px solid var(--primary)', borderRadius: 10, gridColumn: 'span 4', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--text-main)', fontWeight: 800, cursor: 'pointer' }}>
                 <span style={{ fontSize: 16 }}>👑</span>
                 <span style={{ color: 'var(--text-main)', fontWeight: 800 }}>Owner (Executive)</span>
               </button>

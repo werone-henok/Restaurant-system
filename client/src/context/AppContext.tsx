@@ -8,7 +8,7 @@ export interface User {
   id: string;
   username: string;
   full_name: string;
-  role: 'owner' | 'admin' | 'cashier' | 'chef' | 'barista' | 'waiter' | 'storekeeper';
+  role: 'owner' | 'admin' | 'cashier' | 'chef' | 'barista' | 'waiter' | 'storekeeper' | 'bakery' | 'front_counter';
   branch_id: string;
   phone?: string;
   employee_id?: string;

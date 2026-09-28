@@ -56,7 +56,17 @@ export const NotificationCenter: React.FC = () => {
         event?.type === 'ORDER_STATUS_CHANGED' ||
         event?.type === 'BOM_LOW_STOCK' ||
         event?.type === 'INVENTORY_LOW' ||
-        event?.type === 'NOTIFICATION'
+        event?.type === 'NOTIFICATION' ||
+        event?.type === 'NOTIFICATION_NEW' ||
+        event?.type === 'BAKERY_BATCH_CREATED' ||
+        event?.type === 'BAKERY_BATCH_READY' ||
+        event?.type === 'BAKERY_TRANSFER_PENDING' ||
+        event?.type === 'BAKERY_TRANSFER_RECEIVED' ||
+        event?.type === 'BAKERY_TRANSFER_REJECTED' ||
+        event?.type === 'BAKERY_REQUEST_NEW' ||
+        event?.type === 'BAKERY_REQUEST_UPDATED' ||
+        event?.type === 'BAKERY_STOCK_UPDATED' ||
+        event?.type === 'CAKE_NEW_ORDER'
       ) {
         fetchNotifications();
       }

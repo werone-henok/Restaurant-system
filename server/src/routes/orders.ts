@@ -3,6 +3,7 @@ import { db } from '../database/schema.js';
 import { authenticate, authorizeRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import { logAudit } from '../services/auditService.js';
 import { broadcastEvent } from '../services/websocket.js';
+import { notifyRoles } from '../services/notificationService.js';
 import { v4 as uuidv4 } from 'uuid';
 import { deductBomStock } from '../services/inventoryService.js';
 import { resolveTimezone } from '../utils/timezone.js';
@@ -222,11 +223,19 @@ orderRouter.post('/', authenticate, (req: AuthenticatedRequest, res) => {
     );
 
     const insertItem = db.prepare(`
-      INSERT INTO order_items (id, order_id, menu_item_id, name, price, quantity, notes, routing_destination, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')
+      INSERT INTO order_items (id, order_id, menu_item_id, name, price, quantity, notes, routing_destination, status, bakery_variation_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)
     `);
 
     for (const it of items) {
+      // Check if menu item is linked to a bakery variation
+      const menuItem = db.prepare('SELECT bakery_variation_id, routing_destination FROM menu_items WHERE id = ?').get(it.menu_item_id) as any;
+      const variationId = it.bakery_variation_id || menuItem?.bakery_variation_id || null;
+      let routingDest = it.routing_destination || menuItem?.routing_destination || 'KITCHEN';
+      if (variationId) {
+        routingDest = 'FRONT_COUNTER';
+      }
+
       insertItem.run(
         `item_${uuidv4().substring(0, 8)}`,
         orderId,
@@ -235,7 +244,8 @@ orderRouter.post('/', authenticate, (req: AuthenticatedRequest, res) => {
         it.price,
         it.quantity,
         it.notes || null,
-        it.routing_destination || 'KITCHEN'
+        routingDest,
+        variationId
       );
     }
 
@@ -411,6 +421,7 @@ orderRouter.post('/:id/confirm', authenticate, authorizeRole(['cashier', 'admin'
 
   const hasFood = items.some(i => i.routing_destination === 'KITCHEN' || i.routing_destination === 'BOTH');
   const hasDrink = items.some(i => i.routing_destination === 'BAR' || i.routing_destination === 'BOTH');
+  const hasCake = items.some(i => i.routing_destination === 'FRONT_COUNTER' || i.routing_destination === 'BAKERY' || i.bakery_variation_id);
 
   // Broadcast to Kitchen
   if (hasFood) {
@@ -429,6 +440,26 @@ orderRouter.post('/:id/confirm', authenticate, authorizeRole(['cashier', 'admin'
       branchId: order.branch_id,
       targetRole: ['barista'],
       payload: { orderId, orderNumber: order.order_number, notes: order.special_notes }
+    });
+  }
+
+  // Broadcast to Front Cake Counter
+  if (hasCake) {
+    broadcastEvent({
+      type: 'CAKE_NEW_ORDER',
+      branchId: order.branch_id,
+      targetRole: ['front_counter', 'bakery'],
+      payload: { orderId, orderNumber: order.order_number, notes: order.special_notes }
+    });
+
+    notifyRoles({
+      branchId: order.branch_id,
+      targetRoles: ['front_counter'],
+      title: '🎂 New Cake Order Approved',
+      titleAmharic: '🎂 አዲስ የኬክ ትዕዛዝ ፀድቋል',
+      message: `Order #${order.order_number} has cake item(s) to prepare for waiter pickup.`,
+      type: 'ORDER_NEW',
+      linkRef: String(orderId)
     });
   }
 

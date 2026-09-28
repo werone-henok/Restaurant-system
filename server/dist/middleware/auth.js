@@ -72,7 +72,9 @@ export function requirePermission(permission) {
             chef: ['manage_recipes', 'manage_inventory'],
             barista: ['manage_recipes'],
             waiter: [],
-            storekeeper: ['manage_inventory', 'adjust_inventory', 'manage_suppliers']
+            storekeeper: ['manage_inventory', 'adjust_inventory', 'manage_suppliers'],
+            bakery: ['manage_bakery', 'manage_inventory', 'adjust_inventory'],
+            front_counter: ['counter_sales', 'view_sales']
         };
         const allowed = roleDefaultPermissions[req.user.role]?.includes(permission);
         if (!allowed) {

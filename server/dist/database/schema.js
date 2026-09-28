@@ -374,6 +374,189 @@ export function initDatabase() {
       PRIMARY KEY (branch_id, counter_date)
     );
 
+    -- =========================================================================
+    -- Bakery & Front Cake Sales Counter Architecture
+    -- =========================================================================
+
+    -- Master Bakery Products (e.g., Chocolate Cake, Red Velvet Cake, Croissant)
+    CREATE TABLE IF NOT EXISTS bakery_products (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      name_amharic TEXT,
+      description TEXT,
+      category TEXT DEFAULT 'Cake', -- 'Cake', 'Pastry', 'Bread', 'Cookie', 'Cupcake', 'Dessert'
+      photo_url TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Configurable Variations (e.g., Small 0.5kg, Medium 1kg, Large 2kg, Slice)
+    CREATE TABLE IF NOT EXISTS bakery_product_variations (
+      id TEXT PRIMARY KEY,
+      product_id TEXT NOT NULL REFERENCES bakery_products(id) ON DELETE CASCADE,
+      variation_name TEXT NOT NULL,
+      flavor_type TEXT,
+      size TEXT,
+      weight_kg REAL,
+      price REAL NOT NULL,
+      min_stock_level INTEGER DEFAULT 3,
+      bakery_stock INTEGER DEFAULT 0,
+      counter_stock INTEGER DEFAULT 0,
+      in_transit_stock INTEGER DEFAULT 0,
+      photo_url TEXT,
+      is_available INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Production Batches (Batch tracking, FIFO, Expiration)
+    CREATE TABLE IF NOT EXISTS bakery_batches (
+      id TEXT PRIMARY KEY,
+      batch_number TEXT NOT NULL UNIQUE,
+      product_id TEXT NOT NULL REFERENCES bakery_products(id),
+      variation_id TEXT NOT NULL REFERENCES bakery_product_variations(id),
+      branch_id TEXT NOT NULL REFERENCES branches(id),
+      produced_by_id TEXT NOT NULL REFERENCES users(id),
+      quantity_produced INTEGER NOT NULL,
+      quantity_transferred INTEGER DEFAULT 0,
+      quantity_sold INTEGER DEFAULT 0,
+      quantity_wasted INTEGER DEFAULT 0,
+      quantity_remaining INTEGER NOT NULL,
+      selling_price REAL NOT NULL,
+      photo_url TEXT,
+      production_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      expiration_date DATETIME NOT NULL,
+      status TEXT DEFAULT 'BAKING', -- 'BAKING', 'READY', 'COMPLETED', 'EXPIRED', 'DISCARDED'
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Physical Transfers (Bakery -> Front Cake Sales Counter)
+    CREATE TABLE IF NOT EXISTS bakery_transfers (
+      id TEXT PRIMARY KEY,
+      transfer_number TEXT NOT NULL UNIQUE,
+      branch_id TEXT NOT NULL REFERENCES branches(id),
+      product_id TEXT NOT NULL REFERENCES bakery_products(id),
+      variation_id TEXT NOT NULL REFERENCES bakery_product_variations(id),
+      batch_id TEXT REFERENCES bakery_batches(id),
+      quantity_sent INTEGER NOT NULL,
+      quantity_received INTEGER DEFAULT 0,
+      source_department TEXT DEFAULT 'Bakery',
+      destination_department TEXT DEFAULT 'Front Cake Counter',
+      created_by_id TEXT NOT NULL REFERENCES users(id),
+      sent_by_id TEXT REFERENCES users(id),
+      received_by_id TEXT REFERENCES users(id),
+      sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      received_at DATETIME,
+      status TEXT DEFAULT 'PENDING', -- 'DRAFT', 'PENDING', 'IN_TRANSIT', 'RECEIVED', 'PARTIALLY_RECEIVED', 'REJECTED', 'CANCELLED'
+      rejection_reason TEXT,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Front Counter Stock Monitoring & Bake/Reorder Requests
+    CREATE TABLE IF NOT EXISTS bakery_requests (
+      id TEXT PRIMARY KEY,
+      request_number TEXT NOT NULL UNIQUE,
+      branch_id TEXT NOT NULL REFERENCES branches(id),
+      product_id TEXT NOT NULL REFERENCES bakery_products(id),
+      variation_id TEXT NOT NULL REFERENCES bakery_product_variations(id),
+      requested_by_id TEXT NOT NULL REFERENCES users(id),
+      current_counter_stock INTEGER DEFAULT 0,
+      min_stock_level INTEGER DEFAULT 0,
+      quantity_requested INTEGER NOT NULL,
+      quantity_fulfilled INTEGER DEFAULT 0,
+      urgency TEXT DEFAULT 'NORMAL', -- 'LOW', 'NORMAL', 'HIGH', 'URGENT'
+      status TEXT DEFAULT 'REQUESTED', -- 'REQUESTED', 'ACCEPTED', 'REJECTED', 'IN_PRODUCTION', 'PARTIALLY_FULFILLED', 'READY', 'TRANSFERRED', 'COMPLETED', 'CANCELLED'
+      handled_by_id TEXT REFERENCES users(id),
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Auditable Inventory Transactions Ledger (Bakery & Front Counter)
+    CREATE TABLE IF NOT EXISTS bakery_inventory_transactions (
+      id TEXT PRIMARY KEY,
+      branch_id TEXT NOT NULL REFERENCES branches(id),
+      product_id TEXT NOT NULL REFERENCES bakery_products(id),
+      variation_id TEXT NOT NULL REFERENCES bakery_product_variations(id),
+      batch_id TEXT REFERENCES bakery_batches(id),
+      user_id TEXT NOT NULL REFERENCES users(id),
+      department TEXT NOT NULL, -- 'BAKERY', 'FRONT_COUNTER'
+      transaction_type TEXT NOT NULL, -- 'PRODUCTION_IN', 'TRANSFER_OUT', 'TRANSFER_IN', 'SALE_DEDUCTION', 'WASTE', 'DISCREPANCY_ADJUSTMENT', 'RETURN_IN', 'EXPIRED_LOSS'
+      quantity_change INTEGER NOT NULL,
+      resulting_quantity INTEGER NOT NULL,
+      reference_id TEXT,
+      reason TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Physical Stock Counting & Discrepancy Audits
+    CREATE TABLE IF NOT EXISTS bakery_stock_counts (
+      id TEXT PRIMARY KEY,
+      branch_id TEXT NOT NULL REFERENCES branches(id),
+      counted_by_id TEXT NOT NULL REFERENCES users(id),
+      product_id TEXT NOT NULL REFERENCES bakery_products(id),
+      variation_id TEXT NOT NULL REFERENCES bakery_product_variations(id),
+      system_quantity INTEGER NOT NULL,
+      physical_quantity INTEGER NOT NULL,
+      discrepancy INTEGER NOT NULL,
+      reason TEXT,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Price Suggestions (Bakery suggests -> Admin/Owner reviews & approves)
+    CREATE TABLE IF NOT EXISTS bakery_price_suggestions (
+      id TEXT PRIMARY KEY,
+      branch_id TEXT NOT NULL REFERENCES branches(id),
+      variation_id TEXT NOT NULL REFERENCES bakery_product_variations(id),
+      suggested_by_id TEXT NOT NULL REFERENCES users(id),
+      current_price REAL NOT NULL,
+      suggested_price REAL NOT NULL,
+      reason TEXT NOT NULL,
+      status TEXT DEFAULT 'PENDING', -- 'PENDING', 'APPROVED', 'REJECTED', 'MODIFIED'
+      reviewed_by_id TEXT REFERENCES users(id),
+      approved_price REAL,
+      review_notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      reviewed_at DATETIME
+    );
+
+    -- Waste, Damage & Spoilage Records
+    CREATE TABLE IF NOT EXISTS bakery_waste_records (
+      id TEXT PRIMARY KEY,
+      branch_id TEXT NOT NULL REFERENCES branches(id),
+      product_id TEXT NOT NULL REFERENCES bakery_products(id),
+      variation_id TEXT NOT NULL REFERENCES bakery_product_variations(id),
+      batch_id TEXT REFERENCES bakery_batches(id),
+      user_id TEXT NOT NULL REFERENCES users(id),
+      department TEXT NOT NULL, -- 'BAKERY', 'FRONT_COUNTER'
+      quantity INTEGER NOT NULL,
+      reason TEXT NOT NULL, -- 'Damaged', 'Expired', 'Spoiled', 'Returned', 'Complimentary', 'Staff consumption', 'Other'
+      notes TEXT,
+      photo_url TEXT,
+      estimated_cost REAL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Product Returns Management
+    CREATE TABLE IF NOT EXISTS bakery_returns (
+      id TEXT PRIMARY KEY,
+      branch_id TEXT NOT NULL REFERENCES branches(id),
+      product_id TEXT NOT NULL REFERENCES bakery_products(id),
+      variation_id TEXT NOT NULL REFERENCES bakery_product_variations(id),
+      order_id TEXT REFERENCES orders(id),
+      user_id TEXT NOT NULL REFERENCES users(id),
+      quantity INTEGER NOT NULL,
+      reason TEXT NOT NULL,
+      condition TEXT NOT NULL, -- 'Intact/Safe', 'Damaged/Spoiled', 'Unsealed'
+      returned_to_sellable_stock INTEGER DEFAULT 0,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     -- Performance Indexes
     CREATE INDEX IF NOT EXISTS idx_orders_branch ON orders(branch_id);
     CREATE INDEX IF NOT EXISTS idx_orders_waiter ON orders(waiter_id);
@@ -386,6 +569,17 @@ export function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);
     CREATE INDEX IF NOT EXISTS idx_payments_order ON payments(order_id);
     CREATE INDEX IF NOT EXISTS idx_movements_branch ON inventory_movements(branch_id);
+
+    -- Bakery Performance Indexes
+    CREATE INDEX IF NOT EXISTS idx_bakery_variations_product ON bakery_product_variations(product_id);
+    CREATE INDEX IF NOT EXISTS idx_bakery_batches_branch ON bakery_batches(branch_id);
+    CREATE INDEX IF NOT EXISTS idx_bakery_batches_variation ON bakery_batches(variation_id);
+    CREATE INDEX IF NOT EXISTS idx_bakery_transfers_branch ON bakery_transfers(branch_id);
+    CREATE INDEX IF NOT EXISTS idx_bakery_transfers_status ON bakery_transfers(status);
+    CREATE INDEX IF NOT EXISTS idx_bakery_requests_branch ON bakery_requests(branch_id);
+    CREATE INDEX IF NOT EXISTS idx_bakery_requests_status ON bakery_requests(status);
+    CREATE INDEX IF NOT EXISTS idx_bakery_inv_tx_branch ON bakery_inventory_transactions(branch_id);
+    CREATE INDEX IF NOT EXISTS idx_bakery_inv_tx_dept ON bakery_inventory_transactions(department);
   `;
     db.exec(schema);
     runMigrations();
@@ -421,7 +615,10 @@ export function runMigrations() {
         "ALTER TABLE users ADD COLUMN login_locked_until DATETIME",
         // Payment idempotency & receipt verification hash
         "ALTER TABLE receipts ADD COLUMN verification_hash TEXT",
-        "ALTER TABLE payments ADD COLUMN client_tx_id TEXT"
+        "ALTER TABLE payments ADD COLUMN client_tx_id TEXT",
+        // Bakery integration columns
+        "ALTER TABLE order_items ADD COLUMN bakery_variation_id TEXT",
+        "ALTER TABLE menu_items ADD COLUMN bakery_variation_id TEXT"
     ];
     for (const sql of migrations) {
         try {

@@ -18,6 +18,7 @@ export function seedDatabase() {
   // Check if already seeded
   const branchCount = db.prepare('SELECT COUNT(*) as count FROM branches').get() as { count: number };
   if (branchCount.count > 0) {
+    seedBakeryData();
     return;
   }
 
@@ -279,4 +280,211 @@ export function seedDatabase() {
 
   tx();
   console.log('Database initialized and successfully seeded with realistic Ethiopian restaurant data!');
+
+  // Seed Bakery and Front Cake Counter workflow data
+  seedBakeryData();
+}
+
+export function seedBakeryData() {
+  const defaultPasswordHash = hashSecretSync('password123');
+  const defaultPinHash = hashSecretSync('1234');
+
+  // 1. Ensure Bakery and Front Cake Counter users exist
+  const bakeryUsers = [
+    { id: 'usr_bakery', name: 'Bethlehem Tadesse (Bakery)', username: 'bakery', role: 'bakery', branch_id: 'branch_addis' },
+    { id: 'usr_front_counter', name: 'Hana Girma (Cake Counter)', username: 'front_counter', role: 'front_counter', branch_id: 'branch_addis' }
+  ];
+
+  const insertUser = db.prepare(`
+    INSERT OR IGNORE INTO users (id, full_name, username, password_hash, pin_hash, phone, role, branch_id, status)
+    VALUES (?, ?, ?, ?, ?, '+251911334455', ?, ?, 'ACTIVE')
+  `);
+
+  for (const u of bakeryUsers) {
+    insertUser.run(u.id, u.name, u.username, defaultPasswordHash, defaultPinHash, u.role, u.branch_id);
+    // Also update role if user already exists
+    db.prepare("UPDATE users SET role = ?, status = 'ACTIVE' WHERE username = ?").run(u.role, u.username);
+  }
+
+  // 2. Ensure Bakery & Cakes menu category exists
+  let cat = db.prepare("SELECT id FROM menu_categories WHERE name LIKE '%Bakery%' OR name LIKE '%Cake%' LIMIT 1").get() as any;
+  if (!cat) {
+    db.prepare(`
+      INSERT OR IGNORE INTO menu_categories (id, name, name_amharic, icon, sort_order, is_active)
+      VALUES ('cat_bakery', 'Artisan Cakes & Bakery', 'ኬክና ዳቦ መጋገሪያ', 'Cake', 6, 1)
+    `).run();
+    cat = { id: 'cat_bakery' };
+  }
+
+  // 3. Check if bakery products already seeded
+  const existingProducts = db.prepare('SELECT COUNT(*) as count FROM bakery_products').get() as { count: number };
+  if (existingProducts.count > 0) {
+    return;
+  }
+
+  const tx = db.transaction(() => {
+    // 4. Products Master
+    const products = [
+      {
+        id: 'bp_chocolate',
+        name: 'Signature Chocolate Fudge Cake',
+        name_amharic: 'ቸኮሌት ፈጅ ኬክ',
+        description: 'Rich Belgian dark chocolate ganache, moist sponge layers, handcrafted chocolate curls',
+        category: 'Cake',
+        photo_url: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600&q=80'
+      },
+      {
+        id: 'bp_redvelvet',
+        name: 'Velvet Red Velvet Celebration Cake',
+        name_amharic: 'ሬድ ቬልቬት ኬክ',
+        description: 'Crimson cocoa sponge with whipped Madagascar vanilla bean cream cheese frosting',
+        category: 'Cake',
+        photo_url: 'https://images.unsplash.com/photo-1586788680434-30d324b2d46f?w=600&q=80'
+      },
+      {
+        id: 'bp_cheesecake',
+        name: 'Classic New York Strawberry Cheesecake',
+        name_amharic: 'ስትሮውበሪ ቺዝ ኬክ',
+        description: 'Slow-baked golden graham crust with silky cream cheese and fresh wild strawberry compote',
+        category: 'Cake',
+        photo_url: 'https://images.unsplash.com/photo-1533134242443-d4fd215305ad?w=600&q=80'
+      },
+      {
+        id: 'bp_croissant',
+        name: 'Artisanal French Butter Croissant',
+        name_amharic: 'የፈረንሳይ ቅቤ ክሩዋሳን',
+        description: 'Flaky laminated golden layers baked with 82% pure churned butter',
+        category: 'Pastry',
+        photo_url: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600&q=80'
+      }
+    ];
+
+    const insertProd = db.prepare(`
+      INSERT INTO bakery_products (id, name, name_amharic, description, category, photo_url, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, 1)
+    `);
+    for (const p of products) {
+      insertProd.run(p.id, p.name, p.name_amharic, p.description, p.category, p.photo_url);
+    }
+
+    // 5. Product Variations (Parent Product with Configurable Variations)
+    const variations = [
+      // Chocolate Cake variations
+      { id: 'bpv_choc_small', product_id: 'bp_chocolate', name: 'Small — 0.5 kg', flavor: 'Chocolate Ganache', size: 'Small (0.5 kg)', weight: 0.5, price: 850.0, min_stock: 3, bakery_stock: 6, counter_stock: 4 },
+      { id: 'bpv_choc_medium', product_id: 'bp_chocolate', name: 'Medium — 1 kg', flavor: 'Chocolate Ganache', size: 'Medium (1 kg)', weight: 1.0, price: 1450.0, min_stock: 5, bakery_stock: 8, counter_stock: 6 },
+      { id: 'bpv_choc_large', product_id: 'bp_chocolate', name: 'Large — 2 kg', flavor: 'Chocolate Ganache', size: 'Large (2 kg)', weight: 2.0, price: 2600.0, min_stock: 2, bakery_stock: 4, counter_stock: 2 },
+      { id: 'bpv_choc_slice', product_id: 'bp_chocolate', name: 'Single Slice — 150g', flavor: 'Chocolate Ganache', size: 'Slice (150g)', weight: 0.15, price: 180.0, min_stock: 10, bakery_stock: 15, counter_stock: 12 },
+
+      // Red Velvet Cake variations
+      { id: 'bpv_rv_medium', product_id: 'bp_redvelvet', name: 'Medium — 1 kg', flavor: 'Cream Cheese', size: 'Medium (1 kg)', weight: 1.0, price: 1550.0, min_stock: 4, bakery_stock: 6, counter_stock: 5 },
+      { id: 'bpv_rv_large', product_id: 'bp_redvelvet', name: 'Large — 2 kg', flavor: 'Cream Cheese', size: 'Large (2 kg)', weight: 2.0, price: 2800.0, min_stock: 2, bakery_stock: 3, counter_stock: 2 },
+      { id: 'bpv_rv_slice', product_id: 'bp_redvelvet', name: 'Single Slice — 150g', flavor: 'Cream Cheese', size: 'Slice (150g)', weight: 0.15, price: 195.0, min_stock: 8, bakery_stock: 12, counter_stock: 8 },
+
+      // Cheesecake variations
+      { id: 'bpv_cc_medium', product_id: 'bp_cheesecake', name: 'Medium — 1 kg', flavor: 'Wild Strawberry', size: 'Medium (1 kg)', weight: 1.0, price: 1600.0, min_stock: 3, bakery_stock: 5, counter_stock: 3 },
+      { id: 'bpv_cc_slice', product_id: 'bp_cheesecake', name: 'Single Slice — 160g', flavor: 'Wild Strawberry', size: 'Slice (160g)', weight: 0.16, price: 210.0, min_stock: 8, bakery_stock: 10, counter_stock: 7 },
+
+      // Croissant variations
+      { id: 'bpv_cr_single', product_id: 'bp_croissant', name: 'Single Piece — 100g', flavor: 'French Butter', size: '100g Piece', weight: 0.1, price: 95.0, min_stock: 10, bakery_stock: 25, counter_stock: 18 },
+      { id: 'bpv_cr_box4', product_id: 'bp_croissant', name: 'Pastry Box of 4', flavor: 'French Butter', size: 'Box of 4', weight: 0.4, price: 350.0, min_stock: 4, bakery_stock: 8, counter_stock: 5 }
+    ];
+
+    const insertVar = db.prepare(`
+      INSERT INTO bakery_product_variations (
+        id, product_id, variation_name, flavor_type, size, weight_kg, price,
+        min_stock_level, bakery_stock, counter_stock, in_transit_stock, is_available
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)
+    `);
+
+    const insertMenuItem = db.prepare(`
+      INSERT OR REPLACE INTO menu_items (
+        id, category_id, name, name_amharic, description, price, photo_url,
+        prep_time_minutes, routing_destination, is_available, bakery_variation_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 5, 'FRONT_COUNTER', 1, ?)
+    `);
+
+    for (const v of variations) {
+      insertVar.run(v.id, v.product_id, v.name, v.flavor, v.size, v.weight, v.price, v.min_stock, v.bakery_stock, v.counter_stock);
+
+      const parent = products.find(p => p.id === v.product_id)!;
+      insertMenuItem.run(
+        `menu_bakery_${v.id.substring(4)}`,
+        cat.id,
+        `${parent.name} (${v.name})`,
+        parent.name_amharic ? `${parent.name_amharic} (${v.name})` : null,
+        `${parent.description} — ${v.size}`,
+        v.price,
+        parent.photo_url,
+        v.id
+      );
+
+      // Record initial inventory transaction for each department
+      db.prepare(`
+        INSERT INTO bakery_inventory_transactions (
+          id, branch_id, product_id, variation_id, user_id, department,
+          transaction_type, quantity_change, resulting_quantity, reason
+        ) VALUES (?, 'branch_addis', ?, ?, 'usr_bakery', 'BAKERY', 'PRODUCTION_IN', ?, ?, 'Initial bakery production stock')
+      `).run(`tx_init_bak_${v.id}`, v.product_id, v.id, v.bakery_stock, v.bakery_stock);
+
+      db.prepare(`
+        INSERT INTO bakery_inventory_transactions (
+          id, branch_id, product_id, variation_id, user_id, department,
+          transaction_type, quantity_change, resulting_quantity, reason
+        ) VALUES (?, 'branch_addis', ?, ?, 'usr_front_counter', 'FRONT_COUNTER', 'TRANSFER_IN', ?, ?, 'Initial verified front counter stock')
+      `).run(`tx_init_cnt_${v.id}`, v.product_id, v.id, v.counter_stock, v.counter_stock);
+    }
+
+    // 6. Sample Initial Batch
+    db.prepare(`
+      INSERT INTO bakery_batches (
+        id, batch_number, product_id, variation_id, branch_id, produced_by_id,
+        quantity_produced, quantity_transferred, quantity_sold, quantity_wasted,
+        quantity_remaining, selling_price, photo_url, production_date, expiration_date, status, notes
+      ) VALUES (
+        'bb_sample_01', 'BATCH-20260928-101', 'bp_chocolate', 'bpv_choc_medium', 'branch_addis',
+        'usr_bakery', 14, 6, 0, 0, 8, 1450.0,
+        'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600&q=80',
+        datetime('now', '-2 hours'), datetime('now', '+3 days'), 'READY', 'Fresh morning bake with Dutch cocoa'
+      )
+    `).run();
+
+    // 7. Sample Completed Transfer & Sample Pending Transfer
+    db.prepare(`
+      INSERT INTO bakery_transfers (
+        id, transfer_number, branch_id, product_id, variation_id, batch_id,
+        quantity_sent, quantity_received, source_department, destination_department,
+        created_by_id, sent_by_id, received_by_id, sent_at, received_at, status, notes
+      ) VALUES (
+        'trf_sample_01', 'TRF-20260928-001', 'branch_addis', 'bp_chocolate', 'bpv_choc_medium', 'bb_sample_01',
+        6, 6, 'Bakery', 'Front Cake Counter', 'usr_bakery', 'usr_bakery', 'usr_front_counter',
+        datetime('now', '-1 hour'), datetime('now', '-45 minutes'), 'RECEIVED', 'Morning display stock transfer'
+      )
+    `).run();
+
+    // 8. Sample Bake Request from Front Counter
+    db.prepare(`
+      INSERT INTO bakery_requests (
+        id, request_number, branch_id, product_id, variation_id, requested_by_id,
+        current_counter_stock, min_stock_level, quantity_requested, quantity_fulfilled,
+        urgency, status, notes
+      ) VALUES (
+        'req_sample_01', 'REQ-20260928-001', 'branch_addis', 'bp_redvelvet', 'bpv_rv_medium',
+        'usr_front_counter', 3, 5, 8, 0, 'HIGH', 'IN_PRODUCTION', 'High weekend demand expected for Red Velvet'
+      )
+    `).run();
+
+    // 9. Sample Price Suggestion from Bakery
+    db.prepare(`
+      INSERT INTO bakery_price_suggestions (
+        id, branch_id, variation_id, suggested_by_id, current_price,
+        suggested_price, reason, status
+      ) VALUES (
+        'ps_sample_01', 'branch_addis', 'bpv_rv_large', 'usr_bakery',
+        2800.0, 2950.0, 'Imported cream cheese and dairy packaging material cost increased by 15%', 'PENDING'
+      )
+    `).run();
+  });
+
+  tx();
+  console.log('✓ Bakery and Front Cake Sales Counter system initialized with master products and variations!');
 }
