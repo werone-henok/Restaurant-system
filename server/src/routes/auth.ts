@@ -3,9 +3,10 @@ import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../database/schema.js';
 import { CONFIG } from '../config/env.js';
-import { authenticate, blacklistToken, type AuthenticatedRequest } from '../middleware/auth.js';
+import { authenticate, blacklistToken, authorizeRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import { logAudit } from '../services/auditService.js';
 import { broadcastEvent } from '../services/websocket.js';
+import { notifyRoles } from '../services/notificationService.js';
 import { hashSecret, verifySecret } from '../utils/security.js';
 import { validate } from '../middleware/validate.js';
 import { loginSchema, registerSchema, verifyPinSchema } from '../schemas/api.schemas.js';
@@ -363,50 +364,327 @@ authRouter.post('/verify-pin', authenticate, validate(verifyPinSchema), async (r
   res.json({ verified: true, authorizedBy: targetUser.full_name, role: targetUser.role });
 });
 
-// 7. Request Password Reset (Forgot Password)
+// 7. Request Password Reset (Forgot Password) -> Sent to Admin/Owner for strict approval
 authRouter.post('/forgot-password', (req, res) => {
-  const { username } = req.body;
+  const { username, contact, desired_password, reason } = req.body;
   if (!username) {
-    return res.status(400).json({ error: 'Username is required' });
+    return res.status(400).json({ error: 'Username or phone is required' });
   }
 
-  const user = db.prepare('SELECT id, username, branch_id FROM users WHERE username = ? AND deleted_at IS NULL').get(username) as any;
+  const user = db.prepare('SELECT id, username, full_name, role, branch_id, phone FROM users WHERE (username = ? OR phone = ?) AND deleted_at IS NULL').get(username, username) as any;
 
   if (user) {
-    const resetToken = uuidv4();
-    const resetExpiry = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+    const reqId = `uar_${uuidv4().substring(0, 8)}`;
+    const branchId = user.branch_id || 'branch_addis';
 
-    db.prepare('UPDATE users SET reset_token = ?, reset_expiry = ? WHERE id = ?').run(resetToken, resetExpiry, user.id);
+    db.prepare(`
+      INSERT INTO user_account_requests (
+        id, branch_id, user_id, username, full_name, role, request_type, requested_changes, status
+      ) VALUES (?, ?, ?, ?, ?, ?, 'FORGOT_PASSWORD', ?, 'PENDING')
+    `).run(
+      reqId, branchId, user.id, user.username, user.full_name, user.role,
+      JSON.stringify({
+        desired_password: desired_password || null,
+        contact: contact || user.phone || null,
+        reason: reason || 'የይለፍ ቃል ረሳሁ (Forgot Password)'
+      })
+    );
+
+    notifyRoles({
+      branchId,
+      targetRoles: ['admin', 'owner'],
+      title: '🔐 የይለፍ ቃል መቀየር ጥያቄ (Password Reset Request)',
+      titleAmharic: '🔐 የይለፍ ቃል መቀየር ጥያቄ ደርሷል',
+      message: `Staff member @${user.username} (${user.full_name}, ${user.role}) has requested a password reset. Requires Admin/Owner approval.`,
+      type: 'USER_PENDING',
+      linkRef: reqId
+    });
 
     broadcastEvent({
-      type: 'PASSWORD_RESET_REQUEST',
-      branchId: user.branch_id,
+      type: 'USER_ACCOUNT_REQUEST_NEW',
+      branchId,
       targetRole: ['admin', 'owner'],
       payload: {
+        requestId: reqId,
         userId: user.id,
         username: user.username,
-        resetToken,
+        fullName: user.full_name,
+        role: user.role,
+        requestType: 'FORGOT_PASSWORD',
         requestedAt: new Date().toISOString()
       }
     });
 
     logAudit({
-      branchId: user.branch_id,
+      branchId,
       userId: user.id,
       action: 'PASSWORD_RESET_REQUESTED',
       entityType: 'USER',
       entityId: user.id,
-      details: { username: user.username }
+      details: { username: user.username, requestId: reqId }
     });
   }
 
-  // Consistent response to prevent user enumeration
   res.json({
-    message: 'If the account exists, a password reset authorization link/code has been generated and sent to management.'
+    success: true,
+    message: 'የይለፍ ቃል መቀየር ጥያቄዎ ለአስተዳዳሪው/ለባለቤቱ ተልኳል። ሲፈቀድ ማሳወቂያ ይደርሳችኋል። (Your password reset request has been submitted for Admin/Owner approval).'
   });
 });
 
-// 8. Confirm Password Reset
+// 8. Submit Profile / Password Change Request (Authenticated User -> Strict Admin/Owner Approval)
+authRouter.post('/profile-change-request', authenticate, (req: AuthenticatedRequest, res) => {
+  const { new_full_name, new_phone, new_password, reason } = req.body;
+  const user = req.user!;
+  const branchId = user.branch_id || 'branch_addis';
+
+  if (!new_full_name && !new_phone && !new_password) {
+    return res.status(400).json({ error: 'At least one field (full name, phone, or new password) must be provided' });
+  }
+
+  if (new_password && new_password.trim().length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+  }
+
+  const reqType = new_password && new_full_name
+    ? 'PROFILE_AND_PASSWORD'
+    : new_password
+    ? 'PASSWORD_CHANGE'
+    : 'PROFILE_UPDATE';
+
+  const reqId = `uar_${uuidv4().substring(0, 8)}`;
+
+  db.prepare(`
+    INSERT INTO user_account_requests (
+      id, branch_id, user_id, username, full_name, role, request_type, requested_changes, status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')
+  `).run(
+    reqId, branchId, user.id, user.username, user.full_name, user.role, reqType,
+    JSON.stringify({
+      new_full_name: new_full_name?.trim() || null,
+      new_phone: new_phone?.trim() || null,
+      new_password: new_password?.trim() || null,
+      reason: reason?.trim() || 'የመገለጫ/የይለፍ ቃል ማስተካከያ'
+    })
+  );
+
+  notifyRoles({
+    branchId,
+    targetRoles: ['admin', 'owner'],
+    title: '👤 የመገለጫ/የይለፍ ቃል ለውጥ ጥያቄ (Account Change Request)',
+    titleAmharic: '👤 የመገለጫ/የይለፍ ቃል ለውጥ ጥያቄ',
+    message: `${user.full_name} (@${user.username}) submitted an account change request (${reqType}). Requires approval.`,
+    type: 'USER_PENDING',
+    linkRef: reqId
+  });
+
+  broadcastEvent({
+    type: 'USER_ACCOUNT_REQUEST_NEW',
+    branchId,
+    targetRole: ['admin', 'owner'],
+    payload: {
+      requestId: reqId,
+      userId: user.id,
+      username: user.username,
+      fullName: user.full_name,
+      role: user.role,
+      requestType: reqType,
+      requestedAt: new Date().toISOString()
+    }
+  });
+
+  logAudit({
+    branchId,
+    userId: user.id,
+    action: 'USER_ACCOUNT_REQUEST_SUBMITTED',
+    entityType: 'USER',
+    entityId: user.id,
+    details: { username: user.username, requestType: reqType, requestId: reqId }
+  });
+
+  res.json({
+    success: true,
+    message: 'ጥያቄዎ ለአስተዳዳሪው/ለባለቤቱ ተልኳል፤ ጥብቅ ማረጋገጫ ከተደረገ በኋላ ተግባራዊ ይሆናል። (Your request has been submitted for Admin/Owner approval).'
+  });
+});
+
+// 9. Get current user's submitted requests
+authRouter.get('/my-account-requests', authenticate, (req: AuthenticatedRequest, res) => {
+  const requests = db.prepare(`
+    SELECT * FROM user_account_requests
+    WHERE user_id = ?
+    ORDER BY created_at DESC LIMIT 20
+  `).all(req.user!.id);
+
+  res.json(requests);
+});
+
+// 10. List all account requests for Admin & Owner
+authRouter.get('/admin/account-requests', authenticate, authorizeRole(['admin', 'owner']), (req: AuthenticatedRequest, res) => {
+  const status = req.query.status as string;
+  let query = `
+    SELECT r.*, u.profile_photo, u.employee_id, u.phone as current_phone
+    FROM user_account_requests r
+    LEFT JOIN users u ON r.user_id = u.id
+  `;
+  const params: any[] = [];
+
+  if (status && status !== 'ALL') {
+    query += ` WHERE r.status = ?`;
+    params.push(status);
+  }
+
+  query += ` ORDER BY CASE r.status WHEN 'PENDING' THEN 1 ELSE 2 END, r.created_at DESC LIMIT 100`;
+
+  const rows = db.prepare(query).all(...params);
+  res.json(rows);
+});
+
+// 11. Approve Account / Password Request (Admin & Owner ONLY)
+authRouter.patch('/admin/account-requests/:id/approve', authenticate, authorizeRole(['admin', 'owner']), async (req: AuthenticatedRequest, res) => {
+  const { id } = req.params;
+  const { admin_notes, admin_password_override } = req.body;
+
+  const item = db.prepare('SELECT * FROM user_account_requests WHERE id = ?').get(id) as any;
+  if (!item) return res.status(404).json({ error: 'Request not found' });
+  if (item.status !== 'PENDING') {
+    return res.status(400).json({ error: `Request is already ${item.status}` });
+  }
+
+  let changes: any = {};
+  try {
+    changes = JSON.parse(item.requested_changes);
+  } catch (_) {}
+
+  const targetUserId = item.user_id;
+  const finalPassword = admin_password_override || changes.new_password || changes.desired_password;
+
+  // 1. Update password if present
+  if (finalPassword) {
+    const newHash = await hashSecret(finalPassword);
+    db.prepare(`
+      UPDATE users
+      SET password_hash = ?,
+          login_attempts = 0,
+          login_locked_until = NULL,
+          pin_attempts = 0,
+          pin_locked_until = NULL,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(newHash, targetUserId);
+  }
+
+  // 2. Update profile fields if present
+  if (changes.new_full_name) {
+    db.prepare('UPDATE users SET full_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(changes.new_full_name, targetUserId);
+  }
+  if (changes.new_phone) {
+    db.prepare('UPDATE users SET phone = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(changes.new_phone, targetUserId);
+  }
+
+  // 3. Mark request as APPROVED
+  db.prepare(`
+    UPDATE user_account_requests
+    SET status = 'APPROVED',
+        reviewed_by_id = ?,
+        reviewed_by_name = ?,
+        admin_notes = ?,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(req.user!.id, req.user!.full_name, admin_notes || 'Approved by management', id);
+
+  logAudit({
+    branchId: item.branch_id,
+    userId: req.user!.id,
+    action: 'USER_ACCOUNT_REQUEST_APPROVED',
+    entityType: 'USER',
+    entityId: targetUserId,
+    details: { requestId: id, targetUsername: item.username, type: item.request_type, passwordChanged: !!finalPassword }
+  });
+
+  broadcastEvent({
+    type: 'USER_ACCOUNT_REQUEST_RESOLVED',
+    branchId: item.branch_id,
+    payload: { requestId: id, status: 'APPROVED', username: item.username, targetUserId }
+  });
+
+  res.json({
+    success: true,
+    message: `ጥያቄው ጸድቋል! የተጠቃሚው መረጃ/የይለፍ ቃል ተቀይሯል። (Request approved successfully).`
+  });
+});
+
+// 12. Reject Account / Password Request (Admin & Owner ONLY)
+authRouter.patch('/admin/account-requests/:id/reject', authenticate, authorizeRole(['admin', 'owner']), (req: AuthenticatedRequest, res) => {
+  const { id } = req.params;
+  const { admin_notes } = req.body;
+
+  const item = db.prepare('SELECT * FROM user_account_requests WHERE id = ?').get(id) as any;
+  if (!item) return res.status(404).json({ error: 'Request not found' });
+
+  db.prepare(`
+    UPDATE user_account_requests
+    SET status = 'REJECTED',
+        reviewed_by_id = ?,
+        reviewed_by_name = ?,
+        admin_notes = ?,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(req.user!.id, req.user!.full_name, admin_notes || 'Rejected by management', id);
+
+  logAudit({
+    branchId: item.branch_id,
+    userId: req.user!.id,
+    action: 'USER_ACCOUNT_REQUEST_REJECTED',
+    entityType: 'USER',
+    entityId: item.user_id,
+    details: { requestId: id, targetUsername: item.username, type: item.request_type }
+  });
+
+  broadcastEvent({
+    type: 'USER_ACCOUNT_REQUEST_RESOLVED',
+    branchId: item.branch_id,
+    payload: { requestId: id, status: 'REJECTED', username: item.username }
+  });
+
+  res.json({ success: true, message: 'ጥያቄው ውድቅ ተደርጓል (Request rejected).' });
+});
+
+// 13. Direct Admin Reset Password (One-click from Staff Table)
+authRouter.post('/admin/direct-reset-password', authenticate, authorizeRole(['admin', 'owner']), async (req: AuthenticatedRequest, res) => {
+  const { user_id, new_password } = req.body;
+  if (!user_id || !new_password || new_password.trim().length < 6) {
+    return res.status(400).json({ error: 'User ID and valid new password (min 6 characters) are required' });
+  }
+
+  const target = db.prepare('SELECT id, username, full_name, branch_id FROM users WHERE id = ? AND deleted_at IS NULL').get(user_id) as any;
+  if (!target) return res.status(404).json({ error: 'User not found' });
+
+  const newHash = await hashSecret(new_password.trim());
+
+  db.prepare(`
+    UPDATE users
+    SET password_hash = ?,
+        login_attempts = 0,
+        login_locked_until = NULL,
+        pin_attempts = 0,
+        pin_locked_until = NULL,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(newHash, user_id);
+
+  logAudit({
+    branchId: target.branch_id || 'branch_addis',
+    userId: req.user!.id,
+    action: 'ADMIN_DIRECT_PASSWORD_RESET',
+    entityType: 'USER',
+    entityId: user_id,
+    details: { targetUsername: target.username }
+  });
+
+  res.json({ success: true, message: `ለ @${target.username} አዲስ የይለፍ ቃል ተቀናብሯል! (Password updated successfully).` });
+});
+
+// 14. Confirm Password Reset via token
 authRouter.post('/reset-password', async (req, res) => {
   const { token, newPassword } = req.body;
 
@@ -427,7 +705,7 @@ authRouter.post('/reset-password', async (req, res) => {
 
   db.prepare(`
     UPDATE users
-    SET password_hash = ?, reset_token = NULL, reset_expiry = NULL, pin_attempts = 0, pin_locked_until = NULL
+    SET password_hash = ?, reset_token = NULL, reset_expiry = NULL, pin_attempts = 0, pin_locked_until = NULL, login_attempts = 0, login_locked_until = NULL
     WHERE id = ?
   `).run(newHash, user.id);
 

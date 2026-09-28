@@ -40,6 +40,8 @@ export const AuthView: React.FC = () => {
   const [branchId, setBranchId] = useState('branch_addis');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [forgotUsername, setForgotUsername] = useState('');
+  const [forgotDesiredPassword, setForgotDesiredPassword] = useState('');
+  const [forgotReason, setForgotReason] = useState('');
 
   // Server Switcher State
   const [showServerModal, setShowServerModal] = useState(false);
@@ -105,12 +107,18 @@ export const AuthView: React.FC = () => {
     try {
       const res = await api.request<any>('/auth/forgot-password', {
         method: 'POST',
-        body: JSON.stringify({ username: forgotUsername })
+        body: JSON.stringify({
+          username: forgotUsername.trim(),
+          desired_password: forgotDesiredPassword.trim() || undefined,
+          reason: forgotReason.trim() || undefined
+        })
       });
       tactileFeedback('success');
       setSuccessMsg(res.message);
       setIsForgot(false);
       setForgotUsername('');
+      setForgotDesiredPassword('');
+      setForgotReason('');
     } catch (err: any) {
       tactileFeedback('error');
       setError(err.message || 'Failed to request reset.');
@@ -177,22 +185,53 @@ export const AuthView: React.FC = () => {
 
       {isForgot ? (
         <form onSubmit={handleForgotPassword} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ background: '#fef3c7', border: '1.5px solid #fde68a', borderRadius: 12, padding: '12px 14px', fontSize: 13, color: '#92400e', fontWeight: 600 }}>
+            🔒 <strong>የይለፍ ቃል መጠየቂያ</strong>: ጥያቄዎ በቀጥታ ለአስተዳዳሪው ወይም ለባለቤቱ ይላካል፤ ሲረጋገጥ አዲሱ የይለፍ ቃል ተግባራዊ ይሆናል::
+          </div>
+
           <div>
             <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-              Username
+              የተጠቃሚ ስም ወይም ስልክ (Username or Phone) *
             </label>
             <input
               type="text"
               required
               value={forgotUsername}
               onChange={e => setForgotUsername(e.target.value)}
-              placeholder="e.g. waiter"
+              placeholder="e.g. waiter1 or 0911..."
               style={{ width: '100%', height: 44 }}
             />
           </div>
 
-          <button type="submit" disabled={loading} className="btn btn-primary btn-block" style={{ height: 48 }}>
-            {loading ? 'Submitting...' : 'Request Password Reset'}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+              የሚፈልጉት አዲስ የይለፍ ቃል (Desired New Password - Optional)
+            </label>
+            <input
+              type="password"
+              minLength={6}
+              value={forgotDesiredPassword}
+              onChange={e => setForgotDesiredPassword(e.target.value)}
+              placeholder="ቢያንስ 6 ፊደላት / Min 6 characters"
+              style={{ width: '100%', height: 44 }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+              ምክንያት (Reason / Notes)
+            </label>
+            <input
+              type="text"
+              value={forgotReason}
+              onChange={e => setForgotReason(e.target.value)}
+              placeholder="ለምሳሌ፡ የይለፍ ቃሌን ረሳሁት / Forgot password"
+              style={{ width: '100%', height: 44 }}
+            />
+          </div>
+
+          <button type="submit" disabled={loading} className="btn btn-primary btn-block" style={{ height: 48, fontWeight: 900 }}>
+            {loading ? 'እየላከ ነው...' : '📩 የይለፍ ቃል መቀየር ጥያቄ ላክ (Send Request)'}
           </button>
 
           <button

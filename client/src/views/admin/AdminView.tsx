@@ -5,17 +5,18 @@ import { CameraCapture } from '../../components/CameraCapture';
 import { ImageUploadCompressor } from '../../components/ImageUploadCompressor';
 import { DetailedReportsDashboard } from '../../components/DetailedReportsDashboard';
 import { resolveImageUrl } from '../../utils/imageUrl';
-import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils, BarChart3, FolderPlus, Tag, Clock, Sparkles, Globe } from 'lucide-react';
+import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils, BarChart3, FolderPlus, Tag, Clock, Sparkles, Globe, Key, Lock, ShieldCheck, ShieldAlert, UserCheck, UserX } from 'lucide-react';
 import { CreateCategoryModal } from '../../components/CreateCategoryModal';
 import { TIMEZONE_OPTIONS, getDeviceTimezone } from '../../utils/timezone';
 import { gToast } from '../../utils/toast';
+import { tactileFeedback } from '../../utils/feedback';
 
 export const AdminView: React.FC = () => {
   const { 
     currentBranchId, branches, refreshBranches, settings, refreshSettings, 
     t, language, setTimezoneMode, setSelectedTimezone, activeTimezone, formatTime 
   } = useApp();
-  const [activeTab, setActiveTab] = useState<'employees' | 'branches' | 'tables' | 'settings' | 'expenses' | 'audit' | 'menu' | 'analytics'>('employees');
+  const [activeTab, setActiveTab] = useState<'employees' | 'branches' | 'tables' | 'settings' | 'expenses' | 'audit' | 'menu' | 'analytics' | 'accountRequests'>('employees');
   const [users, setUsers] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -87,6 +88,20 @@ export const AdminView: React.FC = () => {
     }
   }, [settings]);
 
+  // Account & Password Requests (Admin Strict Approval)
+  const [accountRequests, setAccountRequests] = useState<any[]>([]);
+  const [accountRequestsFilter, setAccountRequestsFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
+  const [selectedReqForApproval, setSelectedReqForApproval] = useState<any | null>(null);
+  const [selectedReqForRejection, setSelectedReqForRejection] = useState<any | null>(null);
+  const [adminPassOverride, setAdminPassOverride] = useState('');
+  const [adminReviewNote, setAdminReviewNote] = useState('');
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
+
+  // Direct Staff Password Reset Modal
+  const [directResetTarget, setDirectResetTarget] = useState<any | null>(null);
+  const [directResetPassword, setDirectResetPassword] = useState('');
+  const [isDirectResetting, setIsDirectResetting] = useState(false);
+
   // Expense form
   const [expenseCategory, setExpenseCategory] = useState('Electricity');
   const [expenseAmount, setExpenseAmount] = useState<number>(500);
@@ -99,6 +114,7 @@ export const AdminView: React.FC = () => {
     api.request<any[]>(`/tables?branchId=${currentBranchId}`).then(setTables).catch(() => {});
     api.request<any[]>('/menu/items?all=true').then(setMenuItems).catch(() => {});
     api.request<any[]>('/menu/categories').then(setCategories).catch(() => {});
+    api.request<any[]>('/auth/admin/account-requests').then(setAccountRequests).catch(() => {});
     refreshBranches();
   };
 
@@ -241,6 +257,18 @@ export const AdminView: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    const unsub = api.onEvent((event) => {
+      if (
+        event?.type === 'USER_ACCOUNT_REQUEST_NEW' ||
+        event?.type === 'USER_ACCOUNT_REQUEST_RESOLVED' ||
+        event?.type === 'USER_ACCOUNT_REQUEST_UPDATED'
+      ) {
+        api.request<any[]>('/auth/admin/account-requests').then(setAccountRequests).catch(() => {});
+      }
+    });
+    return () => {
+      if (unsub) unsub();
+    };
   }, [currentBranchId]);
 
   useEffect(() => {
@@ -420,7 +448,88 @@ export const AdminView: React.FC = () => {
     }
   };
 
+  // Account Request Management Handlers (Admin Strict Approval)
+  const handleApproveRequest = async () => {
+    if (!selectedReqForApproval) return;
+    setIsProcessingAction(true);
+    tactileFeedback('click');
+    try {
+      const res = await api.request<any>(`/auth/admin/account-requests/${selectedReqForApproval.id}/approve`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          admin_notes: adminReviewNote.trim() || undefined,
+          admin_password_override: adminPassOverride.trim() || undefined
+        })
+      });
+      tactileFeedback('success');
+      gToast.success(res.message || 'ጥያቄው ጸድቋል! የተጠቃሚው መረጃ/የይለፍ ቃል ተቀይሯል።');
+      setSelectedReqForApproval(null);
+      setAdminPassOverride('');
+      setAdminReviewNote('');
+      loadData();
+    } catch (err: any) {
+      tactileFeedback('error');
+      gToast.error(err.message || 'ጥያቄውን ማጽደቅ አልተቻለም');
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
+  const handleRejectRequest = async () => {
+    if (!selectedReqForRejection) return;
+    setIsProcessingAction(true);
+    tactileFeedback('click');
+    try {
+      const res = await api.request<any>(`/auth/admin/account-requests/${selectedReqForRejection.id}/reject`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          admin_notes: adminReviewNote.trim() || 'በአስተዳዳሪው ውድቅ ተደርጓል (Rejected by admin)'
+        })
+      });
+      tactileFeedback('success');
+      gToast.success(res.message || 'ጥያቄው ውድቅ ተደርጓል');
+      setSelectedReqForRejection(null);
+      setAdminReviewNote('');
+      loadData();
+    } catch (err: any) {
+      tactileFeedback('error');
+      gToast.error(err.message || 'ውድቅ ማድረግ አልተቻለም');
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
+  const handleDirectPasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!directResetTarget || !directResetPassword || directResetPassword.trim().length < 6) {
+      gToast.error('የይለፍ ቃል ቢያንስ 6 ፊደላት መሆን አለበት (Password min 6 chars)');
+      return;
+    }
+    setIsDirectResetting(true);
+    tactileFeedback('click');
+    try {
+      const res = await api.request<any>('/auth/admin/direct-reset-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          user_id: directResetTarget.id,
+          new_password: directResetPassword.trim()
+        })
+      });
+      tactileFeedback('success');
+      gToast.success(res.message || `የ @${directResetTarget.username} የይለፍ ቃል ተቀይሯል!`);
+      setDirectResetTarget(null);
+      setDirectResetPassword('');
+      loadData();
+    } catch (err: any) {
+      tactileFeedback('error');
+      gToast.error(err.message || 'የይለፍ ቃል መቀየር አልተቻለም');
+    } finally {
+      setIsDirectResetting(false);
+    }
+  };
+
   const pendingUsers = users.filter(u => u.status === 'PENDING_APPROVAL');
+  const pendingAccountRequests = accountRequests.filter(r => r.status === 'PENDING');
 
   return (
     <div className="view-body animate-fade-in">
@@ -431,6 +540,41 @@ export const AdminView: React.FC = () => {
           style={{ flex: 1, minWidth: 70, padding: '8px 4px', fontSize: 11, fontWeight: 700, borderRadius: 8, background: activeTab === 'employees' ? '#ffffff' : 'transparent', color: activeTab === 'employees' ? 'var(--primary)' : 'var(--text-muted)' }}
         >
           Staff ({users.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('accountRequests')}
+          style={{
+            flex: 1,
+            minWidth: 95,
+            padding: '8px 4px',
+            fontSize: 11,
+            fontWeight: 700,
+            borderRadius: 8,
+            background: activeTab === 'accountRequests' ? '#ffffff' : 'transparent',
+            color: activeTab === 'accountRequests' ? 'var(--primary)' : pendingAccountRequests.length > 0 ? '#b45309' : 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 4
+          }}
+        >
+          <Lock size={12} />
+          {language === 'am' ? 'ጥያቄዎች' : 'Approvals'}
+          {pendingAccountRequests.length > 0 && (
+            <span
+              style={{
+                background: '#ef4444',
+                color: '#ffffff',
+                fontSize: 10,
+                fontWeight: 900,
+                padding: '1px 5px',
+                borderRadius: 10,
+                lineHeight: 1
+              }}
+            >
+              {pendingAccountRequests.length}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setActiveTab('branches')}
@@ -533,6 +677,29 @@ export const AdminView: React.FC = () => {
                   <span className={`badge badge-${u.status === 'ACTIVE' ? 'ready' : 'cancelled'}`}>
                     {u.status}
                   </span>
+                  <button
+                    onClick={() => {
+                      setDirectResetTarget(u);
+                      setDirectResetPassword('');
+                    }}
+                    style={{
+                      background: '#f1f5f9',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: 6,
+                      padding: '4px 8px',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: '#334155',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      cursor: 'pointer'
+                    }}
+                    title="Directly reset this user's password"
+                  >
+                    <Key size={11} color="var(--primary)" />
+                    {language === 'am' ? 'የይለፍ ቃል' : 'Password'}
+                  </button>
                   {u.role !== 'owner' && (
                     <button
                       onClick={() => handleUserStatus(u.id, u.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE')}
@@ -1146,6 +1313,271 @@ export const AdminView: React.FC = () => {
         </div>
       )}
 
+      {/* 8. ACCOUNT & PASSWORD REQUESTS TAB (STRICT ADMIN/OWNER APPROVAL) */}
+      {activeTab === 'accountRequests' && (
+        <div className="animate-fade-in">
+          {/* Header & Controls */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 900, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                <ShieldCheck size={20} color="var(--primary)" />
+                {language === 'am' ? 'የይለፍ ቃልና የመረጃ ጥያቄዎች ማረጋገጫ' : 'Staff Account & Password Approvals'}
+              </h3>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                {language === 'am' 
+                  ? 'የተረሱ የይለፍ ቃላት እና የመረጃ ለውጦች በአስተዳዳሪው ወይም በባለቤቱ ማረጋገጫ ብቻ ይፀድቃሉ።' 
+                  : 'All staff forgot-password and profile modification requests require strict Admin/Owner approval.'}
+              </p>
+            </div>
+
+            {/* Filter Pills */}
+            <div style={{ display: 'flex', gap: 6, background: 'var(--bg-subtle)', padding: 4, borderRadius: 10, overflowX: 'auto' }}>
+              {(['PENDING', 'ALL', 'APPROVED', 'REJECTED'] as const).map(flt => {
+                const count = flt === 'ALL' 
+                  ? accountRequests.length 
+                  : accountRequests.filter(r => r.status === flt).length;
+                return (
+                  <button
+                    key={flt}
+                    onClick={() => setAccountRequestsFilter(flt)}
+                    style={{
+                      padding: '5px 12px',
+                      fontSize: 11,
+                      fontWeight: 800,
+                      borderRadius: 8,
+                      border: 'none',
+                      background: accountRequestsFilter === flt ? 'var(--primary)' : 'transparent',
+                      color: accountRequestsFilter === flt ? '#ffffff' : 'var(--text-muted)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <span>
+                      {flt === 'PENDING' ? (language === 'am' ? 'በመጠባበቅ ላይ' : 'Pending') :
+                       flt === 'ALL' ? (language === 'am' ? 'ሁሉም' : 'All') :
+                       flt === 'APPROVED' ? (language === 'am' ? 'የፀደቁ' : 'Approved') :
+                       (language === 'am' ? 'ውድቅ' : 'Rejected')}
+                    </span>
+                    <span style={{
+                      background: accountRequestsFilter === flt ? 'rgba(255,255,255,0.25)' : 'var(--border)',
+                      padding: '1px 6px',
+                      borderRadius: 10,
+                      fontSize: 10
+                    }}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* List of Requests */}
+          {accountRequests.filter(r => accountRequestsFilter === 'ALL' || r.status === accountRequestsFilter).length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '48px 16px', background: 'var(--bg-card)', borderRadius: 16, border: '1px dashed var(--border)' }}>
+              <ShieldAlert size={36} color="var(--text-muted)" style={{ opacity: 0.6, marginBottom: 8 }} />
+              <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-main)', margin: '0 0 4px 0' }}>
+                {language === 'am' ? 'ምንም ጥያቄ አልተገኘም' : 'No Account Requests Found'}
+              </h4>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+                {accountRequestsFilter === 'PENDING'
+                  ? (language === 'am' ? 'በአሁኑ ጊዜ ማረጋገጫ የሚጠብቅ የይለፍ ቃል ወይም የመረጃ ጥያቄ የለም።' : 'There are currently no requests awaiting your approval.')
+                  : (language === 'am' ? 'በዚህ ማጣሪያ ስር የተመዘገበ ጥያቄ የለም።' : 'No records under this filter.')}
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 14 }}>
+              {accountRequests
+                .filter(r => accountRequestsFilter === 'ALL' || r.status === accountRequestsFilter)
+                .map(req => {
+                  let changes: any = {};
+                  try {
+                    changes = typeof req.requested_changes === 'string' ? JSON.parse(req.requested_changes) : (req.requested_changes || {});
+                  } catch (_) {}
+
+                  const isPending = req.status === 'PENDING';
+                  const isApproved = req.status === 'APPROVED';
+
+                  const typeLabel = 
+                    req.request_type === 'FORGOT_PASSWORD' ? (language === 'am' ? '🔑 የይለፍ ቃል ተረስቷል' : '🔑 Forgot Password') :
+                    req.request_type === 'PASSWORD_CHANGE' ? (language === 'am' ? '🔒 የይለፍ ቃል ለውጥ' : '🔒 Password Change') :
+                    req.request_type === 'PROFILE_UPDATE' ? (language === 'am' ? '👤 የመረጃ ለውጥ' : '👤 Profile Info') :
+                    (language === 'am' ? '👤+🔒 መረጃ እና የይለፍ ቃል' : '👤+🔒 Profile & Password');
+
+                  const statusBadgeColor = isPending ? '#b45309' : isApproved ? '#15803d' : '#b91c1c';
+                  const statusBadgeBg = isPending ? '#fef3c7' : isApproved ? '#dcfce7' : '#fee2e2';
+
+                  return (
+                    <div
+                      key={req.id}
+                      style={{
+                        background: 'var(--bg-card)',
+                        border: isPending ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                        borderRadius: 16,
+                        padding: 16,
+                        boxShadow: isPending ? '0 4px 14px rgba(245, 158, 11, 0.12)' : 'var(--shadow-sm)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        gap: 12
+                      }}
+                    >
+                      {/* Top Bar: Type & Status */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 8px', borderRadius: 6, background: 'var(--bg-subtle)', color: 'var(--text-main)' }}>
+                            {typeLabel}
+                          </span>
+                          <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 8px', borderRadius: 6, background: statusBadgeBg, color: statusBadgeColor, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {isPending && <Clock size={11} />}
+                            {isApproved && <CheckCircle size={11} />}
+                            {!isPending && !isApproved && <XCircle size={11} />}
+                            {req.status}
+                          </span>
+                        </div>
+
+                        {/* User identity */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                          <div style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: 19,
+                            background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
+                            color: '#ffffff',
+                            fontWeight: 800,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 14,
+                            flexShrink: 0
+                          }}>
+                            {(req.full_name || req.username || '?').charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-main)' }}>
+                              {req.full_name || req.username}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                              @{req.username} • <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{req.role?.toUpperCase()}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Details Card */}
+                        <div style={{ background: 'var(--bg-subtle)', borderRadius: 10, padding: 10, fontSize: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {changes.contact && (
+                            <div>
+                              <span style={{ color: 'var(--text-muted)' }}>📞 አድራሻ / Contact: </span>
+                              <strong style={{ color: 'var(--text-main)' }}>{changes.contact}</strong>
+                            </div>
+                          )}
+                          {changes.new_full_name && (
+                            <div>
+                              <span style={{ color: 'var(--text-muted)' }}>👤 አዲስ ስም (New Name): </span>
+                              <strong style={{ color: 'var(--text-main)' }}>{changes.new_full_name}</strong>
+                            </div>
+                          )}
+                          {changes.new_phone && (
+                            <div>
+                              <span style={{ color: 'var(--text-muted)' }}>📱 አዲስ ስልክ (New Phone): </span>
+                              <strong style={{ color: 'var(--text-main)' }}>{changes.new_phone}</strong>
+                            </div>
+                          )}
+                          {(changes.desired_password || changes.new_password) && (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <div>
+                                <span style={{ color: 'var(--text-muted)' }}>🔐 የተጠየቀ የይለፍ ቃል: </span>
+                                <strong style={{ color: '#0284c7', letterSpacing: 1 }}>{changes.desired_password || changes.new_password}</strong>
+                              </div>
+                              <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 4, background: '#e0f2fe', color: '#0369a1', fontWeight: 700 }}>
+                                Requested
+                              </span>
+                            </div>
+                          )}
+                          {changes.reason && (
+                            <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 6, marginTop: 2, fontStyle: 'italic', color: 'var(--text-muted)' }}>
+                              "{changes.reason}"
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Audit / Review Info */}
+                        {req.reviewed_by_name && (
+                          <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)', borderLeft: '2px solid var(--border)', paddingLeft: 8 }}>
+                            <div>
+                              {language === 'am' ? 'የገመገመው፡' : 'Reviewed by:'} <strong>{req.reviewed_by_name}</strong> • {formatTime(req.updated_at)}
+                            </div>
+                            {req.admin_notes && (
+                              <div style={{ fontStyle: 'italic', marginTop: 2 }}>"{req.admin_notes}"</div>
+                            )}
+                          </div>
+                        )}
+                        <div style={{ marginTop: 6, fontSize: 10, color: 'var(--text-muted)' }}>
+                          {language === 'am' ? 'የተላከው፡' : 'Requested at:'} {formatTime(req.created_at)}
+                        </div>
+                      </div>
+
+                      {/* Action Buttons for Pending */}
+                      {isPending ? (
+                        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                          <button
+                            onClick={() => {
+                              setSelectedReqForApproval(req);
+                              setAdminPassOverride(changes.desired_password || changes.new_password || '');
+                              setAdminReviewNote('');
+                            }}
+                            className="btn btn-success"
+                            style={{ flex: 1, padding: '8px 10px', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                          >
+                            <UserCheck size={14} />
+                            {language === 'am' ? 'ፍቀድና ቀይር' : 'Approve'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedReqForRejection(req);
+                              setAdminReviewNote('');
+                            }}
+                            className="btn btn-danger"
+                            style={{ padding: '8px 12px', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                          >
+                            <UserX size={14} />
+                            {language === 'am' ? 'ውድቅ' : 'Reject'}
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={() => {
+                              setDirectResetTarget({ id: req.user_id, username: req.username, full_name: req.full_name, role: req.role });
+                              setDirectResetPassword('');
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: '1px solid var(--border)',
+                              borderRadius: 6,
+                              padding: '4px 8px',
+                              fontSize: 11,
+                              color: 'var(--text-muted)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Key size={11} /> {language === 'am' ? 'ቀጥታ የይለፍ ቃል ቀይር' : 'Direct Reset'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* MODAL: ADD STAFF */}
       {showStaffModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 60 }}>
@@ -1420,6 +1852,272 @@ export const AdminView: React.FC = () => {
               <button type="submit" disabled={loading} className="btn btn-primary btn-block" style={{ height: 46, marginTop: 6 }}>
                 {loading ? 'Saving Item...' : editingMenuItemId ? 'Save Changes' : 'Create Menu Item'}
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: APPROVE ACCOUNT / PASSWORD REQUEST */}
+      {selectedReqForApproval && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 100 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 22, width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-floating)' }} className="animate-fade-in">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 17, background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>
+                  <UserCheck size={18} />
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 900, margin: 0, color: 'var(--text-main)' }}>
+                  {language === 'am' ? 'ጥያቄውን አጽድቅና ለውጡን ተግብር' : 'Approve Request & Apply Changes'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedReqForApproval(null)}
+                style={{ background: 'transparent', border: 'none', fontSize: 16, fontWeight: 700, color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ background: 'var(--bg-subtle)', borderRadius: 12, padding: 12, marginBottom: 14 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)' }}>
+                {selectedReqForApproval.full_name || selectedReqForApproval.username}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                @{selectedReqForApproval.username} • Role: {selectedReqForApproval.role?.toUpperCase()}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* If password requested or changed */}
+              {(selectedReqForApproval.request_type === 'FORGOT_PASSWORD' || 
+                selectedReqForApproval.request_type === 'PASSWORD_CHANGE' || 
+                selectedReqForApproval.request_type === 'PROFILE_AND_PASSWORD') && (
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                    {language === 'am' ? 'የይለፍ ቃል ማስተካከያ (Admin Password Override)' : 'Admin Password (Optional Override)'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={language === 'am' ? 'ከተፈለገ የተለየ የይለፍ ቃል ያስገቡ (አማራጭ)' : 'Leave empty to use user requested password'}
+                    value={adminPassOverride}
+                    onChange={e => setAdminPassOverride(e.target.value)}
+                    style={{ width: '100%', fontFamily: 'monospace' }}
+                  />
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, display: 'block' }}>
+                    {language === 'am' ? 'ባዶ ከተተወ ሰራተኛው የጠየቀው የይለፍ ቃል ይቀመጣል።' : 'If left blank, the password requested by the employee will be applied.'}
+                  </span>
+                </div>
+              )}
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                  {language === 'am' ? 'የአስተዳዳሪ ማስታወሻ (Admin Note - Optional)' : 'Admin Note / Confirmation Message'}
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder={language === 'am' ? 'ለምሳሌ፡ በአካል ተረጋግጦ ጸድቋል...' : 'e.g. Identity verified in person...'}
+                  value={adminReviewNote}
+                  onChange={e => setAdminReviewNote(e.target.value)}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedReqForApproval(null)}
+                  disabled={isProcessingAction}
+                  className="btn btn-secondary"
+                  style={{ flex: 1, height: 42 }}
+                >
+                  {language === 'am' ? 'ተመለስ' : 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApproveRequest}
+                  disabled={isProcessingAction}
+                  className="btn btn-success"
+                  style={{ flex: 2, height: 42, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                >
+                  <CheckCircle size={16} />
+                  {isProcessingAction 
+                    ? (language === 'am' ? 'በማጽደቅ ላይ...' : 'Approving...') 
+                    : (language === 'am' ? 'አረጋግጥና አጽድቅ' : 'Confirm & Apply')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: REJECT ACCOUNT / PASSWORD REQUEST */}
+      {selectedReqForRejection && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 100 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 22, width: '100%', maxWidth: 440, maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-floating)' }} className="animate-fade-in">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 17, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626' }}>
+                  <UserX size={18} />
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 900, margin: 0, color: '#dc2626' }}>
+                  {language === 'am' ? 'ጥያቄውን ውድቅ አድርግ' : 'Reject Account Request'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedReqForRejection(null)}
+                style={{ background: 'transparent', border: 'none', fontSize: 16, fontWeight: 700, color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ background: 'var(--bg-subtle)', borderRadius: 12, padding: 12, marginBottom: 14 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)' }}>
+                {selectedReqForRejection.full_name || selectedReqForRejection.username}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                @{selectedReqForRejection.username} • Role: {selectedReqForRejection.role?.toUpperCase()}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                  {language === 'am' ? 'ውድቅ የተደረገበት ምክንያት (Reason for Rejection)' : 'Reason for Rejection *'}
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder={language === 'am' ? 'ለምሳሌ፡ መረጃው ትክክል አይደለም ወይም ማረጋገጫ አልተገኘም...' : 'Please specify why this request is rejected...'}
+                  value={adminReviewNote}
+                  onChange={e => setAdminReviewNote(e.target.value)}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedReqForRejection(null)}
+                  disabled={isProcessingAction}
+                  className="btn btn-secondary"
+                  style={{ flex: 1, height: 42 }}
+                >
+                  {language === 'am' ? 'ተመለስ' : 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRejectRequest}
+                  disabled={isProcessingAction}
+                  className="btn btn-danger"
+                  style={{ flex: 2, height: 42, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                >
+                  <XCircle size={16} />
+                  {isProcessingAction 
+                    ? (language === 'am' ? 'በማስወገድ ላይ...' : 'Rejecting...') 
+                    : (language === 'am' ? 'ውድቅ አድርግ' : 'Confirm Rejection')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: DIRECT STAFF PASSWORD RESET */}
+      {directResetTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 100 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 22, width: '100%', maxWidth: 440, maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-floating)' }} className="animate-fade-in">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 17, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706' }}>
+                  <Key size={18} />
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 900, margin: 0, color: 'var(--text-main)' }}>
+                  {language === 'am' ? 'የሰራተኛ የይለፍ ቃል ቀጥታ መቀየሪያ' : 'Direct Staff Password Reset'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setDirectResetTarget(null)}
+                style={{ background: 'transparent', border: 'none', fontSize: 16, fontWeight: 700, color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ background: 'var(--bg-subtle)', borderRadius: 12, padding: 12, marginBottom: 14 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)' }}>
+                {directResetTarget.full_name || directResetTarget.username}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                @{directResetTarget.username} • Role: {directResetTarget.role?.toUpperCase()}
+              </div>
+            </div>
+
+            <form onSubmit={handleDirectPasswordReset} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                  {language === 'am' ? 'አዲስ የይለፍ ቃል (New Password)' : 'New Password * (min 6 characters)'}
+                </label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Bakery#2026"
+                    value={directResetPassword}
+                    onChange={e => setDirectResetPassword(e.target.value)}
+                    style={{ flex: 1, fontFamily: 'monospace' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const randomPass = 'Staff' + Math.floor(100000 + Math.random() * 900000);
+                      setDirectResetPassword(randomPass);
+                    }}
+                    style={{
+                      background: 'var(--bg-subtle)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                      padding: '0 10px',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                    title="Generate a quick temporary password"
+                  >
+                    🎲 Auto
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: 8, fontSize: 11, color: '#166534' }}>
+                💡 {language === 'am'
+                  ? 'ይህ እርምጃ ወዲያውኑ የይለፍ ቃሉን ይቀይራል እንዲሁም የተቆለፈ አካውንት ካለ ይከፍታል።'
+                  : 'This directly resets password and immediately unlocks account if locked.'}
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => setDirectResetTarget(null)}
+                  disabled={isDirectResetting}
+                  className="btn btn-secondary"
+                  style={{ flex: 1, height: 42 }}
+                >
+                  {language === 'am' ? 'ተመለስ' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isDirectResetting || directResetPassword.trim().length < 6}
+                  className="btn btn-primary"
+                  style={{ flex: 2, height: 42, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                >
+                  <Key size={15} />
+                  {isDirectResetting 
+                    ? (language === 'am' ? 'በመቀየር ላይ...' : 'Resetting...') 
+                    : (language === 'am' ? 'የይለፍ ቃል ቀይር' : 'Reset Password')}
+                </button>
+              </div>
             </form>
           </div>
         </div>

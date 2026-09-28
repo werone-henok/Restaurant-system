@@ -4,6 +4,7 @@ import { api } from '../../api/client';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import { tactileFeedback } from '../../utils/feedback';
 import { gToast } from '../../utils/toast';
+import { ImageUploadCompressor } from '../../components/ImageUploadCompressor';
 import {
   Flame,
   Send,
@@ -1663,31 +1664,39 @@ export const BakeryView: React.FC = () => {
                 />
               </div>
 
-              {/* Photo presets */}
+              {/* Photo Upload: Camera or Files with Presets */}
               <div>
-                <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-                  ፎቶ ይምረጡ (Select Photo Preset)
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                  {PRESET_CAKE_PHOTOS.map(p => (
-                    <div
-                      key={p.url}
-                      onClick={() => setNewCakePhoto(p.url)}
-                      style={{
-                        borderRadius: 12,
-                        overflow: 'hidden',
-                        border: newCakePhoto === p.url ? '3px solid #b45309' : '2px solid var(--border)',
-                        cursor: 'pointer',
-                        position: 'relative',
-                        height: 70
-                      }}
-                    >
-                      <img src={p.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      <span style={{ position: 'absolute', bottom: 0, insetInline: 0, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, padding: '2px 4px', textAlign: 'center', fontWeight: 800 }}>
-                        {p.label}
-                      </span>
-                    </div>
-                  ))}
+                <ImageUploadCompressor
+                  value={newCakePhoto}
+                  onChange={setNewCakePhoto}
+                  label="የኬክ ፎቶ (በካሜራ ያንሱ ወይም ከፋይል ይምረጡ / Camera or File Upload)"
+                />
+
+                <div style={{ marginTop: 10 }}>
+                  <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                    ወይም ከተዘጋጁት ፎቶዎች ይምረጡ (Or select a preset):
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                    {PRESET_CAKE_PHOTOS.map(p => (
+                      <div
+                        key={p.url}
+                        onClick={() => setNewCakePhoto(p.url)}
+                        style={{
+                          borderRadius: 12,
+                          overflow: 'hidden',
+                          border: newCakePhoto === p.url ? '3px solid #b45309' : '2px solid var(--border)',
+                          cursor: 'pointer',
+                          position: 'relative',
+                          height: 65
+                        }}
+                      >
+                        <img src={p.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <span style={{ position: 'absolute', bottom: 0, insetInline: 0, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, padding: '2px 4px', textAlign: 'center', fontWeight: 800 }}>
+                          {p.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 

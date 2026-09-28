@@ -582,6 +582,26 @@ export function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_bakery_requests_status ON bakery_requests(status);
     CREATE INDEX IF NOT EXISTS idx_bakery_inv_tx_branch ON bakery_inventory_transactions(branch_id);
     CREATE INDEX IF NOT EXISTS idx_bakery_inv_tx_dept ON bakery_inventory_transactions(department);
+
+    -- User Account Requests (Forgot Password & Profile Changes with Admin/Owner Approval)
+    CREATE TABLE IF NOT EXISTS user_account_requests (
+      id TEXT PRIMARY KEY,
+      branch_id TEXT NOT NULL REFERENCES branches(id),
+      user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+      username TEXT NOT NULL,
+      full_name TEXT,
+      role TEXT,
+      request_type TEXT NOT NULL, -- 'FORGOT_PASSWORD', 'PASSWORD_CHANGE', 'PROFILE_UPDATE', 'PROFILE_AND_PASSWORD'
+      requested_changes TEXT NOT NULL, -- JSON string
+      status TEXT DEFAULT 'PENDING', -- 'PENDING', 'APPROVED', 'REJECTED'
+      reviewed_by_id TEXT REFERENCES users(id),
+      reviewed_by_name TEXT,
+      admin_notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_account_requests_branch ON user_account_requests(branch_id);
+    CREATE INDEX IF NOT EXISTS idx_user_account_requests_status ON user_account_requests(status);
   `;
 
   db.exec(schema);
@@ -630,7 +650,12 @@ export function runMigrations() {
 
     // Bakery integration columns
     "ALTER TABLE order_items ADD COLUMN bakery_variation_id TEXT",
-    "ALTER TABLE menu_items ADD COLUMN bakery_variation_id TEXT"
+    "ALTER TABLE menu_items ADD COLUMN bakery_variation_id TEXT",
+
+    // User Account Requests (Forgot Password & Profile Changes with Admin/Owner Approval)
+    "CREATE TABLE IF NOT EXISTS user_account_requests (id TEXT PRIMARY KEY, branch_id TEXT NOT NULL, user_id TEXT, username TEXT NOT NULL, full_name TEXT, role TEXT, request_type TEXT NOT NULL, requested_changes TEXT NOT NULL, status TEXT DEFAULT 'PENDING', reviewed_by_id TEXT, reviewed_by_name TEXT, admin_notes TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
+    "CREATE INDEX IF NOT EXISTS idx_user_account_requests_branch ON user_account_requests(branch_id)",
+    "CREATE INDEX IF NOT EXISTS idx_user_account_requests_status ON user_account_requests(status)"
   ];
 
   for (const sql of migrations) {

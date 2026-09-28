@@ -4,6 +4,7 @@ import { api } from '../../api/client';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import { tactileFeedback } from '../../utils/feedback';
 import { gToast } from '../../utils/toast';
+import { ImageUploadCompressor } from '../../components/ImageUploadCompressor';
 import {
   CheckCircle2,
   XCircle,
@@ -2192,33 +2193,41 @@ export const FrontCounterView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Photo Selector with Live Preview */}
+              {/* Photo Selector: Camera / File Upload & Presets */}
               <div>
-                <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-                  የኬኩ ፎቶ ይምረጡ (Select Photo)
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                  {PRESET_CAKE_PHOTOS.map((p, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setNewCakePhoto(p.url)}
-                      style={{
-                        padding: 6,
-                        borderRadius: 12,
-                        border: newCakePhoto === p.url ? '3px solid #db2777' : '1px solid var(--border)',
-                        background: 'var(--bg-app)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: 4
-                      }}
-                    >
-                      <img src={p.url} alt="" style={{ width: '100%', height: 60, borderRadius: 8, objectFit: 'cover' }} />
-                      <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-main)', textAlign: 'center' }}>{p.label}</span>
-                    </button>
-                  ))}
+                <ImageUploadCompressor
+                  value={newCakePhoto}
+                  onChange={setNewCakePhoto}
+                  label="የኬክ ፎቶ (በካሜራ ያንሱ ወይም ከፋይል ይምረጡ / Camera or File Upload)"
+                />
+
+                <div style={{ marginTop: 10 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                    ወይም ከተዘጋጁት ፎቶዎች ይምረጡ (Or choose a photo preset):
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                    {PRESET_CAKE_PHOTOS.map((p, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setNewCakePhoto(p.url)}
+                        style={{
+                          padding: 6,
+                          borderRadius: 12,
+                          border: newCakePhoto === p.url ? '3px solid #db2777' : '1px solid var(--border)',
+                          background: 'var(--bg-app)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 4
+                        }}
+                      >
+                        <img src={p.url} alt="" style={{ width: '100%', height: 50, borderRadius: 8, objectFit: 'cover' }} />
+                        <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-main)', textAlign: 'center' }}>{p.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

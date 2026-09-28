@@ -3,6 +3,7 @@ import { useApp } from './context/AppContext';
 import { api } from './api/client';
 import { tactileFeedback } from './utils/feedback';
 import { Header } from './components/Header';
+import { UserProfileModal } from './components/UserProfileModal';
 import { resolveImageUrl } from './utils/imageUrl';
 import { OnboardingSlider } from './views/onboarding/OnboardingSlider';
 import { AuthView } from './views/auth/AuthView';
@@ -198,66 +199,11 @@ export const App: React.FC = () => {
 
       {renderNav()}
 
-      {/* User Profile / Logout Drawer */}
-      {showProfile && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'flex-end',
-          justifyContent: 'center',
-          zIndex: 50
-        }}>
-          <div style={{
-            background: '#ffffff',
-            width: '100%',
-            maxWidth: 540,
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            padding: 24
-          }} className="animate-fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ fontSize: 18, fontWeight: 800 }}>Employee Profile</h3>
-              <button onClick={() => setShowProfile(false)} style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)' }}>✕</button>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-              <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: 800, fontSize: 20, overflow: 'hidden', flexShrink: 0 }}>
-                {user.profile_photo ? (
-                  <img src={resolveImageUrl(user.profile_photo)} alt={user.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  user.full_name.charAt(0).toUpperCase()
-                )}
-              </div>
-              <div>
-                <h4 style={{ fontSize: 16, fontWeight: 800 }}>{user.full_name}</h4>
-                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                  Role: <strong style={{ color: 'var(--primary)', textTransform: 'uppercase' }}>{user.role}</strong>
-                </span>
-                <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)' }}>
-                  @{user.username} • ID: {user.employee_id || 'N/A'}
-                </span>
-              </div>
-            </div>
-
-            <button
-              onClick={async () => {
-                try {
-                  await api.request('/auth/logout', { method: 'POST' });
-                } catch (_) {}
-                setShowProfile(false);
-                setActiveTabOverride(null);
-                logout();
-              }}
-              className="btn btn-danger btn-block"
-              style={{ height: 48 }}
-            >
-              <LogOut size={16} /> Sign Out
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Enhanced User Profile & Request Modal */}
+      <UserProfileModal
+        isOpen={showProfile}
+        onClose={() => setShowProfile(false)}
+      />
     </div>
   );
 };
