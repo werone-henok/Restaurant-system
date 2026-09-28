@@ -482,7 +482,17 @@ export const FrontCounterView: React.FC = () => {
   // Stock status calculations
   const pendingTransfers = transfers.filter(t => t.status === 'PENDING' || t.status === 'IN_TRANSIT');
   const pendingOrders = cakeOrders.filter(o => o.status !== 'DELIVERED' && o.status !== 'COMPLETED' && o.status !== 'CANCELLED');
-  const activeBakeryRequests = requests.filter(r => r.status === 'REQUESTED' || r.status === 'IN_PRODUCTION' || r.status === 'ACCEPTED' || r.status === 'PARTIALLY_FULFILLED');
+  const activeBakeryRequests = requests
+    .filter(r => r.status === 'REQUESTED' || r.status === 'IN_PRODUCTION' || r.status === 'ACCEPTED' || r.status === 'PARTIALLY_FULFILLED')
+    .sort((a, b) => {
+      const getPriority = (req: BakeRequest) => {
+        if (req.urgency === 'URGENT') return 1;
+        if (req.status === 'PARTIALLY_FULFILLED') return 2;
+        if (req.urgency === 'HIGH') return 3;
+        return 4;
+      };
+      return getPriority(a) - getPriority(b);
+    });
 
   // Compute all variations with low or zero stock across all products
   const lowStockItems: { product: Product; variation: Variation; counterStock: number; minStock: number; isOut: boolean }[] = [];

@@ -294,21 +294,61 @@ export const NotificationCenter: React.FC = () => {
 
             {/* List */}
             <div style={{ maxHeight: 360, overflowY: 'auto' }}>
-              {notifications.length === 0 ? (
-                <div
-                  style={{
-                    padding: '36px 16px',
-                    textAlign: 'center',
-                    color: 'var(--text-muted)'
-                  }}
-                >
-                  <Bell size={28} style={{ opacity: 0.3, margin: '0 auto 8px' }} />
-                  <p style={{ fontSize: 13, fontWeight: 600 }}>{t('no_notifications')}</p>
-                </div>
-              ) : (
-                notifications.map((item) => {
+              {(() => {
+                const isUrgent = (item: NotificationItem): boolean => {
+                  const type = (item.type || '').toUpperCase();
+                  const title = (item.title || '').toLowerCase();
+                  const titleAmharic = item.title_amharic || '';
+                  const msg = (item.message || '').toLowerCase();
+                  const msgAmharic = item.message_amharic || '';
+
+                  return (
+                    type === 'LOW_STOCK' ||
+                    type === 'URGENT' ||
+                    type === 'USER_PENDING' ||
+                    title.includes('🚨') ||
+                    title.includes('urgent') ||
+                    titleAmharic.includes('🚨') ||
+                    titleAmharic.includes('አስቸኳይ') ||
+                    msg.includes('🚨') ||
+                    msg.includes('urgent') ||
+                    msgAmharic.includes('አስቸኳይ')
+                  );
+                };
+
+                const sorted = [...notifications].sort((a, b) => {
+                  const aUrgent = isUrgent(a) && !a.is_read;
+                  const bUrgent = isUrgent(b) && !b.is_read;
+                  if (aUrgent && !bUrgent) return -1;
+                  if (!aUrgent && bUrgent) return 1;
+
+                  const aRead = a.is_read;
+                  const bRead = b.is_read;
+                  if (!aRead && bRead) return -1;
+                  if (aRead && !bRead) return 1;
+
+                  return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                });
+
+                if (sorted.length === 0) {
+                  return (
+                    <div
+                      style={{
+                        padding: '36px 16px',
+                        textAlign: 'center',
+                        color: 'var(--text-muted)'
+                      }}
+                    >
+                      <Bell size={28} style={{ opacity: 0.3, margin: '0 auto 8px' }} />
+                      <p style={{ fontSize: 13, fontWeight: 600 }}>{t('no_notifications')}</p>
+                    </div>
+                  );
+                }
+
+                return sorted.map((item) => {
                   const title = language === 'am' && item.title_amharic ? item.title_amharic : item.title;
                   const message = language === 'am' && item.message_amharic ? item.message_amharic : item.message;
+                  const urgent = isUrgent(item);
 
                   return (
                     <div
@@ -323,8 +363,9 @@ export const NotificationCenter: React.FC = () => {
                         gap: 10,
                         alignItems: 'flex-start',
                         borderBottom: '1px solid var(--border)',
+                        borderLeft: urgent ? (item.is_read ? '3px solid #fca5a5' : '4px solid #ef4444') : 'none',
                         cursor: 'pointer',
-                        background: item.is_read ? 'transparent' : 'rgba(249, 115, 22, 0.05)',
+                        background: urgent && !item.is_read ? 'rgba(239, 68, 68, 0.07)' : item.is_read ? 'transparent' : 'rgba(249, 115, 22, 0.05)',
                         transition: 'background 0.15s ease'
                       }}
                     >
@@ -333,7 +374,7 @@ export const NotificationCenter: React.FC = () => {
                           width: 30,
                           height: 30,
                           borderRadius: '50%',
-                          background: 'var(--bg-subtle)',
+                          background: urgent ? '#fee2e2' : 'var(--bg-subtle)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -346,17 +387,35 @@ export const NotificationCenter: React.FC = () => {
 
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
-                          <span
-                            className="notif-item-title"
-                            style={{
-                              fontWeight: item.is_read ? 600 : 800,
-                              fontSize: 13,
-                              color: 'var(--text-main)',
-                              lineHeight: 1.3
-                            }}
-                          >
-                            {title}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            {urgent && (
+                              <span
+                                style={{
+                                  background: '#fee2e2',
+                                  color: '#b91c1c',
+                                  fontSize: 9,
+                                  fontWeight: 900,
+                                  padding: '1px 5px',
+                                  borderRadius: 6,
+                                  letterSpacing: 0.3,
+                                  textTransform: 'uppercase'
+                                }}
+                              >
+                                🚨 URGENT
+                              </span>
+                            )}
+                            <span
+                              className="notif-item-title"
+                              style={{
+                                fontWeight: item.is_read ? 600 : 800,
+                                fontSize: 13,
+                                color: urgent && !item.is_read ? '#b91c1c' : 'var(--text-main)',
+                                lineHeight: 1.3
+                              }}
+                            >
+                              {title}
+                            </span>
+                          </div>
                           <span className="notif-item-time" style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                             {formatRelativeTime(item.created_at)}
                           </span>
@@ -381,7 +440,7 @@ export const NotificationCenter: React.FC = () => {
                             width: 7,
                             height: 7,
                             borderRadius: '50%',
-                            background: 'var(--primary)',
+                            background: urgent ? '#ef4444' : 'var(--primary)',
                             flexShrink: 0,
                             marginTop: 6
                           }}
@@ -389,8 +448,8 @@ export const NotificationCenter: React.FC = () => {
                       )}
                     </div>
                   );
-                })
-              )}
+                });
+              })()}
             </div>
           </div>
         </>

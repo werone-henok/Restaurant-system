@@ -16,7 +16,15 @@ notificationRouter.get('/', authenticate, (req, res) => {
         query += ` AND (branch_id = ? OR branch_id IS NULL)`;
         params.push(branchId);
     }
-    query += ` ORDER BY created_at DESC LIMIT 50`;
+    query += ` ORDER BY 
+    CASE 
+      WHEN is_read = 0 AND (type IN ('LOW_STOCK', 'URGENT', 'USER_PENDING') OR title LIKE '%🚨%' OR title LIKE '%urgent%' OR title_amharic LIKE '%🚨%' OR title_amharic LIKE '%አስቸኳይ%') THEN 0
+      WHEN is_read = 0 THEN 1
+      WHEN type IN ('LOW_STOCK', 'URGENT', 'USER_PENDING') OR title LIKE '%🚨%' OR title_amharic LIKE '%🚨%' THEN 2
+      ELSE 3
+    END,
+    created_at DESC
+  LIMIT 60`;
     const notifications = db.prepare(query).all(...params);
     // Calculate unread count
     let unreadQuery = `

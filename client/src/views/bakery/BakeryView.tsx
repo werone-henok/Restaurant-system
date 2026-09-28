@@ -476,8 +476,18 @@ export const BakeryView: React.FC = () => {
     }
   };
 
-  // Counts
-  const pendingRequests = requests.filter(r => r.status === 'REQUESTED' || r.status === 'IN_PRODUCTION' || r.status === 'PARTIALLY_FULFILLED');
+  // Counts (Urgent requests sorted to the top)
+  const pendingRequests = requests
+    .filter(r => r.status === 'REQUESTED' || r.status === 'IN_PRODUCTION' || r.status === 'PARTIALLY_FULFILLED')
+    .sort((a, b) => {
+      const getPriority = (req: BakeRequest) => {
+        if (req.urgency === 'URGENT') return 1;
+        if (req.status === 'PARTIALLY_FULFILLED') return 2;
+        if (req.urgency === 'HIGH') return 3;
+        return 4;
+      };
+      return getPriority(a) - getPriority(b);
+    });
   const readyRequests = requests.filter(r => r.status === 'READY');
   const activeBakingBatches = batches.filter(b => b.status === 'BAKING');
 

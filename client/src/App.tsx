@@ -3,6 +3,7 @@ import { useApp } from './context/AppContext';
 import { api } from './api/client';
 import { tactileFeedback } from './utils/feedback';
 import { Header } from './components/Header';
+import { TopUrgentBanner } from './components/TopUrgentBanner';
 import { UserProfileModal } from './components/UserProfileModal';
 import { resolveImageUrl } from './utils/imageUrl';
 import { OnboardingSlider } from './views/onboarding/OnboardingSlider';
@@ -194,6 +195,9 @@ export const App: React.FC = () => {
   return (
     <div className={`app-container ${['cashier', 'owner', 'admin', 'chef', 'storekeeper', 'waiter', 'bakery', 'front_counter'].includes(currentTab) ? 'desktop-wide' : ''}`}>
       <Header onOpenProfile={() => setShowProfile(true)} />
+
+      {/* Top Urgent Notifications Banner */}
+      <TopUrgentBanner />
 
       {renderCurrentView()}
 
