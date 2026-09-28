@@ -226,8 +226,8 @@ export const WaiterView: React.FC = () => {
     ? menuItems
     : menuItems.filter(m => m.category_id === selectedCategory);
 
-  const readyOrders = myOrders.filter(o => o.status === 'READY');
-  const activeOrders = myOrders.filter(o => ['PENDING_CASHIER', 'CONFIRMED', 'PREPARING', 'PARTIALLY_READY'].includes(o.status));
+  const readyOrders = myOrders.filter(o => o.status === 'READY' || (o.status === 'PARTIALLY_READY' && o.items?.some((it: any) => it.status === 'READY')));
+  const activeOrders = myOrders.filter(o => ['PENDING_CASHIER', 'CONFIRMED', 'PREPARING', 'PARTIALLY_READY', 'DELIVERED'].includes(o.status));
 
   const renderTablePicker = () => (
     <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 16, padding: 16, marginBottom: 16, boxShadow: 'var(--shadow-sm)' }}>
@@ -863,6 +863,17 @@ export const WaiterView: React.FC = () => {
                       <span>✏️</span>
                       {language === 'am' ? 'ትዕዛዝ አስተካክል / ምግብ ቀይር' : 'Modify Order'}
                     </button>
+                  </div>
+                )}
+
+                {o.status === 'DELIVERED' && (
+                  <div style={{ marginTop: 10, padding: '8px 10px', background: '#ecfdf5', borderRadius: 8, border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: '#065f46' }}>
+                      ✓ {language === 'am' ? 'ለደንበኛ ደርሷል (ክፍያ በመጠባበቅ ላይ)' : 'Delivered to Customer (Awaiting Payment)'}
+                    </span>
+                    <span style={{ fontSize: 11, color: '#047857', fontWeight: 700 }}>
+                      {language === 'am' ? 'ካሸር ጋር አስጨርስ' : 'Settle at Cashier'}
+                    </span>
                   </div>
                 )}
               </div>

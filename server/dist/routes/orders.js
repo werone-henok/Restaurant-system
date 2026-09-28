@@ -367,8 +367,13 @@ orderRouter.post('/:id/confirm', authenticate, authorizeRole(['cashier', 'admin'
             payload: { orderId, orderNumber: order.order_number, notes: order.special_notes }
         });
     }
-    // Broadcast to Front Cake Counter
+    // Broadcast to Front Cake Counter & Mark Counter Cakes Ready for Waiter Pickup
     if (hasCake) {
+        db.prepare(`
+      UPDATE order_items 
+      SET status = 'READY', ready_at = CURRENT_TIMESTAMP 
+      WHERE order_id = ? AND (routing_destination IN ('FRONT_COUNTER', 'BAKERY') OR bakery_variation_id IS NOT NULL)
+    `).run(orderId);
         broadcastEvent({
             type: 'CAKE_NEW_ORDER',
             branchId: order.branch_id,
@@ -385,15 +390,47 @@ orderRouter.post('/:id/confirm', authenticate, authorizeRole(['cashier', 'admin'
             linkRef: String(orderId)
         });
     }
+    // Check if all items in order are ready (e.g. cake-only order or all items ready)
+    const allCurrentItems = db.prepare('SELECT status FROM order_items WHERE order_id = ?').all(orderId);
+    const allItemsReady = allCurrentItems.length > 0 && allCurrentItems.every(i => i.status === 'READY');
+    const someItemsReady = allCurrentItems.some(i => i.status === 'READY');
+    let orderFinalStatus = 'CONFIRMED';
+    if (allItemsReady) {
+        orderFinalStatus = 'READY';
+    }
+    else if (someItemsReady) {
+        orderFinalStatus = 'PARTIALLY_READY';
+    }
+    if (orderFinalStatus !== 'CONFIRMED') {
+        db.prepare("UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(orderFinalStatus, orderId);
+        db.prepare(`
+      INSERT INTO order_status_history (id, order_id, user_id, previous_status, new_status, notes)
+      VALUES (?, ?, ?, 'CONFIRMED', ?, 'Cashier approved counter cake items ready for delivery')
+    `).run(uuidv4(), orderId, req.user.id, orderFinalStatus);
+    }
     // Broadcast to Waiter
     broadcastEvent({
         type: 'ORDER_CONFIRMED',
         branchId: order.branch_id,
-        payload: { orderId, orderNumber: order.order_number, status: 'CONFIRMED' }
+        payload: { orderId, orderNumber: order.order_number, status: orderFinalStatus }
     });
+    if (orderFinalStatus === 'READY' || hasCake) {
+        broadcastEvent({
+            type: 'ORDER_READY',
+            branchId: order.branch_id,
+            targetRole: ['waiter', 'admin', 'owner'],
+            payload: {
+                orderId,
+                orderNumber: order.order_number,
+                waiterId: order.waiter_id,
+                status: orderFinalStatus,
+                message: `Order #${order.order_number} cake is ready for delivery at the Front Counter!`
+            }
+        });
+    }
     res.json({
         message: 'Order confirmed and routed to production',
-        status: 'CONFIRMED',
+        status: orderFinalStatus,
         lowStockAlerts: lowStockAlerts.length > 0 ? lowStockAlerts : undefined
     });
 });

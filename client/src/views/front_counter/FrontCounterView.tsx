@@ -21,7 +21,9 @@ import {
   AlertTriangle,
   RotateCcw,
   Sparkles,
-  ClipboardList
+  ClipboardList,
+  History,
+  Trash2
 } from 'lucide-react';
 
 interface Variation {
@@ -38,7 +40,7 @@ interface Variation {
   min_stock_level: number;
   selling_price: number;
   price?: number;
-  cost_price: number;
+  cost_price?: number;
   sku?: string;
   product_name?: string;
   product_name_amharic?: string;
@@ -123,9 +125,18 @@ function getCakePhoto(item: { image_url?: string; photo_url?: string; name?: str
   return 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=600&q=80';
 }
 
+const PRESET_CAKE_PHOTOS = [
+  { label: 'ቸኮሌት (Chocolate)', url: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600&q=80' },
+  { label: 'ሬድ ቬልቬት (Red Velvet)', url: 'https://images.unsplash.com/photo-1586788680434-30d324b2d46f?w=600&q=80' },
+  { label: 'ስትሮውበሪ ቺዝ (Cheesecake)', url: 'https://images.unsplash.com/photo-1533134242443-d4fd215305ad?w=600&q=80' },
+  { label: 'ቫኒላ / ካሮት (Vanilla Cake)', url: 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=600&q=80' },
+  { label: 'ክሩዋሳን (Croissant)', url: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600&q=80' },
+  { label: 'ብላክ ፎረስት (Black Forest)', url: 'https://images.unsplash.com/photo-1606890737304-57a1ca8a5b62?w=600&q=80' }
+];
+
 export const FrontCounterView: React.FC = () => {
-  const { user, language } = useApp();
-  const [activeTab, setActiveTab] = useState<'showcase' | 'transfers' | 'orders' | 'more'>('showcase');
+  const { user } = useApp();
+  const [activeTab, setActiveTab] = useState<'showcase' | 'transfers' | 'orders' | 'history'>('showcase');
 
   // Data states
   const [products, setProducts] = useState<Product[]>([]);
@@ -133,6 +144,9 @@ export const FrontCounterView: React.FC = () => {
   const [cakeOrders, setCakeOrders] = useState<CakeOrderItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Grouped variations: Product ID -> Selected Variation ID
+  const [selectedVariationMap, setSelectedVariationMap] = useState<Record<string, string>>({});
 
   // Cart for Direct Walk-in Sale
   const [cart, setCart] = useState<{ variation: Variation; quantity: number }[]>([]);
@@ -150,6 +164,35 @@ export const FrontCounterView: React.FC = () => {
   const [rejectTransferTarget, setRejectTransferTarget] = useState<Transfer | null>(null);
   const [rejectReason, setRejectReason] = useState('ተሰብሯል / Damaged');
 
+  // History Tab Data
+  const [historyData, setHistoryData] = useState<{ sales: any[]; transfersReceived: any[] }>({
+    sales: [],
+    transfersReceived: []
+  });
+  const [historySubTab, setHistorySubTab] = useState<'sales' | 'transfers'>('sales');
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Add Cake Modal (Bakery, Admin, Owner)
+  const [showAddCakeModal, setShowAddCakeModal] = useState(false);
+  const [isCreatingCake, setIsCreatingCake] = useState(false);
+  const [newCakeName, setNewCakeName] = useState('');
+  const [newCakeAmharic, setNewCakeAmharic] = useState('');
+  const [newCakeCategory, setNewCakeCategory] = useState('Cake');
+  const [newCakePhoto, setNewCakePhoto] = useState(PRESET_CAKE_PHOTOS[0].url);
+  const [newCakeVariations, setNewCakeVariations] = useState<
+    { variation_name: string; size: string; price: number; min_stock_level: number }[]
+  >([
+    { variation_name: 'Single Slice', size: 'ቁራጭ (Slice)', price: 150, min_stock_level: 5 },
+    { variation_name: 'Medium 1kg', size: '1 ኪ.ግ (1kg)', price: 1200, min_stock_level: 2 }
+  ]);
+
+  // Delete Cake Modal (Admin & Owner ONLY)
+  const [cakeToDelete, setCakeToDelete] = useState<Product | null>(null);
+  const [isDeletingCake, setIsDeletingCake] = useState(false);
+
+  const canCreateCake = user?.role === 'bakery' || user?.role === 'admin' || user?.role === 'owner';
+  const canDeleteCake = user?.role === 'admin' || user?.role === 'owner';
+
   // Load all operational data
   const loadData = useCallback(async () => {
     try {
@@ -159,14 +202,43 @@ export const FrontCounterView: React.FC = () => {
         api.request<any>('/bakery/cake-queue').catch(() => ({ data: [] }))
       ]);
 
-      setProducts(Array.isArray(prodData) ? prodData : prodData?.data || []);
+      const rawProducts: Product[] = Array.isArray(prodData) ? prodData : prodData?.data || [];
+      setProducts(rawProducts);
       setTransfers(Array.isArray(transData) ? transData : transData?.data || []);
       setCakeOrders(Array.isArray(cakeData) ? cakeData : cakeData?.data || []);
+
+      // Auto-initialize selected variation map
+      setSelectedVariationMap(prev => {
+        const updated = { ...prev };
+        rawProducts.forEach(p => {
+          if (!updated[p.id] && p.variations && p.variations.length > 0) {
+            updated[p.id] = p.variations[0].id;
+          }
+        });
+        return updated;
+      });
     } catch (err) {
       console.error('Failed to load front counter data', err);
     } finally {
       setLoading(false);
       setIsRefreshing(false);
+    }
+  }, []);
+
+  const loadHistory = useCallback(async () => {
+    setLoadingHistory(true);
+    try {
+      const res: any = await api.request('/bakery/counter-history');
+      if (res) {
+        setHistoryData({
+          sales: res.sales || [],
+          transfersReceived: res.transfersReceived || []
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load counter history', err);
+    } finally {
+      setLoadingHistory(false);
     }
   }, []);
 
@@ -184,6 +256,7 @@ export const FrontCounterView: React.FC = () => {
         event?.type === 'CAKE_NEW_ORDER' ||
         event?.type === 'CAKE_ORDER_UPDATED' ||
         event?.type === 'ORDER_CONFIRMED' ||
+        event?.type === 'ORDER_READY' ||
         event?.type === 'BAKERY_STOCK_UPDATED'
       ) {
         loadData();
@@ -197,27 +270,18 @@ export const FrontCounterView: React.FC = () => {
     };
   }, [loadData]);
 
-  // Flattened variations with rich photo and normalized prices
-  const allCakes: Variation[] = products.flatMap(p =>
-    (p.variations || []).map((v: any) => ({
-      ...v,
-      name: v.name || v.variation_name || 'Standard',
-      selling_price: Number(v.selling_price ?? v.price ?? 0),
-      counter_stock: Number(v.counter_stock ?? 0),
-      bakery_stock: Number(v.bakery_stock ?? 0),
-      in_transit_stock: Number(v.in_transit_stock ?? 0),
-      min_stock_level: Number(v.min_stock_level ?? 3),
-      product_name: p.name || 'Cake',
-      product_name_amharic: p.name_amharic,
-      product_category: p.category || 'Cakes',
-      photo_url: p.photo_url || v.photo_url
-    }))
-  );
+  useEffect(() => {
+    if (activeTab === 'history') {
+      loadHistory();
+    }
+  }, [activeTab, loadHistory]);
 
   // 1-Tap Add to Cart
   const handleTapCake = (cake: Variation) => {
     tactileFeedback('click');
-    if (cake.counter_stock <= 0) {
+    const counterStock = Number(cake.counter_stock || 0);
+
+    if (counterStock <= 0) {
       // Cake is empty, open 1-tap reorder request
       setRequestTarget(cake);
       setRequestQty(5);
@@ -226,8 +290,8 @@ export const FrontCounterView: React.FC = () => {
 
     const existing = cart.find(c => c.variation.id === cake.id);
     if (existing) {
-      if (existing.quantity >= cake.counter_stock) {
-        gToast.error(`ከ${cake.counter_stock} በላይ ኬክ የለም / Max counter stock reached`);
+      if (existing.quantity >= counterStock) {
+        gToast.error(`ከ${counterStock} በላይ ኬክ የለም / Max counter stock reached`);
         return;
       }
       setCart(cart.map(c => (c.variation.id === cake.id ? { ...c, quantity: c.quantity + 1 } : c)));
@@ -245,15 +309,20 @@ export const FrontCounterView: React.FC = () => {
     if (newQty <= 0) {
       setCart(cart.filter(c => c.variation.id !== cakeId));
     } else {
-      if (newQty > existing.variation.counter_stock) {
-        gToast.error(`ያለው ኬክ ${existing.variation.counter_stock} ብቻ ነው`);
+      const stock = Number(existing.variation.counter_stock || 0);
+      if (newQty > stock) {
+        gToast.error(`ያለው ኬክ ${stock} ብቻ ነው`);
         return;
       }
       setCart(cart.map(c => (c.variation.id === cakeId ? { ...c, quantity: newQty } : c)));
     }
   };
 
-  const cartTotal = cart.reduce((sum, item) => sum + item.quantity * item.variation.selling_price, 0);
+  const cartTotal = cart.reduce((sum, item) => {
+    const price = Number(item.variation.selling_price || item.variation.price || 0);
+    return sum + item.quantity * price;
+  }, 0);
+
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   // 1-Tap Confirm Sale
@@ -271,7 +340,7 @@ export const FrontCounterView: React.FC = () => {
           items: cart.map(c => ({
             variation_id: c.variation.id,
             quantity: c.quantity,
-            unit_price: c.variation.selling_price
+            unit_price: Number(c.variation.selling_price || c.variation.price || 0)
           }))
         })
       });
@@ -373,6 +442,63 @@ export const FrontCounterView: React.FC = () => {
     }
   };
 
+  // Create complete cake menu item
+  const handleCreateCake = async () => {
+    if (!newCakeName.trim()) {
+      gToast.error('እባክዎ የኬክ ስም ያስገቡ (Please enter cake name)');
+      return;
+    }
+    if (newCakeVariations.length === 0) {
+      gToast.error('ቢያንስ አንድ መጠን ያስገቡ (Add at least one size)');
+      return;
+    }
+
+    tactileFeedback('click');
+    setIsCreatingCake(true);
+    try {
+      await api.request('/bakery/complete-cake', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: newCakeName.trim(),
+          name_amharic: newCakeAmharic.trim() || newCakeName.trim(),
+          category: newCakeCategory,
+          photo_url: newCakePhoto,
+          variations: newCakeVariations
+        })
+      });
+      tactileFeedback('success');
+      gToast.success('🎂 አዲሱ ኬክ በስኬት ተመዝግቧል! (New cake created!)');
+      setShowAddCakeModal(false);
+      setNewCakeName('');
+      setNewCakeAmharic('');
+      loadData();
+    } catch (err: any) {
+      gToast.error(err.message || 'ኬክ መመዝገብ አልተቻለም');
+    } finally {
+      setIsCreatingCake(false);
+    }
+  };
+
+  // Delete cake product (Admin & Owner ONLY)
+  const handleDeleteCake = async () => {
+    if (!cakeToDelete) return;
+    tactileFeedback('click');
+    setIsDeletingCake(true);
+    try {
+      await api.request(`/bakery/products/${cakeToDelete.id}`, {
+        method: 'DELETE'
+      });
+      tactileFeedback('success');
+      gToast.success('🗑️ ኬኩ ተሰርዟል (Cake deleted)');
+      setCakeToDelete(null);
+      loadData();
+    } catch (err: any) {
+      gToast.error(err.message || 'መሰረዝ አልተቻለም');
+    } finally {
+      setIsDeletingCake(false);
+    }
+  };
+
   // Pending counts
   const pendingTransfers = transfers.filter(t => t.status === 'PENDING' || t.status === 'IN_TRANSIT');
   const pendingOrders = cakeOrders.filter(o => o.status === 'CONFIRMED' || o.status === 'PREPARING' || o.status === 'PENDING');
@@ -390,7 +516,9 @@ export const FrontCounterView: React.FC = () => {
           boxShadow: '0 8px 24px rgba(157, 23, 77, 0.25)',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 12
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -413,38 +541,67 @@ export const FrontCounterView: React.FC = () => {
               የፊት ኬክ መሸጫ
             </h1>
             <p style={{ margin: '3px 0 0', fontSize: 13, opacity: 0.9 }}>
-              Cake Sales Showcase • {user?.username}
+              Cake Sales Showcase • {user?.username} ({user?.role})
             </p>
           </div>
         </div>
 
-        <button
-          onClick={() => {
-            tactileFeedback('click');
-            setIsRefreshing(true);
-            loadData();
-          }}
-          style={{
-            background: 'rgba(255,255,255,0.2)',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: 14,
-            padding: '12px 18px',
-            fontSize: 14,
-            fontWeight: 800,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            cursor: 'pointer'
-          }}
-        >
-          <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
-          አድስ (Refresh)
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {canCreateCake && (
+            <button
+              onClick={() => {
+                tactileFeedback('click');
+                setShowAddCakeModal(true);
+              }}
+              style={{
+                background: '#ffffff',
+                color: '#db2777',
+                border: 'none',
+                borderRadius: 14,
+                padding: '12px 18px',
+                fontSize: 14,
+                fontWeight: 900,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.15)'
+              }}
+            >
+              <Plus size={18} strokeWidth={3} />
+              + አዲስ ኬክ መዝግብ
+            </button>
+          )}
+
+          <button
+            onClick={() => {
+              tactileFeedback('click');
+              setIsRefreshing(true);
+              loadData();
+              if (activeTab === 'history') loadHistory();
+            }}
+            style={{
+              background: 'rgba(255,255,255,0.2)',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: 14,
+              padding: '12px 18px',
+              fontSize: 14,
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: 'pointer'
+            }}
+          >
+            <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
+            አድስ (Refresh)
+          </button>
+        </div>
       </div>
 
-      {/* 3 Large, Picture-Driven Tab Buttons - Optimized for Tablets */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
+      {/* 4 Large Picture-Driven Tab Buttons - Optimized for Tablets */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
         {/* Tab 1: Showcase & Sell */}
         <button
           onClick={() => {
@@ -456,21 +613,21 @@ export const FrontCounterView: React.FC = () => {
             color: activeTab === 'showcase' ? '#ffffff' : 'var(--text-main)',
             border: activeTab === 'showcase' ? 'none' : '2px solid var(--border)',
             borderRadius: 18,
-            padding: '16px 10px',
+            padding: '14px 8px',
             minHeight: 82,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 6,
+            gap: 5,
             boxShadow: activeTab === 'showcase' ? '0 8px 20px rgba(190, 24, 93, 0.35)' : 'none',
             cursor: 'pointer',
             transition: 'all 0.15s ease'
           }}
         >
-          <span style={{ fontSize: 28 }}>🍰</span>
-          <span style={{ fontSize: 15, fontWeight: 900 }}>ኬክ መሸጫ</span>
-          <span style={{ fontSize: 12, opacity: 0.88 }}>Sell Cakes</span>
+          <span style={{ fontSize: 26 }}>🍰</span>
+          <span style={{ fontSize: 14, fontWeight: 900 }}>ኬክ መሸጫ</span>
+          <span style={{ fontSize: 11, opacity: 0.88 }}>Sell Cakes</span>
         </button>
 
         {/* Tab 2: Incoming from Bakery */}
@@ -485,34 +642,34 @@ export const FrontCounterView: React.FC = () => {
             color: activeTab === 'transfers' ? '#ffffff' : 'var(--text-main)',
             border: activeTab === 'transfers' ? 'none' : '2px solid var(--border)',
             borderRadius: 18,
-            padding: '16px 10px',
+            padding: '14px 8px',
             minHeight: 82,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 6,
+            gap: 5,
             boxShadow: activeTab === 'transfers' ? '0 8px 20px rgba(2, 132, 199, 0.35)' : 'none',
             cursor: 'pointer',
             transition: 'all 0.15s ease'
           }}
         >
-          <span style={{ fontSize: 28 }}>🚚</span>
-          <span style={{ fontSize: 15, fontWeight: 900 }}>የመጣ ርክክብ</span>
-          <span style={{ fontSize: 12, opacity: 0.88 }}>Incoming</span>
+          <span style={{ fontSize: 26 }}>🚚</span>
+          <span style={{ fontSize: 14, fontWeight: 900 }}>የመጣ ርክክብ</span>
+          <span style={{ fontSize: 11, opacity: 0.88 }}>Incoming</span>
 
           {pendingTransfers.length > 0 && (
             <span
               style={{
                 position: 'absolute',
-                top: -8,
-                right: 8,
+                top: -6,
+                right: 6,
                 background: '#ef4444',
                 color: '#ffffff',
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 900,
-                width: 28,
-                height: 28,
+                width: 26,
+                height: 26,
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
@@ -539,34 +696,34 @@ export const FrontCounterView: React.FC = () => {
             color: activeTab === 'orders' ? '#ffffff' : 'var(--text-main)',
             border: activeTab === 'orders' ? 'none' : '2px solid var(--border)',
             borderRadius: 18,
-            padding: '16px 10px',
+            padding: '14px 8px',
             minHeight: 82,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 6,
+            gap: 5,
             boxShadow: activeTab === 'orders' ? '0 8px 20px rgba(217, 119, 6, 0.35)' : 'none',
             cursor: 'pointer',
             transition: 'all 0.15s ease'
           }}
         >
-          <span style={{ fontSize: 28 }}>🍽️</span>
-          <span style={{ fontSize: 15, fontWeight: 900 }}>አስተናጋጅ</span>
-          <span style={{ fontSize: 12, opacity: 0.88 }}>Waiter Orders</span>
+          <span style={{ fontSize: 26 }}>🍽️</span>
+          <span style={{ fontSize: 14, fontWeight: 900 }}>የትዕዛዝ ወረፋ</span>
+          <span style={{ fontSize: 11, opacity: 0.88 }}>Orders</span>
 
           {pendingOrders.length > 0 && (
             <span
               style={{
                 position: 'absolute',
-                top: -8,
-                right: 8,
+                top: -6,
+                right: 6,
                 background: '#ef4444',
                 color: '#ffffff',
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 900,
-                width: 28,
-                height: 28,
+                width: 26,
+                height: 26,
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
@@ -579,30 +736,64 @@ export const FrontCounterView: React.FC = () => {
             </span>
           )}
         </button>
+
+        {/* Tab 4: History Log */}
+        <button
+          onClick={() => {
+            tactileFeedback('click');
+            setActiveTab('history');
+          }}
+          style={{
+            background: activeTab === 'history' ? 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)' : 'var(--bg-card)',
+            color: activeTab === 'history' ? '#ffffff' : 'var(--text-main)',
+            border: activeTab === 'history' ? 'none' : '2px solid var(--border)',
+            borderRadius: 18,
+            padding: '14px 8px',
+            minHeight: 82,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 5,
+            boxShadow: activeTab === 'history' ? '0 8px 20px rgba(79, 70, 229, 0.35)' : 'none',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <span style={{ fontSize: 26 }}>📜</span>
+          <span style={{ fontSize: 14, fontWeight: 900 }}>ታሪክ</span>
+          <span style={{ fontSize: 11, opacity: 0.88 }}>History Log</span>
+        </button>
       </div>
 
       {/* ========================================================================= */}
-      {/* 1. VISUAL SHOWCASE & CAKE SELL GRID */}
+      {/* 1. VISUAL SHOWCASE & CAKE SELL GRID (COMBINED BY PRODUCT WITH SIZE PILLS) */}
       {/* ========================================================================= */}
       {activeTab === 'showcase' && (
         <div>
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
               gap: 16
             }}
           >
-            {allCakes.map(cake => {
-              const photo = getCakePhoto(cake);
-              const inStock = cake.counter_stock > 0;
-              const isLow = inStock && cake.counter_stock <= cake.min_stock_level;
-              const cartItem = cart.find(c => c.variation.id === cake.id);
+            {products.map(product => {
+              const variations = product.variations || [];
+              if (variations.length === 0) return null;
+
+              const selectedVarId = selectedVariationMap[product.id] || variations[0]?.id;
+              const activeVar = variations.find(v => v.id === selectedVarId) || variations[0];
+              const photo = getCakePhoto(product);
+
+              const counterStock = Number(activeVar?.counter_stock || 0);
+              const inStock = counterStock > 0;
+              const isLow = inStock && counterStock <= Number(activeVar?.min_stock_level || 3);
+              const cartItem = cart.find(c => c.variation.id === activeVar?.id);
 
               return (
                 <div
-                  key={cake.id}
-                  onClick={() => handleTapCake(cake)}
+                  key={product.id}
                   style={{
                     background: 'var(--bg-card)',
                     borderRadius: 20,
@@ -617,21 +808,20 @@ export const FrontCounterView: React.FC = () => {
                       : 'var(--shadow-sm)',
                     display: 'flex',
                     flexDirection: 'column',
-                    cursor: 'pointer',
                     position: 'relative',
                     transition: 'transform 0.15s ease'
                   }}
                 >
                   {/* Big Image Container with Badges */}
-                  <div style={{ position: 'relative', width: '100%', height: 150, background: '#f3f4f6' }}>
+                  <div style={{ position: 'relative', width: '100%', height: 160, background: '#f3f4f6' }}>
                     <img
                       src={photo}
-                      alt={cake.product_name}
+                      alt={product.name}
                       style={{
                         width: '100%',
                         height: '100%',
                         objectFit: 'cover',
-                        filter: !inStock ? 'grayscale(0.7) opacity(0.8)' : 'none'
+                        filter: !inStock ? 'grayscale(0.6) opacity(0.85)' : 'none'
                       }}
                     />
 
@@ -642,7 +832,7 @@ export const FrontCounterView: React.FC = () => {
                           style={{
                             background: isLow ? '#fef08a' : '#22c55e',
                             color: isLow ? '#854d0e' : '#ffffff',
-                            padding: '4px 8px',
+                            padding: '4px 10px',
                             borderRadius: 10,
                             fontSize: 12,
                             fontWeight: 900,
@@ -653,14 +843,14 @@ export const FrontCounterView: React.FC = () => {
                           }}
                         >
                           <Check size={12} strokeWidth={3} />
-                          {cake.counter_stock} አለ
+                          {counterStock} አለ
                         </span>
                       ) : (
                         <span
                           style={{
                             background: '#ef4444',
                             color: '#ffffff',
-                            padding: '4px 8px',
+                            padding: '4px 10px',
                             borderRadius: 10,
                             fontSize: 12,
                             fontWeight: 900,
@@ -671,6 +861,37 @@ export const FrontCounterView: React.FC = () => {
                         </span>
                       )}
                     </div>
+
+                    {/* Admin/Owner Delete Button */}
+                    {canDeleteCake && (
+                      <button
+                        title="ይህን ኬክ ሰርዝ (Delete Cake)"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          tactileFeedback('click');
+                          setCakeToDelete(product);
+                        }}
+                        style={{
+                          position: 'absolute',
+                          top: 8,
+                          right: cartItem ? 48 : 8,
+                          background: 'rgba(239, 68, 68, 0.88)',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: 10,
+                          width: 32,
+                          height: 32,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                          zIndex: 5
+                        }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
 
                     {/* Cart Selected Overlay Badge */}
                     {cartItem && (
@@ -699,57 +920,118 @@ export const FrontCounterView: React.FC = () => {
                   </div>
 
                   {/* Cake Details */}
-                  <div style={{ padding: 12, display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'space-between' }}>
+                  <div style={{ padding: 14, display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'space-between' }}>
                     <div>
-                      <h3 style={{ fontSize: 14, fontWeight: 900, margin: 0, color: 'var(--text-main)', lineHeight: 1.2 }}>
-                        {cake.product_name_amharic || cake.product_name}
+                      <h3 style={{ fontSize: 16, fontWeight: 900, margin: 0, color: 'var(--text-main)', lineHeight: 1.25 }}>
+                        {product.name_amharic || product.name}
                       </h3>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, fontWeight: 700 }}>
-                        {cake.name} {cake.size && `• ${cake.size}`}
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                        {product.name}
+                      </div>
+
+                      {/* Interactive Size Pills */}
+                      <div style={{ marginTop: 10, marginBottom: 12 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          መጠን ይምረጡ (Select Size):
+                        </span>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                          {variations.map(v => {
+                            const isSelected = v.id === activeVar?.id;
+                            const stock = Number(v.counter_stock || 0);
+                            return (
+                              <button
+                                key={v.id}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  tactileFeedback('click');
+                                  setSelectedVariationMap(prev => ({ ...prev, [product.id]: v.id }));
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  borderRadius: 10,
+                                  fontSize: 12,
+                                  fontWeight: 800,
+                                  border: isSelected ? '2px solid #db2777' : '1px solid var(--border)',
+                                  background: isSelected ? '#fdf2f8' : 'var(--bg-app)',
+                                  color: isSelected ? '#be185d' : 'var(--text-main)',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease'
+                                }}
+                              >
+                                {v.size || v.name || v.variation_name} ({stock})
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
 
-                    <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 16, fontWeight: 900, color: '#16a34a' }}>
-                        {cake.selling_price} ብር
+                    {/* Price & Action Row */}
+                    <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 18, fontWeight: 900, color: '#16a34a' }}>
+                        {Number(activeVar?.selling_price || activeVar?.price || 0)} ብር
                       </span>
 
                       {!inStock ? (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setRequestTarget(cake);
+                            tactileFeedback('click');
+                            const cakeObj: Variation = {
+                              ...activeVar,
+                              product_name: product.name,
+                              product_name_amharic: product.name_amharic,
+                              photo_url: product.photo_url
+                            };
+                            setRequestTarget(cakeObj);
                             setRequestQty(5);
                           }}
                           style={{
                             background: '#fef2f2',
                             color: '#dc2626',
                             border: '1px solid #fca5a5',
-                            borderRadius: 8,
-                            padding: '4px 8px',
-                            fontSize: 11,
+                            borderRadius: 10,
+                            padding: '8px 12px',
+                            fontSize: 12,
                             fontWeight: 900,
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 3,
+                            gap: 4,
                             cursor: 'pointer'
                           }}
                         >
-                          <Bell size={12} /> እዘዝ
+                          <Bell size={14} /> ከዳቦ ቤት እዘዝ
                         </button>
                       ) : (
-                        <span
+                        <button
+                          onClick={() => {
+                            tactileFeedback('click');
+                            const cakeObj: Variation = {
+                              ...activeVar,
+                              product_name: product.name,
+                              product_name_amharic: product.name_amharic,
+                              photo_url: product.photo_url
+                            };
+                            handleTapCake(cakeObj);
+                          }}
                           style={{
-                            background: '#fdf2f8',
-                            color: '#be185d',
-                            fontSize: 11,
+                            background: 'linear-gradient(135deg, #db2777 0%, #be185d 100%)',
+                            color: '#ffffff',
+                            border: 'none',
+                            fontSize: 13,
                             fontWeight: 900,
-                            padding: '3px 8px',
-                            borderRadius: 8
+                            padding: '8px 16px',
+                            borderRadius: 12,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            boxShadow: '0 3px 8px rgba(219, 39, 119, 0.25)'
                           }}
                         >
-                          + ጨምር
-                        </span>
+                          <Plus size={16} /> ወደ ቅርጫት (Add)
+                        </button>
                       )}
                     </div>
                   </div>
@@ -768,6 +1050,7 @@ export const FrontCounterView: React.FC = () => {
           {pendingTransfers.length === 0 ? (
             <div
               style={{
+                gridColumn: '1 / -1',
                 background: 'var(--bg-card)',
                 borderRadius: 20,
                 padding: 40,
@@ -778,7 +1061,7 @@ export const FrontCounterView: React.FC = () => {
               <div style={{ fontSize: 48, marginBottom: 8 }}>🚚</div>
               <h3 style={{ fontSize: 18, fontWeight: 900, margin: 0 }}>አዲስ የመጣ ኬክ የለም</h3>
               <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
-                No pending deliveries from bakery kitchen right now.
+                ከዳቦ ቤት የተላከ አዲስ ኬክ የለም (No pending deliveries right now).
               </p>
             </div>
           ) : (
@@ -884,6 +1167,7 @@ export const FrontCounterView: React.FC = () => {
           {pendingOrders.length === 0 ? (
             <div
               style={{
+                gridColumn: '1 / -1',
                 background: 'var(--bg-card)',
                 borderRadius: 20,
                 padding: 40,
@@ -894,7 +1178,7 @@ export const FrontCounterView: React.FC = () => {
               <div style={{ fontSize: 48, marginBottom: 8 }}>🍽️</div>
               <h3 style={{ fontSize: 18, fontWeight: 900, margin: 0 }}>የአስተናጋጅ ትዕዛዝ የለም</h3>
               <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
-                No active cake orders waiting from tables.
+                ምንም የሚጠበቅ የአስተናጋጅ ኬክ ትዕዛዝ የለም (No pending orders from tables).
               </p>
             </div>
           ) : (
@@ -996,7 +1280,183 @@ export const FrontCounterView: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* FLOATING ACTION CART BAR (FOR EASY ILLITERATE STAFF CHECKOUT) */}
+      {/* 4. HISTORY TAB (COUNTER SALES & RECEIVED DELIVERIES) */}
+      {/* ========================================================================= */}
+      {activeTab === 'history' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', gap: 10, borderBottom: '2px solid var(--border)', paddingBottom: 10 }}>
+            <button
+              onClick={() => {
+                tactileFeedback('click');
+                setHistorySubTab('sales');
+              }}
+              style={{
+                padding: '10px 18px',
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 900,
+                border: 'none',
+                background: historySubTab === 'sales' ? '#be185d' : 'var(--bg-app)',
+                color: historySubTab === 'sales' ? '#ffffff' : 'var(--text-main)',
+                cursor: 'pointer'
+              }}
+            >
+              🧾 የተሸጡ ደረሰኞች ({historyData.sales.length})
+            </button>
+            <button
+              onClick={() => {
+                tactileFeedback('click');
+                setHistorySubTab('transfers');
+              }}
+              style={{
+                padding: '10px 18px',
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 900,
+                border: 'none',
+                background: historySubTab === 'transfers' ? '#0284c7' : 'var(--bg-app)',
+                color: historySubTab === 'transfers' ? '#ffffff' : 'var(--text-main)',
+                cursor: 'pointer'
+              }}
+            >
+              🚚 የተቀበልናቸው ርክክቦች ({historyData.transfersReceived.length})
+            </button>
+          </div>
+
+          {loadingHistory ? (
+            <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+              ታሪክ እየተጫነ ነው... (Loading history...)
+            </div>
+          ) : (
+            <div>
+              {/* SUBTAB 1: PAST SALES */}
+              {historySubTab === 'sales' && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 14 }}>
+                  {historyData.sales.length === 0 ? (
+                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+                      ምንም የሽያጭ ታሪክ የለም (No sales history yet)
+                    </div>
+                  ) : (
+                    historyData.sales.map(s => (
+                      <div
+                        key={s.id}
+                        style={{
+                          background: 'var(--bg-card)',
+                          borderRadius: 16,
+                          border: '1px solid var(--border)',
+                          padding: 16,
+                          boxShadow: 'var(--shadow-sm)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 10
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 14, fontWeight: 900, color: '#be185d' }}>
+                            #{s.order_number}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 900,
+                              padding: '2px 8px',
+                              borderRadius: 8,
+                              background: '#fdf2f8',
+                              color: '#be185d'
+                            }}
+                          >
+                            {s.payment_method || 'CASH'}
+                          </span>
+                        </div>
+
+                        {/* Items Breakdown */}
+                        <div style={{ background: 'var(--bg-app)', borderRadius: 12, padding: 10 }}>
+                          {(s.items || []).map((it: any, i: number) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, margin: '4px 0' }}>
+                              <span>
+                                {it.quantity}x {it.item_name_amharic || it.item_name} {it.size && `(${it.size})`}
+                              </span>
+                              <strong style={{ color: 'var(--text-main)' }}>
+                                {Number(it.unit_price || 0) * it.quantity} ብር
+                              </strong>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed var(--border)', paddingTop: 8 }}>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                            🕒 {new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {s.staff_name || 'Counter'}
+                          </div>
+                          <strong style={{ fontSize: 17, color: '#16a34a' }}>
+                            {Number(s.total_amount || 0).toLocaleString()} ብር
+                          </strong>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* SUBTAB 2: RECEIVED TRANSFERS */}
+              {historySubTab === 'transfers' && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 }}>
+                  {historyData.transfersReceived.length === 0 ? (
+                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+                      ምንም የተቀበልነው ርክክብ የለም (No received transfers yet)
+                    </div>
+                  ) : (
+                    historyData.transfersReceived.map(t => (
+                      <div
+                        key={t.id}
+                        style={{
+                          background: 'var(--bg-card)',
+                          borderRadius: 16,
+                          border: '1px solid var(--border)',
+                          padding: 16,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 14,
+                          boxShadow: 'var(--shadow-sm)'
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 50,
+                            height: 50,
+                            borderRadius: 14,
+                            background: '#dcfce7',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 24,
+                            flexShrink: 0
+                          }}
+                        >
+                          ✅
+                        </div>
+                        <div style={{ flexGrow: 1 }}>
+                          <strong style={{ fontSize: 15, color: 'var(--text-main)' }}>
+                            {t.product_name_amharic || t.product_name}
+                          </strong>
+                          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
+                            {t.variation_name} {t.size && `(${t.size})`} • <strong style={{ color: '#16a34a' }}>{t.quantity_sent || t.quantity} ኬክ ተረክቧል</strong>
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                            🕒 {new Date(t.received_at || t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • ተቀባይ: {t.received_by_name || 'Staff'}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* FLOATING ACTION CART BAR */}
       {/* ========================================================================= */}
       {cart.length > 0 && (
         <div
@@ -1090,7 +1550,7 @@ export const FrontCounterView: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 1: 1-TAP CHECKOUT FOR LOW-LITERACY STAFF */}
+      {/* MODAL 1: 1-TAP CHECKOUT */}
       {/* ========================================================================= */}
       {showCheckoutModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
@@ -1202,11 +1662,14 @@ export const FrontCounterView: React.FC = () => {
             <h3 style={{ fontSize: 20, fontWeight: 900, margin: 0 }}>
               {requestTarget.product_name_amharic || requestTarget.product_name}
             </h3>
+            <div style={{ fontSize: 14, color: '#be185d', fontWeight: 800, marginTop: 4 }}>
+              መጠን: {requestTarget.size || requestTarget.variation_name}
+            </div>
             <p style={{ margin: '6px 0 20px', fontSize: 14, color: 'var(--text-muted)', fontWeight: 700 }}>
               ከዳቦ ቤት ተጨማሪ ኬክ ጠይቅ (Request from Bakery)
             </p>
 
-            {/* Giant Stepper for Illiterate Staff */}
+            {/* Giant Stepper for Low Literacy Staff */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24, marginBottom: 24 }}>
               <button
                 onClick={() => {
@@ -1340,6 +1803,222 @@ export const FrontCounterView: React.FC = () => {
                 style={{ flex: 1, padding: 12, borderRadius: 12, border: 'none', background: '#ef4444', color: '#ffffff', fontSize: 13, fontWeight: 900, cursor: 'pointer' }}
               >
                 አረጋግጥ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 4: ADD NEW CAKE MENU ITEM */}
+      {/* ========================================================================= */}
+      {showAddCakeModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110, padding: 20 }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 540, borderRadius: 24, padding: 26, maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-floating)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: 20, fontWeight: 900, margin: 0, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                🎂 አዲስ ኬክ መመዝገቢያ (New Cake)
+              </h3>
+              <button
+                onClick={() => setShowAddCakeModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}
+              >
+                <X size={22} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                  የኬክ ስም በአማርኛ (Amharic Name) *
+                </label>
+                <input
+                  type="text"
+                  placeholder="ለምሳሌ፡ የካሮት ኬክ"
+                  value={newCakeAmharic}
+                  onChange={(e) => setNewCakeAmharic(e.target.value)}
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 15, fontWeight: 700, boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                  የኬክ ስም በእንግሊዝኛ (English Name) *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Carrot Cake"
+                  value={newCakeName}
+                  onChange={(e) => setNewCakeName(e.target.value)}
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 15, fontWeight: 700, boxSizing: 'border-box' }}
+                />
+              </div>
+
+              {/* Photo presets */}
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                  ፎቶ ይምረጡ (Select Photo Preset)
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  {PRESET_CAKE_PHOTOS.map(p => (
+                    <div
+                      key={p.url}
+                      onClick={() => setNewCakePhoto(p.url)}
+                      style={{
+                        borderRadius: 12,
+                        overflow: 'hidden',
+                        border: newCakePhoto === p.url ? '3px solid #db2777' : '2px solid var(--border)',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        height: 70
+                      }}
+                    >
+                      <img src={p.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <span style={{ position: 'absolute', bottom: 0, insetInline: 0, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, padding: '2px 4px', textAlign: 'center', fontWeight: 800 }}>
+                        {p.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Variations list */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-muted)' }}>
+                    መጠኖችና ዋጋዎች (Sizes & Prices)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewCakeVariations([
+                        ...newCakeVariations,
+                        { variation_name: `Size ${newCakeVariations.length + 1}`, size: 'Extra Size', price: 200, min_stock_level: 2 }
+                      ]);
+                    }}
+                    style={{ background: 'none', border: 'none', color: '#db2777', fontWeight: 900, fontSize: 12, cursor: 'pointer' }}
+                  >
+                    + ሌላ መጠን ጨምር
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {newCakeVariations.map((v, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'var(--bg-app)', padding: 10, borderRadius: 12 }}>
+                      <input
+                        type="text"
+                        placeholder="መጠን (e.g. ቁራጭ)"
+                        value={v.size}
+                        onChange={(e) => {
+                          const updated = [...newCakeVariations];
+                          updated[idx].size = e.target.value;
+                          updated[idx].variation_name = e.target.value;
+                          setNewCakeVariations(updated);
+                        }}
+                        style={{ flex: 2, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, fontWeight: 700 }}
+                      />
+                      <input
+                        type="number"
+                        placeholder="ዋጋ (ETB)"
+                        value={v.price}
+                        onChange={(e) => {
+                          const updated = [...newCakeVariations];
+                          updated[idx].price = Number(e.target.value);
+                          setNewCakeVariations(updated);
+                        }}
+                        style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, fontWeight: 700 }}
+                      />
+                      {newCakeVariations.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setNewCakeVariations(newCakeVariations.filter((_, i) => i !== idx))}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 4 }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAddCakeModal(false)}
+                  style={{ flex: 1, padding: 14, borderRadius: 14, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}
+                >
+                  ተመለስ
+                </button>
+                <button
+                  type="button"
+                  disabled={isCreatingCake}
+                  onClick={handleCreateCake}
+                  style={{
+                    flex: 2,
+                    padding: 14,
+                    borderRadius: 14,
+                    background: 'linear-gradient(135deg, #db2777 0%, #be185d 100%)',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontSize: 15,
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(219, 39, 119, 0.3)'
+                  }}
+                >
+                  {isCreatingCake ? 'እየመዘገበ ነው...' : '✅ ኬኩን መዝግብ'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 5: DELETE CONFIRMATION (ADMIN & OWNER ONLY) */}
+      {/* ========================================================================= */}
+      {cakeToDelete && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 120, padding: 20 }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 420, borderRadius: 24, padding: 26, textAlign: 'center', boxShadow: 'var(--shadow-floating)' }}>
+            <div style={{ width: 64, height: 64, borderRadius: 20, background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 32 }}>
+              <AlertTriangle size={36} />
+            </div>
+
+            <h3 style={{ fontSize: 18, fontWeight: 900, margin: '0 0 8px', color: 'var(--text-main)' }}>
+              ኬክ መሰረዝ ይፈልጋሉ?
+            </h3>
+            <p style={{ margin: '0 0 20px', fontSize: 14, color: 'var(--text-muted)' }}>
+              እርግጠኛ ነዎት <strong>"{cakeToDelete.name_amharic || cakeToDelete.name}"</strong> ይሰረዝ? ከምናሌው እና ከካውንተር ይወገዳል::
+            </p>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                type="button"
+                onClick={() => setCakeToDelete(null)}
+                style={{ flex: 1, padding: 14, borderRadius: 14, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}
+              >
+                ይቅር
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingCake}
+                onClick={handleDeleteCake}
+                style={{
+                  flex: 1,
+                  padding: 14,
+                  borderRadius: 14,
+                  background: '#dc2626',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontSize: 14,
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
+                }}
+              >
+                {isDeletingCake ? 'እየሰረዘ ነው...' : 'አዎ ሰርዝ'}
               </button>
             </div>
           </div>

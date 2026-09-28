@@ -2,11 +2,11 @@ import React from 'react';
 import { Check } from 'lucide-react';
 
 export const ORDER_STAGES = [
-  { key: 'PENDING_CASHIER', label: 'Order Placed', short: 'Placed' },
-  { key: 'CONFIRMED', label: 'Payment Done', short: 'Paid' },
-  { key: 'PREPARING', label: 'In Prep', short: 'Prep' },
-  { key: 'READY', label: 'Ready', short: 'Ready' },
-  { key: 'DELIVERED', label: 'Delivered', short: 'Done' }
+  { key: 'PENDING_CASHIER', label: 'Order Placed', short: 'Placed', am: 'የተላከ' },
+  { key: 'CONFIRMED', label: 'Confirmed', short: 'Confirmed', am: 'የተረጋገጠ' },
+  { key: 'READY', label: 'Ready', short: 'Ready', am: 'ዝግጁ' },
+  { key: 'DELIVERED', label: 'Delivered to Customer', short: 'Delivered', am: 'ደርሷል' },
+  { key: 'COMPLETED', label: 'Done / Completed', short: 'Done', am: 'ተጠናቋል' }
 ];
 
 export const OrderProgressStepper: React.FC<{ status: string }> = ({ status }) => {
@@ -18,11 +18,12 @@ export const OrderProgressStepper: React.FC<{ status: string }> = ({ status }) =
     );
   }
 
-  const stageKeys = ORDER_STAGES.map(s => s.key);
-  let currentIndex = stageKeys.indexOf(status);
-  if (status === 'PARTIALLY_READY') currentIndex = 2;
-  if (status === 'COMPLETED') currentIndex = 4;
-  if (currentIndex === -1) currentIndex = 0;
+  let currentIndex = 0;
+  if (status === 'PENDING_CASHIER') currentIndex = 0;
+  else if (status === 'CONFIRMED' || status === 'PREPARING') currentIndex = 1;
+  else if (status === 'PARTIALLY_READY' || status === 'READY') currentIndex = 2;
+  else if (status === 'DELIVERED') currentIndex = 3;
+  else if (status === 'COMPLETED') currentIndex = 5; // All 5 steps completed!
 
   return (
     <div style={{ margin: '6px 0', padding: '4px 2px' }}>
@@ -35,20 +36,23 @@ export const OrderProgressStepper: React.FC<{ status: string }> = ({ status }) =
               <div
                 className={`order-step-dot ${isCurrent ? 'active' : ''} ${isDone ? 'completed' : ''}`}
                 style={{
-                  width: 20,
-                  height: 20,
+                  width: 22,
+                  height: 22,
                   fontSize: 10,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontWeight: 800
+                  fontWeight: 800,
+                  background: isDone ? '#16a34a' : isCurrent ? '#ea580c' : 'var(--bg-subtle, #f1f5f9)',
+                  color: isDone || isCurrent ? '#ffffff' : 'var(--text-muted)',
+                  border: isCurrent ? '2px solid #ea580c' : '1px solid var(--border)'
                 }}
               >
-                {isDone ? <Check size={11} strokeWidth={3} /> : idx + 1}
+                {isDone ? <Check size={12} strokeWidth={3} /> : idx + 1}
               </div>
               <span style={{
-                color: isCurrent ? 'var(--primary)' : isDone ? 'var(--accent)' : 'var(--text-muted)',
-                fontWeight: isCurrent ? 800 : 600,
+                color: isCurrent ? '#ea580c' : isDone ? '#16a34a' : 'var(--text-muted)',
+                fontWeight: isCurrent ? 900 : 700,
                 fontSize: 10
               }}>
                 {stage.short}

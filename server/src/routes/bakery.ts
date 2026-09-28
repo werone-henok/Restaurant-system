@@ -136,6 +136,107 @@ bakeryRouter.put('/products/:id', authenticate, authorizeRole(['bakery', 'admin'
   res.json(updated);
 });
 
+// Create complete cake with variations (Bakery, Admin, Owner)
+bakeryRouter.post('/complete-cake', authenticate, authorizeRole(['bakery', 'admin', 'owner']), (req: AuthenticatedRequest, res) => {
+  const { name, name_amharic, description, category, photo_url, variations } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Product name is required' });
+  }
+
+  const productId = `bp_${uuidv4().substring(0, 8)}`;
+
+  const tx = db.transaction(() => {
+    db.prepare(`
+      INSERT INTO bakery_products (id, name, name_amharic, description, category, photo_url, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, 1)
+    `).run(productId, name.trim(), name_amharic?.trim() || null, description?.trim() || null, category || 'Cake', photo_url || null);
+
+    // Ensure a "Bakery & Desserts" menu category exists for Waiter POS
+    let cat = db.prepare("SELECT id FROM menu_categories WHERE name = 'Bakery & Pastries' OR name = 'Cakes & Bakery' OR name = 'Bakery & Cakes' LIMIT 1").get() as any;
+    if (!cat) {
+      const catId = `cat_bakery_${uuidv4().substring(0, 6)}`;
+      db.prepare(`
+        INSERT INTO menu_categories (id, name, name_amharic, icon, sort_order, is_active)
+        VALUES (?, 'Bakery & Cakes', 'ኬክና ዳቦ መጋገሪያ', 'Cake', 6, 1)
+      `).run(catId);
+      cat = { id: catId };
+    }
+
+    const vars = Array.isArray(variations) && variations.length > 0
+      ? variations
+      : [{ variation_name: 'Single Slice', size: 'Slice', price: 150, min_stock_level: 5 }];
+
+    for (const v of vars) {
+      const varId = `bpv_${uuidv4().substring(0, 8)}`;
+      const price = Number(v.price || 150);
+      db.prepare(`
+        INSERT INTO bakery_product_variations (
+          id, product_id, variation_name, flavor_type, size, weight_kg, price,
+          min_stock_level, bakery_stock, counter_stock, in_transit_stock, photo_url, is_available
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, 1)
+      `).run(
+        varId, productId, v.variation_name?.trim() || 'Standard', v.flavor_type || null,
+        v.size?.trim() || null, v.weight_kg ? Number(v.weight_kg) : null, price,
+        v.min_stock_level !== undefined ? Number(v.min_stock_level) : 3, v.photo_url || photo_url || null
+      );
+
+      // Auto-create menu item for waiter POS
+      const menuItemName = `${name.trim()} - ${v.variation_name}`;
+      const menuItemAmharic = name_amharic ? `${name_amharic} (${v.variation_name})` : null;
+      const menuItemId = `menu_bakery_${varId.substring(4)}`;
+
+      db.prepare(`
+        INSERT INTO menu_items (id, category_id, name, name_amharic, description, price, photo_url, prep_time_minutes, routing_destination, is_available, bakery_variation_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 5, 'FRONT_COUNTER', 1, ?)
+        ON CONFLICT(id) DO UPDATE SET price = excluded.price, photo_url = excluded.photo_url
+      `).run(
+        menuItemId, cat.id, menuItemName, menuItemAmharic,
+        `${description || ''} (${v.size || ''})`.trim(),
+        price, v.photo_url || photo_url || null, varId
+      );
+    }
+  });
+
+  tx();
+
+  logAudit({
+    branchId: getBranch(req),
+    userId: req.user!.id,
+    action: 'BAKERY_PRODUCT_CREATED',
+    entityType: 'BAKERY_PRODUCT',
+    entityId: productId,
+    details: { name, category: category || 'Cake' }
+  });
+
+  requestDebouncedSync();
+  const created = db.prepare('SELECT * FROM bakery_products WHERE id = ?').get(productId);
+  res.status(201).json(created);
+});
+
+// Delete product (Admin, Owner ONLY - Bakery staff cannot delete)
+bakeryRouter.delete('/products/:id', authenticate, authorizeRole(['admin', 'owner']), (req: AuthenticatedRequest, res) => {
+  const { id } = req.params;
+  const existing = db.prepare('SELECT * FROM bakery_products WHERE id = ?').get(id) as any;
+  if (!existing) return res.status(404).json({ error: 'Product not found' });
+
+  // Soft delete / deactivate
+  db.prepare('UPDATE bakery_products SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(id);
+  db.prepare('UPDATE bakery_product_variations SET is_available = 0, updated_at = CURRENT_TIMESTAMP WHERE product_id = ?').run(id);
+  db.prepare('UPDATE menu_items SET is_available = 0 WHERE bakery_variation_id IN (SELECT id FROM bakery_product_variations WHERE product_id = ?)').run(id);
+
+  logAudit({
+    branchId: getBranch(req),
+    userId: req.user!.id,
+    action: 'BAKERY_PRODUCT_DELETED',
+    entityType: 'BAKERY_PRODUCT',
+    entityId: id,
+    details: { name: existing.name, deletedBy: req.user!.full_name }
+  });
+
+  requestDebouncedSync();
+  res.json({ message: 'Product successfully deleted', id });
+});
+
 // Create product variation (Bakery, Admin, Owner)
 bakeryRouter.post('/products/:productId/variations', authenticate, authorizeRole(['bakery', 'admin', 'owner']), (req: AuthenticatedRequest, res) => {
   const { productId } = req.params;
@@ -1559,27 +1660,51 @@ bakeryRouter.patch('/cake-queue/:itemId/status', authenticate, (req: Authenticat
       db.prepare(`UPDATE order_items SET status = ? WHERE id = ?`).run(status, itemId);
     }
 
-    // Get item order info to notify waiter
+    // Get item order info to update order status and notify waiter
     const itemInfo = db.prepare(`
-      SELECT oi.*, o.order_number, o.waiter_id, o.branch_id
+      SELECT oi.*, o.order_number, o.waiter_id, o.branch_id, o.status as order_status
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.id
       WHERE oi.id = ?
     `).get(itemId) as any;
 
-    if (itemInfo && status === 'READY') {
-      broadcastEvent({
-        type: 'ORDER_READY',
-        branchId: itemInfo.branch_id,
-        targetRole: ['waiter'],
-        payload: {
-          orderId: itemInfo.order_id,
-          orderNumber: itemInfo.order_number,
-          itemId,
-          itemName: itemInfo.name,
-          message: `Cake Ready: "${itemInfo.name}" on Order #${itemInfo.order_number} is ready for pickup!`
-        }
-      });
+    if (itemInfo) {
+      const orderId = itemInfo.order_id;
+      const allItems = db.prepare('SELECT status FROM order_items WHERE order_id = ?').all(orderId) as { status: string }[];
+      const allReady = allItems.every(i => i.status === 'READY');
+      const someReady = allItems.some(i => i.status === 'READY');
+
+      let newOrderStatus = itemInfo.order_status;
+      if (allReady) {
+        newOrderStatus = 'READY';
+      } else if (someReady) {
+        newOrderStatus = 'PARTIALLY_READY';
+      }
+
+      if (newOrderStatus !== itemInfo.order_status) {
+        db.prepare('UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newOrderStatus, orderId);
+        db.prepare(`
+          INSERT INTO order_status_history (id, order_id, user_id, previous_status, new_status, notes)
+          VALUES (?, ?, ?, ?, ?, 'Front counter cake readiness update')
+        `).run(uuidv4(), orderId, req.user?.id || null, itemInfo.order_status, newOrderStatus);
+      }
+
+      if (status === 'READY') {
+        broadcastEvent({
+          type: 'ORDER_READY',
+          branchId: itemInfo.branch_id,
+          targetRole: ['waiter', 'admin', 'owner'],
+          payload: {
+            orderId: itemInfo.order_id,
+            orderNumber: itemInfo.order_number,
+            waiterId: itemInfo.waiter_id,
+            itemId,
+            itemName: itemInfo.name,
+            orderStatus: newOrderStatus,
+            message: `Cake Ready: "${itemInfo.name}" on Order #${itemInfo.order_number} is ready for pickup!`
+          }
+        });
+      }
     }
 
     broadcastEvent({
@@ -1589,6 +1714,109 @@ bakeryRouter.patch('/cake-queue/:itemId/status', authenticate, (req: Authenticat
     res.json({ success: true, message: `Status updated to ${status}` });
   } catch (err: any) {
     console.error('Failed to update cake order item status:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Production & Transfer History for Bakery Kitchen
+bakeryRouter.get('/history', authenticate, authorizeRole(['bakery', 'admin', 'owner']), (req: AuthenticatedRequest, res) => {
+  try {
+    const branchId = getBranch(req);
+    const batches = db.prepare(`
+      SELECT b.*, p.name as product_name, p.name_amharic as product_name_amharic,
+             v.variation_name, v.size, u.full_name as produced_by_name
+      FROM bakery_batches b
+      JOIN bakery_products p ON b.product_id = p.id
+      JOIN bakery_product_variations v ON b.variation_id = v.id
+      LEFT JOIN users u ON b.produced_by_id = u.id
+      WHERE b.branch_id = ?
+      ORDER BY b.created_at DESC
+      LIMIT 100
+    `).all(branchId) as any[];
+
+    const transfers = db.prepare(`
+      SELECT t.*, p.name as product_name, p.name_amharic as product_name_amharic,
+             v.variation_name, v.size, u1.full_name as sent_by_name, u2.full_name as received_by_name
+      FROM bakery_transfers t
+      JOIN bakery_products p ON t.product_id = p.id
+      JOIN bakery_product_variations v ON t.variation_id = v.id
+      LEFT JOIN users u1 ON t.sent_by_id = u1.id
+      LEFT JOIN users u2 ON t.received_by_id = u2.id
+      WHERE t.branch_id = ?
+      ORDER BY t.created_at DESC
+      LIMIT 100
+    `).all(branchId) as any[];
+
+    const waste = db.prepare(`
+      SELECT w.*, p.name as product_name, p.name_amharic as product_name_amharic,
+             v.variation_name, v.size, u.full_name as recorded_by
+      FROM bakery_waste_records w
+      JOIN bakery_products p ON w.product_id = p.id
+      JOIN bakery_product_variations v ON w.variation_id = v.id
+      LEFT JOIN users u ON w.user_id = u.id
+      WHERE w.branch_id = ? AND w.department = 'BAKERY'
+      ORDER BY w.created_at DESC
+      LIMIT 100
+    `).all(branchId) as any[];
+
+    res.json({ batches, transfers, waste });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Sales & Transfers History for Front Counter
+bakeryRouter.get('/counter-history', authenticate, authorizeRole(['front_counter', 'cashier', 'admin', 'owner']), (req: AuthenticatedRequest, res) => {
+  try {
+    const branchId = getBranch(req);
+
+    const sales = db.prepare(`
+      SELECT o.*, t.payment_method, u.full_name as staff_name
+      FROM orders o
+      LEFT JOIN (
+        SELECT order_id, payment_method FROM payments GROUP BY order_id
+      ) t ON o.id = t.order_id
+      LEFT JOIN users u ON o.waiter_id = u.id
+      WHERE o.branch_id = ? 
+        AND o.status IN ('COMPLETED', 'DELIVERED')
+        AND (o.order_type = 'COUNTER_SALE' OR o.id IN (
+          SELECT DISTINCT order_id FROM order_items 
+          WHERE routing_destination IN ('FRONT_COUNTER', 'BAKERY') OR bakery_variation_id IS NOT NULL
+        ))
+      ORDER BY o.created_at DESC
+      LIMIT 100
+    `).all(branchId) as any[];
+
+    const getItems = db.prepare(`
+      SELECT oi.*, COALESCE(bp.name, mi.name) as item_name, COALESCE(bp.name_amharic, mi.name_amharic) as item_name_amharic,
+             bv.variation_name, bv.size, bv.photo_url
+      FROM order_items oi
+      LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+      LEFT JOIN bakery_product_variations bv ON oi.bakery_variation_id = bv.id
+      LEFT JOIN bakery_products bp ON bv.product_id = bp.id
+      WHERE oi.order_id = ?
+    `);
+
+    const populatedSales = sales.map(s => ({
+      ...s,
+      items: getItems.all(s.id)
+    }));
+
+    const transfersReceived = db.prepare(`
+      SELECT t.*, p.name as product_name, p.name_amharic as product_name_amharic,
+             v.variation_name, v.size, u1.full_name as sent_by_name, u2.full_name as received_by_name
+      FROM bakery_transfers t
+      JOIN bakery_products p ON t.product_id = p.id
+      JOIN bakery_product_variations v ON t.variation_id = v.id
+      LEFT JOIN users u1 ON t.sent_by_id = u1.id
+      LEFT JOIN users u2 ON t.received_by_id = u2.id
+      WHERE t.branch_id = ? AND t.status = 'RECEIVED'
+      ORDER BY t.received_at DESC, t.created_at DESC
+      LIMIT 100
+    `).all(branchId) as any[];
+
+    res.json({ sales: populatedSales, transfersReceived });
+  } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
