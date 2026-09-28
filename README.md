@@ -50,7 +50,9 @@ A modern, production-ready, cross-platform Minimum Viable Release (MVR) for rest
 | **Cashier** | Incoming order review, price/tax/discount authorization, order confirmation & kitchen/bar routing, split payment processing (Cash, Telebirr, CBE Birr, Card), and receipt generation. |
 | **Chef** | Kitchen Display System (KDS) showing only food items (Burgers, Pizzas), preparation timer, start cooking, and item readiness toggles. |
 | **Barista** | Bar drink queue showing only beverage items (Espresso, Macchiato, Juices), drink prep queue, and beverage ready toggles. |
-| **Waiter** | Rapid mobile POS, table selector, dine-in/takeaway, instant cart, preparation notes, and real-time ready alerts for food delivery. |
+| **Bakery** | Dedicated Bakery Production Dashboard: production queue, batch baking, marking ready for sale, physical transfer creation to counter, finished goods reserve, waste records, and price suggestions. |
+| **Front Cake Counter** | Front Cake Sales Counter Dashboard: live counter inventory with low/out-of-stock badges, inbound physical transfer verification & receipt confirmation, counter POS for direct walk-in sales, reorder requests, waiter order fulfillment queue, stocktake audit, and customer returns. |
+| **Waiter** | Rapid mobile POS, table selector, dine-in/takeaway, cake availability, instant cart, preparation notes, and real-time ready alerts for food delivery. |
 | **Storekeeper** | Inventory catalog, goods receiving with PO logging, waste recording with phone camera photos, shelf locations, and low-stock alerts. |
 
 ---
@@ -62,6 +64,8 @@ Every account uses password: `password123` (or PIN `1234`):
 - **Owner**: `owner`
 - **Admin**: `admin`
 - **Cashier**: `cashier`
+- **Bakery**: `bakery`
+- **Front Cake Counter**: `front_counter`
 - **Chef**: `chef`
 - **Barista**: `barista`
 - **Waiter**: `waiter`
