@@ -271,14 +271,32 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.waiter-main-column {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.waiter-side-column {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (min-width: 860px) {
   .waiter-view-layout {
     display: grid;
-    grid-template-columns: 1fr 380px;
-    gap: 20px;
+    grid-template-columns: minmax(0, 1fr) minmax(290px, 360px);
+    gap: 16px;
     align-items: start;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .waiter-side-column {
@@ -286,24 +304,32 @@ input:focus, select:focus, textarea:focus {
     top: 76px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    max-height: calc(100vh - 100px);
+    gap: 14px;
+    max-height: calc(100vh - 90px);
     overflow-y: auto;
+    overflow-x: hidden;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .waiter-menu-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)) !important;
   }
 }
 
 @media (min-width: 1200px) {
   .waiter-view-layout {
-    grid-template-columns: 1fr 420px;
-    gap: 24px;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+    gap: 20px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .waiter-menu-grid {
-    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)) !important;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)) !important;
   }
 }
 

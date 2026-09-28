@@ -184,11 +184,19 @@ orderRouter.post('/', authenticate, (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)
     `);
         for (const it of items) {
-            // Check if menu item is linked to a bakery variation
-            const menuItem = db.prepare('SELECT bakery_variation_id, routing_destination FROM menu_items WHERE id = ?').get(it.menu_item_id);
+            // Check if menu item is linked to a bakery variation or is a bakery/cake product
+            const menuItem = db.prepare('SELECT bakery_variation_id, routing_destination, category_id, name FROM menu_items WHERE id = ?').get(it.menu_item_id);
             const variationId = it.bakery_variation_id || menuItem?.bakery_variation_id || null;
             let routingDest = it.routing_destination || menuItem?.routing_destination || 'KITCHEN';
-            if (variationId) {
+            const isCakeOrBakery = variationId ||
+                (menuItem && (String(menuItem.category_id || '').toLowerCase().includes('bakery') ||
+                    String(menuItem.category_id || '').toLowerCase().includes('cake') ||
+                    String(menuItem.name || '').toLowerCase().includes('cake') ||
+                    String(menuItem.name || '').includes('ኬክ') ||
+                    String(menuItem.name || '').toLowerCase().includes('croissant') ||
+                    String(menuItem.name || '').includes('ክሩዋሳን'))) ||
+                (it.name && (it.name.toLowerCase().includes('cake') || it.name.includes('ኬክ')));
+            if (isCakeOrBakery) {
                 routingDest = 'FRONT_COUNTER';
             }
             insertItem.run(`item_${uuidv4().substring(0, 8)}`, orderId, it.menu_item_id, it.name, it.price, it.quantity, it.notes || null, routingDest, variationId);

@@ -1338,12 +1338,14 @@ bakeryRouter.get('/cake-queue', authenticate, (req, res) => {
         oi.created_at,
         o.order_number,
         o.order_type,
+        o.status as order_status,
         t.table_number,
         u.full_name as waiter_name,
-        COALESCE(bp.name, mi.name) as item_name,
+        COALESCE(bp.name, mi.name, oi.name) as item_name,
         COALESCE(bv.variation_name, 'Standard') as variation_name,
         bv.size,
-        bv.weight_kg
+        bv.weight_kg,
+        COALESCE(bv.photo_url, bp.photo_url, mi.photo_url) as photo_url
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.id
       LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
@@ -1351,11 +1353,25 @@ bakeryRouter.get('/cake-queue', authenticate, (req, res) => {
       LEFT JOIN bakery_products bp ON bv.product_id = bp.id
       LEFT JOIN restaurant_tables t ON o.table_id = t.id
       LEFT JOIN users u ON o.waiter_id = u.id
-      WHERE (oi.routing_destination IN ('FRONT_COUNTER', 'BAKERY') OR oi.bakery_variation_id IS NOT NULL OR mi.category_id = 'cat_bakery')
-        AND o.status IN ('CONFIRMED', 'PREPARING', 'PARTIALLY_READY')
-        AND oi.status != 'DELIVERED'
+      WHERE (o.branch_id = ? OR ? = 'ALL')
+        AND (
+          oi.routing_destination IN ('FRONT_COUNTER', 'BAKERY')
+          OR oi.bakery_variation_id IS NOT NULL
+          OR mi.category_id LIKE '%bakery%'
+          OR mi.category_id LIKE '%cake%'
+          OR mi.routing_destination IN ('FRONT_COUNTER', 'BAKERY')
+          OR LOWER(COALESCE(mi.name, oi.name, '')) LIKE '%cake%'
+          OR LOWER(COALESCE(mi.name, oi.name, '')) LIKE '%ኬክ%'
+          OR LOWER(COALESCE(mi.name, oi.name, '')) LIKE '%croissant%'
+          OR LOWER(COALESCE(mi.name, oi.name, '')) LIKE '%ክሩዋሳን%'
+          OR LOWER(COALESCE(mi.name, oi.name, '')) LIKE '%pastry%'
+          OR LOWER(COALESCE(mi.name, oi.name, '')) LIKE '%ፓስትሪ%'
+        )
+        AND o.status IN ('CONFIRMED', 'PREPARING', 'PARTIALLY_READY', 'READY')
+        AND oi.status NOT IN ('DELIVERED', 'COMPLETED', 'CANCELLED')
+        AND o.status NOT IN ('COMPLETED', 'CANCELLED')
       ORDER BY oi.created_at ASC
-    `).all();
+    `).all(branchId, req.query.branchId || '');
         res.json(items);
     }
     catch (err) {

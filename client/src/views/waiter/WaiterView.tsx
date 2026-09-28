@@ -230,8 +230,19 @@ export const WaiterView: React.FC = () => {
   const activeOrders = myOrders.filter(o => ['PENDING_CASHIER', 'CONFIRMED', 'PREPARING', 'PARTIALLY_READY', 'DELIVERED'].includes(o.status));
 
   const renderTablePicker = () => (
-    <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 16, padding: 16, marginBottom: 16, boxShadow: 'var(--shadow-sm)' }}>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+    <div style={{
+      background: 'var(--bg-card, #ffffff)',
+      border: '1px solid var(--border, #e2e8f0)',
+      borderRadius: 16,
+      padding: 14,
+      marginBottom: 14,
+      boxShadow: 'var(--shadow-sm)',
+      width: '100%',
+      maxWidth: '100%',
+      boxSizing: 'border-box',
+      overflow: 'hidden'
+    }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12, width: '100%', boxSizing: 'border-box' }}>
         {(['DINE_IN', 'TAKEAWAY', 'DELIVERY'] as const).map(type => {
           const isSelected = orderType === type;
           return (
@@ -241,7 +252,7 @@ export const WaiterView: React.FC = () => {
               onClick={() => setOrderType(type)}
               style={{
                 flex: 1,
-                padding: '10px 4px',
+                padding: '9px 2px',
                 borderRadius: 10,
                 fontSize: 12,
                 fontWeight: 800,
@@ -249,6 +260,8 @@ export const WaiterView: React.FC = () => {
                 background: isSelected ? '#fff7ed' : 'var(--bg-subtle, #f8fafc)',
                 color: isSelected ? '#ea580c' : 'var(--text-main, #334155)',
                 cursor: 'pointer',
+                textAlign: 'center',
+                boxSizing: 'border-box',
                 transition: 'all 0.15s ease'
               }}
             >
@@ -259,11 +272,18 @@ export const WaiterView: React.FC = () => {
       </div>
 
       {orderType === 'DINE_IN' && (
-        <div>
-          <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main, #0f172a)', display: 'block', marginBottom: 10 }}>
+        <div style={{ width: '100%', boxSizing: 'border-box' }}>
+          <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main, #0f172a)', display: 'block', marginBottom: 8 }}>
             📍 {t('select_table')} {selectedTable && <span style={{ color: '#ea580c', fontWeight: 900 }}>({tables.find(tb => tb.id === selectedTable)?.table_number || ''})</span>}
           </label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 8 }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(68px, 1fr))',
+            gap: 6,
+            width: '100%',
+            maxWidth: '100%',
+            boxSizing: 'border-box'
+          }}>
             {tables.map(tbl => {
               const isSelected = selectedTable === tbl.id;
               const isOccupied = tbl.status === 'OCCUPIED';
@@ -273,7 +293,7 @@ export const WaiterView: React.FC = () => {
                   type="button"
                   onClick={() => setSelectedTable(tbl.id)}
                   style={{
-                    padding: '10px 4px',
+                    padding: '8px 4px',
                     borderRadius: 12,
                     textAlign: 'center',
                     border: isSelected ? '2.5px solid #ea580c' : '1px solid var(--border, #e2e8f0)',
@@ -284,21 +304,24 @@ export const WaiterView: React.FC = () => {
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 3,
+                    gap: 2,
                     cursor: 'pointer',
+                    boxSizing: 'border-box',
+                    minWidth: 0,
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  <span style={{ fontSize: 16, fontWeight: 900 }}>
+                  <span style={{ fontSize: 14, fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
                     {tbl.table_number}
                   </span>
                   <span style={{
                     fontSize: 9,
                     fontWeight: 800,
-                    padding: '2px 6px',
+                    padding: '2px 4px',
                     borderRadius: 4,
                     background: isOccupied ? '#ef4444' : '#10b981',
-                    color: '#ffffff'
+                    color: '#ffffff',
+                    whiteSpace: 'nowrap'
                   }}>
                     {isOccupied ? (language === 'am' ? 'የተያዘ' : 'Occupied') : (language === 'am' ? 'ነፃ' : 'Available')}
                   </span>
@@ -524,10 +547,13 @@ export const WaiterView: React.FC = () => {
           background: 'var(--bg-card, #ffffff)',
           border: '1.5px dashed var(--border, #cbd5e1)',
           borderRadius: 16,
-          padding: '32px 16px',
+          padding: '28px 14px',
           textAlign: 'center',
           color: 'var(--text-muted, #64748b)',
-          boxShadow: 'var(--shadow-sm)'
+          boxShadow: 'var(--shadow-sm)',
+          width: '100%',
+          maxWidth: '100%',
+          boxSizing: 'border-box'
         }}>
           <ShoppingBag size={36} style={{ margin: '0 auto 10px', opacity: 0.4, color: '#ea580c' }} />
           <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-main, #1e293b)' }}>
@@ -545,8 +571,11 @@ export const WaiterView: React.FC = () => {
         background: '#ffffff',
         border: '1px solid var(--border, #e2e8f0)',
         borderRadius: 16,
-        padding: 16,
-        boxShadow: 'var(--shadow-lg)'
+        padding: 14,
+        boxShadow: 'var(--shadow-lg)',
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box'
       }}>
         <h3 style={{ fontSize: 15, fontWeight: 800, marginBottom: 12, color: 'var(--text-main, #0f172a)' }}>
           {language === 'am' ? 'የአሁኑ ትዕዛዝ' : 'Current Order'}

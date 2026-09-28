@@ -501,7 +501,7 @@ export const FrontCounterView: React.FC = () => {
 
   // Pending counts
   const pendingTransfers = transfers.filter(t => t.status === 'PENDING' || t.status === 'IN_TRANSIT');
-  const pendingOrders = cakeOrders.filter(o => o.status === 'CONFIRMED' || o.status === 'PREPARING' || o.status === 'PENDING');
+  const pendingOrders = cakeOrders.filter(o => o.status !== 'DELIVERED' && o.status !== 'COMPLETED' && o.status !== 'CANCELLED');
 
   return (
     <div style={{ width: '100%', maxWidth: '100%', margin: '0', padding: cart.length > 0 ? '16px 20px 140px' : '16px 20px 90px', boxSizing: 'border-box', fontFamily: 'var(--font-family)' }}>
@@ -1235,43 +1235,66 @@ export const FrontCounterView: React.FC = () => {
                     </div>
                   </div>
 
-                  {!isReady ? (
-                    <button
-                      onClick={() => handleMarkCakeReady(order.id)}
-                      style={{
-                        background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: 14,
-                        padding: '14px',
-                        fontSize: 16,
-                        fontWeight: 900,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                        boxShadow: '0 6px 16px rgba(22, 163, 74, 0.3)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <CheckCircle2 size={22} />
-                      ✅ ኬኩ ዝግጁ ነው (READY FOR WAITER)
-                    </button>
-                  ) : (
-                    <div
-                      style={{
-                        background: '#dcfce7',
-                        color: '#166534',
-                        padding: '12px',
-                        borderRadius: 12,
-                        textAlign: 'center',
-                        fontWeight: 900,
-                        fontSize: 14
-                      }}
-                    >
-                      ✓ አስተናጋጁ እንዲወስድ ተልኳል (Waiting for waiter pickup)
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    {!isReady ? (
+                      <button
+                        onClick={() => handleMarkCakeReady(order.id)}
+                        style={{
+                          flex: 1,
+                          background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: 14,
+                          padding: '14px',
+                          fontSize: 16,
+                          fontWeight: 900,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          boxShadow: '0 6px 16px rgba(22, 163, 74, 0.3)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <CheckCircle2 size={22} />
+                        ✅ ኬኩ ዝግጁ ነው (READY FOR WAITER)
+                      </button>
+                    ) : (
+                      <div
+                        style={{
+                          flex: 1,
+                          background: '#dcfce7',
+                          color: '#166534',
+                          padding: '12px 16px',
+                          borderRadius: 14,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          border: '1.5px solid #86efac'
+                        }}
+                      >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 900, fontSize: 14 }}>
+                          <CheckCircle2 size={18} color="#16a34a" />
+                          ✓ ለአስተናጋጅ ተልኳል (Ready for pickup)
+                        </span>
+                        <button
+                          onClick={() => handleMarkCakeReady(order.id)}
+                          style={{
+                            background: '#16a34a',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: 10,
+                            padding: '6px 12px',
+                            fontSize: 12,
+                            fontWeight: 900,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          እንደገና አሳውቅ
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })
