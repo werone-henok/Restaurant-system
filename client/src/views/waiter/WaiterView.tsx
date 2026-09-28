@@ -386,158 +386,545 @@ export const WaiterView: React.FC = () => {
     </div>
   );
 
-  const renderMenuItems = () => (
-    <div className="waiter-menu-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14, marginBottom: 20 }}>
-      {filteredMenuItems.map(m => {
-        const inCart = cart[m.id]?.quantity || 0;
-        return (
-          <div
-            key={m.id}
-            style={{
-              background: 'var(--bg-card, #ffffff)',
-              border: '1px solid var(--border, #e2e8f0)',
-              borderRadius: 14,
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
-            }}
-          >
-            {/* Photo or Gradient Avatar Banner */}
-            <div style={{ position: 'relative', width: '100%', height: 120, background: 'linear-gradient(135deg, #f97316, #ea580c)', overflow: 'hidden' }}>
-              {m.photo_url ? (
-                <img
-                  src={resolveImageUrl(m.photo_url)}
-                  alt={m.name}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    const fallback = target.parentElement?.querySelector('.waiter-item-initial') as HTMLElement;
-                    if (fallback) fallback.style.display = 'flex';
-                  }}
-                />
-              ) : null}
-              {/* Fallback initial if no photo */}
+  // Format variation label for display (supporting Amharic localization)
+  const formatVariationTitle = (title: string) => {
+    if (!title) return '';
+    if (language !== 'am') return title;
+    return title
+      .replace(/Single Slice/gi, 'አንድ ቁራጭ')
+      .replace(/Single Piece/gi, 'አንድ ፍሬ')
+      .replace(/Pastry Box of (\d+)/gi, 'የ $1 ሳጥን')
+      .replace(/Box of (\d+)/gi, 'የ $1 ሳጥን')
+      .replace(/Large/gi, 'ትልቅ')
+      .replace(/Medium/gi, 'መካከለኛ')
+      .replace(/Small/gi, 'ትንሽ');
+  };
+
+  // Helper to group similar bakery items by product while keeping standard items separate
+  interface GroupedMenuItem {
+    id: string;
+    isGroup: boolean;
+    baseItem: any;
+    productName: string;
+    productNameAmharic: string;
+    description: string;
+    photoUrl: string;
+    categoryId: string;
+    routingDestination: string;
+    variations: any[];
+  }
+
+  const groupMenuItems = (items: any[]): GroupedMenuItem[] => {
+    const groups: { [key: string]: GroupedMenuItem } = {};
+    const result: GroupedMenuItem[] = [];
+
+    for (const item of items) {
+      const hasBakeryProduct = Boolean(item.bakery_product_id);
+      const isBakery = item.category_id === 'cat_bakery' || item.routing_destination === 'FRONT_COUNTER';
+
+      const nameMatch = item.name.match(/^(.*?)\s*\((.*?)\)$/);
+      const amharicMatch = item.name_amharic ? item.name_amharic.match(/^(.*?)\s*\((.*?)\)$/) : null;
+
+      let groupKey: string;
+      let isBakeryGroup = false;
+
+      if (hasBakeryProduct) {
+        groupKey = `bp_${item.bakery_product_id}`;
+        isBakeryGroup = true;
+      } else if (isBakery && (nameMatch || item.bakery_variation_id)) {
+        const baseEnglish = nameMatch ? nameMatch[1].trim() : item.name;
+        groupKey = `bakery_base_${baseEnglish.toLowerCase()}`;
+        isBakeryGroup = true;
+      } else {
+        groupKey = `item_${item.id}`;
+      }
+
+      // Variation title extraction
+      const variationTitle = item.bakery_variation_name || (nameMatch ? nameMatch[2].trim() : (item.bakery_size || 'Standard'));
+      const variationTitleAmharic = amharicMatch ? amharicMatch[2].trim() : variationTitle;
+
+      const variationItem = {
+        ...item,
+        variationTitle,
+        variationTitleAmharic
+      };
+
+      if (!groups[groupKey]) {
+        const baseAmharic = item.bakery_product_name_amharic 
+          || (amharicMatch ? amharicMatch[1].trim() : (item.name_amharic || item.name));
+        const baseEnglish = item.bakery_product_name 
+          || (nameMatch ? nameMatch[1].trim() : item.name);
+        const baseDesc = item.bakery_product_description 
+          || (item.description ? item.description.replace(/\s*—\s*.*$/, '').trim() : '');
+        const photo = item.bakery_product_photo || item.photo_url;
+
+        groups[groupKey] = {
+          id: groupKey,
+          isGroup: isBakeryGroup,
+          baseItem: item,
+          productName: baseEnglish,
+          productNameAmharic: baseAmharic,
+          description: baseDesc,
+          photoUrl: photo,
+          categoryId: item.category_id,
+          routingDestination: item.routing_destination || 'FRONT_COUNTER',
+          variations: [variationItem]
+        };
+        result.push(groups[groupKey]);
+      } else {
+        groups[groupKey].variations.push(variationItem);
+        groups[groupKey].isGroup = true;
+      }
+    }
+
+    // Sort variations within each group by price ascending
+    for (const group of result) {
+      if (group.variations.length > 1) {
+        group.variations.sort((a, b) => (a.price || 0) - (b.price || 0));
+      }
+    }
+
+    return result;
+  };
+
+  const renderMenuItems = () => {
+    const groupedList = groupMenuItems(filteredMenuItems);
+
+    return (
+      <div className="waiter-menu-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14, marginBottom: 20 }}>
+        {groupedList.map(group => {
+          // If combined bakery group with multiple sizes/types
+          if (group.isGroup && group.variations.length > 1) {
+            const totalInCart = group.variations.reduce((sum, v) => sum + (cart[v.id]?.quantity || 0), 0);
+
+            return (
               <div
-                className="waiter-item-initial"
+                key={group.id}
                 style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: m.photo_url ? 'none' : 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#ffffff',
-                  fontSize: 32,
-                  fontWeight: 800
+                  background: 'var(--bg-card, #ffffff)',
+                  border: totalInCart > 0 ? '1.5px solid #ea580c' : '1px solid var(--border, #e2e8f0)',
+                  borderRadius: 14,
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  boxShadow: totalInCart > 0 ? '0 4px 14px rgba(234, 88, 12, 0.16)' : '0 2px 8px rgba(0,0,0,0.06)',
+                  transition: 'all 0.2s ease'
                 }}
               >
-                {m.name.charAt(0)}
-              </div>
+                {/* Photo Banner with Badges */}
+                <div style={{ position: 'relative', width: '100%', height: 120, background: 'linear-gradient(135deg, #f97316, #ea580c)', overflow: 'hidden' }}>
+                  {group.photoUrl ? (
+                    <img
+                      src={resolveImageUrl(group.photoUrl)}
+                      alt={group.productName}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const fallback = target.parentElement?.querySelector('.waiter-item-initial') as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  {/* Fallback initial */}
+                  <div
+                    className="waiter-item-initial"
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: group.photoUrl ? 'none' : 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#ffffff',
+                      fontSize: 32,
+                      fontWeight: 800
+                    }}
+                  >
+                    {group.productName.charAt(0)}
+                  </div>
 
-              <span
-                style={{
-                  position: 'absolute',
-                  top: 8,
-                  left: 8,
-                  fontSize: 9,
-                  fontWeight: 800,
-                  color: m.routing_destination === 'KITCHEN' ? '#b45309' : '#0284c7',
-                  background: m.routing_destination === 'KITCHEN' ? 'rgba(254, 243, 199, 0.95)' : 'rgba(224, 242, 254, 0.95)',
-                  padding: '2px 6px',
-                  borderRadius: 4,
-                  backdropFilter: 'blur(4px)'
-                }}
-              >
-                {m.routing_destination}
-              </span>
-            </div>
+                  {/* Routing Badge */}
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      left: 8,
+                      fontSize: 9,
+                      fontWeight: 800,
+                      color: group.routingDestination === 'KITCHEN' ? '#b45309' : '#0284c7',
+                      background: group.routingDestination === 'KITCHEN' ? 'rgba(254, 243, 199, 0.95)' : 'rgba(224, 242, 254, 0.95)',
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      backdropFilter: 'blur(4px)'
+                    }}
+                  >
+                    {group.routingDestination}
+                  </span>
 
-            <div style={{ padding: 12, display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
-              <div>
-                {/* Amharic name primary, English subtitle secondary */}
-                <h4 style={{ fontSize: 15, fontWeight: 800, margin: '2px 0 2px', lineHeight: 1.3, color: 'var(--text-main, #0f172a)' }}>
-                  {m.name_amharic || m.name}
-                </h4>
-                {m.name_amharic && (
-                  <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', display: 'block', marginBottom: 4 }}>
-                    {m.name}
-                  </span>
-                )}
-                <p style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', margin: '0 0 8px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {m.description}
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-                <div>
-                  <span style={{ fontSize: 17, fontWeight: 900, color: 'var(--text-main, #0f172a)' }}>
-                    {m.price}
-                  </span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #64748b)', marginLeft: 3 }}>
-                    {t('currency')}
-                  </span>
+                  {/* Floating In-Cart Badge for this bakery item */}
+                  {totalInCart > 0 && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        fontSize: 10,
+                        fontWeight: 900,
+                        color: '#ffffff',
+                        background: '#ea580c',
+                        padding: '3px 8px',
+                        borderRadius: 12,
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 3
+                      }}
+                    >
+                      <span>🛒</span> {totalInCart} {language === 'am' ? 'በትዕዛዝ' : 'in cart'}
+                    </span>
+                  )}
                 </div>
 
-                {inCart > 0 ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff7ed', border: '1.5px solid #ea580c', borderRadius: 20, padding: '4px 8px' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        tactileFeedback('click');
-                        removeFromCart(m.id);
-                      }}
-                      style={{ color: '#ea580c', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer' }}
-                    >
-                      <Minus size={16} strokeWidth={3} />
-                    </button>
-                    <span style={{ fontSize: 15, fontWeight: 900, color: '#ea580c', minWidth: 18, textAlign: 'center' }}>
-                      {inCart}
+                <div style={{ padding: 12, display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
+                  <div>
+                    {/* Amharic name primary, English subtitle secondary */}
+                    <h4 style={{ fontSize: 15, fontWeight: 800, margin: '2px 0 2px', lineHeight: 1.3, color: 'var(--text-main, #0f172a)' }}>
+                      {group.productNameAmharic || group.productName}
+                    </h4>
+                    {group.productNameAmharic && (
+                      <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', display: 'block', marginBottom: 4 }}>
+                        {group.productName}
+                      </span>
+                    )}
+                    {group.description && (
+                      <p style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', margin: '0 0 6px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {group.description}
+                      </p>
+                    )}
+
+                    {/* Section Header: Sizes & Types */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      margin: '8px 0 6px',
+                      paddingBottom: 4,
+                      borderBottom: '1px dashed var(--border, #e2e8f0)'
+                    }}>
+                      <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                        {language === 'am' ? 'መጠኖችና አይነቶች' : 'Sizes & Types'}
+                      </span>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: '#ea580c', background: '#fff7ed', padding: '1px 6px', borderRadius: 10 }}>
+                        {group.variations.length} {language === 'am' ? 'አማራጮች' : 'types'}
+                      </span>
+                    </div>
+
+                    {/* Variations Buttons List */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {group.variations.map(v => {
+                        const qty = cart[v.id]?.quantity || 0;
+                        const isUnavailable = v.is_available === 0 || v.bakery_variation_available === 0;
+                        const stock = v.bakery_counter_stock ?? v.counter_stock;
+                        const title = formatVariationTitle(v.variationTitle);
+
+                        return (
+                          <div
+                            key={v.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '5px 8px',
+                              borderRadius: 8,
+                              border: qty > 0 
+                                ? '1.5px solid #ea580c' 
+                                : '1px solid var(--border, #e2e8f0)',
+                              background: qty > 0 
+                                ? '#fff7ed' 
+                                : 'var(--bg-subtle, #f8fafc)',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            {/* Left: Size/Type Name & Price */}
+                            <div style={{ flex: 1, minWidth: 0, marginRight: 6 }}>
+                              <div style={{
+                                fontSize: 11.5,
+                                fontWeight: 800,
+                                color: qty > 0 ? '#c2410c' : 'var(--text-main, #0f172a)',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}>
+                                {title}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
+                                <span style={{ fontSize: 11, fontWeight: 900, color: qty > 0 ? '#ea580c' : 'var(--text-main, #334155)' }}>
+                                  {v.price} <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-muted, #64748b)' }}>{t('currency')}</span>
+                                </span>
+                                {stock !== undefined && stock !== null && (
+                                  <span style={{ fontSize: 9.5, fontWeight: 700, color: stock <= 2 ? '#dc2626' : '#16a34a' }}>
+                                    {stock <= 0 ? (language === 'am' ? 'አልቋል' : 'Out') : `${stock} left`}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Right: Add Button or Stepper */}
+                            {isUnavailable ? (
+                              <span style={{ fontSize: 9.5, fontWeight: 700, color: '#ef4444', background: '#fee2e2', padding: '2px 5px', borderRadius: 4 }}>
+                                {language === 'am' ? 'አልቋል' : 'Unavailable'}
+                              </span>
+                            ) : qty > 0 ? (
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 3,
+                                background: '#ffffff',
+                                border: '1.5px solid #ea580c',
+                                borderRadius: 16,
+                                padding: '1px 4px',
+                                boxShadow: '0 1px 3px rgba(234, 88, 12, 0.15)'
+                              }}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    tactileFeedback('click');
+                                    removeFromCart(v.id);
+                                  }}
+                                  style={{
+                                    color: '#ea580c',
+                                    width: 20,
+                                    height: 20,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    padding: 0
+                                  }}
+                                  title="Remove one"
+                                >
+                                  <Minus size={13} strokeWidth={3} />
+                                </button>
+                                <span style={{ fontSize: 12, fontWeight: 900, color: '#ea580c', minWidth: 14, textAlign: 'center' }}>
+                                  {qty}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    tactileFeedback('pop');
+                                    addToCart(v);
+                                  }}
+                                  style={{
+                                    color: '#ea580c',
+                                    width: 20,
+                                    height: 20,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    padding: 0
+                                  }}
+                                  title="Add one more"
+                                >
+                                  <Plus size={13} strokeWidth={3} />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  tactileFeedback('pop');
+                                  addToCart(v);
+                                }}
+                                style={{
+                                  background: 'linear-gradient(135deg, #ff9e01, #ea580c)',
+                                  color: '#ffffff',
+                                  border: 'none',
+                                  borderRadius: 7,
+                                  padding: '4px 8px',
+                                  fontSize: 11,
+                                  fontWeight: 800,
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 2,
+                                  boxShadow: '0 2px 5px rgba(234, 88, 12, 0.25)',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                title={`Add ${title}`}
+                              >
+                                <Plus size={12} strokeWidth={3} />
+                                <span>{language === 'am' ? 'ጨምር' : 'Add'}</span>
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // Single Item Card (for non-grouped standard menu items)
+          const m = group.variations[0] || group.baseItem;
+          const inCart = cart[m.id]?.quantity || 0;
+
+          return (
+            <div
+              key={m.id}
+              style={{
+                background: 'var(--bg-card, #ffffff)',
+                border: inCart > 0 ? '1.5px solid #ea580c' : '1px solid var(--border, #e2e8f0)',
+                borderRadius: 14,
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                boxShadow: inCart > 0 ? '0 4px 14px rgba(234, 88, 12, 0.16)' : '0 2px 8px rgba(0,0,0,0.06)'
+              }}
+            >
+              {/* Photo or Gradient Avatar Banner */}
+              <div style={{ position: 'relative', width: '100%', height: 120, background: 'linear-gradient(135deg, #f97316, #ea580c)', overflow: 'hidden' }}>
+                {m.photo_url ? (
+                  <img
+                    src={resolveImageUrl(m.photo_url)}
+                    alt={m.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const fallback = target.parentElement?.querySelector('.waiter-item-initial') as HTMLElement;
+                      if (fallback) fallback.style.display = 'flex';
+                    }}
+                  />
+                ) : null}
+                {/* Fallback initial if no photo */}
+                <div
+                  className="waiter-item-initial"
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: m.photo_url ? 'none' : 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#ffffff',
+                    fontSize: 32,
+                    fontWeight: 800
+                  }}
+                >
+                  {m.name.charAt(0)}
+                </div>
+
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: 8,
+                    left: 8,
+                    fontSize: 9,
+                    fontWeight: 800,
+                    color: m.routing_destination === 'KITCHEN' ? '#b45309' : '#0284c7',
+                    background: m.routing_destination === 'KITCHEN' ? 'rgba(254, 243, 199, 0.95)' : 'rgba(224, 242, 254, 0.95)',
+                    padding: '2px 6px',
+                    borderRadius: 4,
+                    backdropFilter: 'blur(4px)'
+                  }}
+                >
+                  {m.routing_destination}
+                </span>
+              </div>
+
+              <div style={{ padding: 12, display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
+                <div>
+                  {/* Amharic name primary, English subtitle secondary */}
+                  <h4 style={{ fontSize: 15, fontWeight: 800, margin: '2px 0 2px', lineHeight: 1.3, color: 'var(--text-main, #0f172a)' }}>
+                    {m.name_amharic || m.name}
+                  </h4>
+                  {m.name_amharic && (
+                    <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', display: 'block', marginBottom: 4 }}>
+                      {m.name}
                     </span>
+                  )}
+                  <p style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', margin: '0 0 8px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {m.description}
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+                  <div>
+                    <span style={{ fontSize: 17, fontWeight: 900, color: 'var(--text-main, #0f172a)' }}>
+                      {m.price}
+                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #64748b)', marginLeft: 3 }}>
+                      {t('currency')}
+                    </span>
+                  </div>
+
+                  {inCart > 0 ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff7ed', border: '1.5px solid #ea580c', borderRadius: 20, padding: '4px 8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          tactileFeedback('click');
+                          removeFromCart(m.id);
+                        }}
+                        style={{ color: '#ea580c', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer' }}
+                      >
+                        <Minus size={16} strokeWidth={3} />
+                      </button>
+                      <span style={{ fontSize: 15, fontWeight: 900, color: '#ea580c', minWidth: 18, textAlign: 'center' }}>
+                        {inCart}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          tactileFeedback('pop');
+                          addToCart(m);
+                        }}
+                        style={{ color: '#ea580c', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer' }}
+                      >
+                        <Plus size={16} strokeWidth={3} />
+                      </button>
+                    </div>
+                  ) : (
                     <button
                       type="button"
                       onClick={() => {
                         tactileFeedback('pop');
                         addToCart(m);
                       }}
-                      style={{ color: '#ea580c', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer' }}
+                      style={{
+                        background: 'linear-gradient(135deg, #ff9e01, #ea580c)',
+                        color: '#ffffff',
+                        borderRadius: 12,
+                        width: 44,
+                        height: 40,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 3px 10px rgba(234, 88, 12, 0.35)',
+                        border: 'none',
+                        cursor: 'pointer'
+                      }}
+                      title="Add item"
                     >
-                      <Plus size={16} strokeWidth={3} />
+                      <Plus size={22} strokeWidth={3} color="#ffffff" />
                     </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      tactileFeedback('pop');
-                      addToCart(m);
-                    }}
-                    style={{
-                      background: 'linear-gradient(135deg, #ff9e01, #ea580c)',
-                      color: '#ffffff',
-                      borderRadius: 12,
-                      width: 44,
-                      height: 40,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: '0 3px 10px rgba(234, 88, 12, 0.35)',
-                      border: 'none',
-                      cursor: 'pointer'
-                    }}
-                    title="Add item"
-                  >
-                    <Plus size={22} strokeWidth={3} color="#ffffff" />
-                  </button>
-                )}
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })}
-    </div>
-  );
+          );
+        })}
+      </div>
+    );
+  };
 
   const renderCartDrawer = () => {
     if (cartList.length === 0) {

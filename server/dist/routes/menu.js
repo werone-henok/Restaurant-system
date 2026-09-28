@@ -104,13 +104,26 @@ menuRouter.get('/items/search', authenticate, (req, res) => {
     }
     const searchTerm = `%${q}%`;
     const items = db.prepare(`
-    SELECT m.*, c.name as category_name
+    SELECT m.*, c.name as category_name,
+           bpv.product_id as bakery_product_id,
+           bp.name as bakery_product_name,
+           bp.name_amharic as bakery_product_name_amharic,
+           bp.description as bakery_product_description,
+           bp.photo_url as bakery_product_photo,
+           bpv.variation_name as bakery_variation_name,
+           bpv.size as bakery_size,
+           bpv.flavor_type as bakery_flavor,
+           bpv.counter_stock as bakery_counter_stock,
+           bpv.is_available as bakery_variation_available,
+           bpv.unavailable_reason as bakery_unavailable_reason
     FROM menu_items m
     JOIN menu_categories c ON m.category_id = c.id
+    LEFT JOIN bakery_product_variations bpv ON m.bakery_variation_id = bpv.id
+    LEFT JOIN bakery_products bp ON bpv.product_id = bp.id
     WHERE m.deleted_at IS NULL
-      AND (m.name LIKE ? OR m.name_amharic LIKE ? OR m.description LIKE ?)
+      AND (m.name LIKE ? OR m.name_amharic LIKE ? OR m.description LIKE ? OR bp.name LIKE ? OR bp.name_amharic LIKE ?)
     ORDER BY m.name ASC LIMIT 25
-  `).all(searchTerm, searchTerm, searchTerm);
+  `).all(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
     res.json(items);
 });
 // Get menu items with recipes
@@ -120,9 +133,22 @@ menuRouter.get('/items', authenticate, (req, res) => {
         ? 'WHERE m.deleted_at IS NULL'
         : 'WHERE m.is_available = 1 AND m.deleted_at IS NULL';
     const items = db.prepare(`
-    SELECT m.*, c.name as category_name 
+    SELECT m.*, c.name as category_name,
+           bpv.product_id as bakery_product_id,
+           bp.name as bakery_product_name,
+           bp.name_amharic as bakery_product_name_amharic,
+           bp.description as bakery_product_description,
+           bp.photo_url as bakery_product_photo,
+           bpv.variation_name as bakery_variation_name,
+           bpv.size as bakery_size,
+           bpv.flavor_type as bakery_flavor,
+           bpv.counter_stock as bakery_counter_stock,
+           bpv.is_available as bakery_variation_available,
+           bpv.unavailable_reason as bakery_unavailable_reason
     FROM menu_items m
     JOIN menu_categories c ON m.category_id = c.id
+    LEFT JOIN bakery_product_variations bpv ON m.bakery_variation_id = bpv.id
+    LEFT JOIN bakery_products bp ON bpv.product_id = bp.id
     ${whereClause}
     ORDER BY c.sort_order ASC, m.name ASC
   `).all();
