@@ -1287,7 +1287,33 @@ bakeryRouter.patch('/cake-queue/:itemId/status', authenticate, (req, res) => {
     const itemId = String(req.params.itemId);
     const { status } = req.body;
     try {
-        db.prepare(`UPDATE order_items SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(status, itemId);
+        if (status === 'READY') {
+            db.prepare(`UPDATE order_items SET status = ?, ready_at = CURRENT_TIMESTAMP, prepared_by_id = ? WHERE id = ?`).run(status, req.user?.id || null, itemId);
+        }
+        else {
+            db.prepare(`UPDATE order_items SET status = ? WHERE id = ?`).run(status, itemId);
+        }
+        // Get item order info to notify waiter
+        const itemInfo = db.prepare(`
+      SELECT oi.*, o.order_number, o.waiter_id, o.branch_id
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.id
+      WHERE oi.id = ?
+    `).get(itemId);
+        if (itemInfo && status === 'READY') {
+            broadcastEvent({
+                type: 'ORDER_READY',
+                branchId: itemInfo.branch_id,
+                targetRole: ['waiter'],
+                payload: {
+                    orderId: itemInfo.order_id,
+                    orderNumber: itemInfo.order_number,
+                    itemId,
+                    itemName: itemInfo.name,
+                    message: `Cake Ready: "${itemInfo.name}" on Order #${itemInfo.order_number} is ready for pickup!`
+                }
+            });
+        }
         broadcastEvent({
             type: 'CAKE_ORDER_UPDATED',
             payload: { itemId, status }
@@ -1295,6 +1321,7 @@ bakeryRouter.patch('/cake-queue/:itemId/status', authenticate, (req, res) => {
         res.json({ success: true, message: `Status updated to ${status}` });
     }
     catch (err) {
+        console.error('Failed to update cake order item status:', err);
         res.status(500).json({ error: err.message });
     }
 });
