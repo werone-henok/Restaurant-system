@@ -298,41 +298,41 @@ export const BakeryView: React.FC = () => {
   const cakesWithBakeryStock = allCakes.filter(c => c.bakery_stock > 0);
 
   return (
-    <div style={{ maxWidth: 840, margin: '0 auto', paddingBottom: 80, fontFamily: 'var(--font-family)' }}>
+    <div style={{ width: '100%', maxWidth: '100%', margin: '0', padding: '16px 20px 90px', boxSizing: 'border-box', fontFamily: 'var(--font-family)' }}>
       {/* Header Banner */}
       <div
         style={{
           background: 'linear-gradient(135deg, #78350f 0%, #b45309 50%, #d97706 100%)',
           color: '#ffffff',
-          padding: '16px 18px',
-          borderRadius: 20,
-          marginBottom: 16,
-          boxShadow: '0 8px 20px rgba(180, 83, 9, 0.25)',
+          padding: '20px 24px',
+          borderRadius: 22,
+          marginBottom: 18,
+          boxShadow: '0 8px 24px rgba(180, 83, 9, 0.25)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 14,
+              width: 52,
+              height: 52,
+              borderRadius: 16,
               background: 'rgba(255,255,255,0.25)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 26
+              fontSize: 28
             }}
           >
             🍰
           </div>
           <div>
-            <h1 style={{ fontSize: 18, fontWeight: 900, margin: 0, letterSpacing: '-0.02em' }}>
+            <h1 style={{ fontSize: 20, fontWeight: 900, margin: 0, letterSpacing: '-0.02em' }}>
               የዳቦ ቤት ማብሰያ ክፍል
             </h1>
-            <p style={{ margin: '2px 0 0', fontSize: 12, opacity: 0.9 }}>
+            <p style={{ margin: '3px 0 0', fontSize: 13, opacity: 0.9 }}>
               Bakery Kitchen • {user?.username}
             </p>
           </div>
@@ -348,23 +348,23 @@ export const BakeryView: React.FC = () => {
             background: 'rgba(255,255,255,0.2)',
             color: '#ffffff',
             border: 'none',
-            borderRadius: 12,
-            padding: '10px 14px',
-            fontSize: 13,
+            borderRadius: 14,
+            padding: '12px 18px',
+            fontSize: 14,
             fontWeight: 800,
             display: 'flex',
             alignItems: 'center',
-            gap: 6,
+            gap: 8,
             cursor: 'pointer'
           }}
         >
-          <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+          <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
           አድስ (Refresh)
         </button>
       </div>
 
-      {/* 3 Large Picture-Driven Action Tabs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 18 }}>
+      {/* 3 Large Picture-Driven Action Tabs - Optimized for Tablets */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
         {/* Tab 1: Counter Requests / Needs Baking */}
         <button
           onClick={() => {
@@ -376,39 +376,41 @@ export const BakeryView: React.FC = () => {
             background: activeTab === 'requests' ? 'linear-gradient(135deg, #b45309 0%, #d97706 100%)' : 'var(--bg-card)',
             color: activeTab === 'requests' ? '#ffffff' : 'var(--text-main)',
             border: activeTab === 'requests' ? 'none' : '2px solid var(--border)',
-            borderRadius: 16,
-            padding: '14px 6px',
+            borderRadius: 18,
+            padding: '16px 10px',
+            minHeight: 82,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: 6,
-            boxShadow: activeTab === 'requests' ? '0 6px 16px rgba(180, 83, 9, 0.3)' : 'none',
+            boxShadow: activeTab === 'requests' ? '0 8px 20px rgba(180, 83, 9, 0.35)' : 'none',
             cursor: 'pointer',
             transition: 'all 0.15s ease'
           }}
         >
-          <span style={{ fontSize: 24 }}>🔔</span>
-          <span style={{ fontSize: 13, fontWeight: 900 }}>ምን ልጋግር?</span>
-          <span style={{ fontSize: 10, opacity: 0.85 }}>Requests ({pendingRequests.length})</span>
+          <span style={{ fontSize: 28 }}>🔔</span>
+          <span style={{ fontSize: 15, fontWeight: 900 }}>ምን ልጋግር?</span>
+          <span style={{ fontSize: 12, opacity: 0.88 }}>Requests ({pendingRequests.length})</span>
 
           {pendingRequests.length > 0 && (
             <span
               style={{
                 position: 'absolute',
-                top: -6,
-                right: -6,
+                top: -8,
+                right: 8,
                 background: '#ef4444',
                 color: '#ffffff',
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: 900,
-                width: 26,
-                height: 26,
+                width: 28,
+                height: 28,
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 border: '2px solid #ffffff',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                 animation: 'pulse 1.5s infinite'
               }}
             >
@@ -428,33 +430,35 @@ export const BakeryView: React.FC = () => {
             background: activeTab === 'ready' ? 'linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%)' : 'var(--bg-card)',
             color: activeTab === 'ready' ? '#ffffff' : 'var(--text-main)',
             border: activeTab === 'ready' ? 'none' : '2px solid var(--border)',
-            borderRadius: 16,
-            padding: '14px 6px',
+            borderRadius: 18,
+            padding: '16px 10px',
+            minHeight: 82,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: 6,
-            boxShadow: activeTab === 'ready' ? '0 6px 16px rgba(2, 132, 199, 0.3)' : 'none',
+            boxShadow: activeTab === 'ready' ? '0 8px 20px rgba(2, 132, 199, 0.35)' : 'none',
             cursor: 'pointer',
             transition: 'all 0.15s ease'
           }}
         >
-          <span style={{ fontSize: 24 }}>🚚</span>
-          <span style={{ fontSize: 13, fontWeight: 900 }}>ለካውንተር ላክ</span>
-          <span style={{ fontSize: 10, opacity: 0.85 }}>Send to Counter</span>
+          <span style={{ fontSize: 28 }}>🚚</span>
+          <span style={{ fontSize: 15, fontWeight: 900 }}>ለካውንተር ላክ</span>
+          <span style={{ fontSize: 12, opacity: 0.88 }}>Send to Counter</span>
 
           {activeBakingBatches.length > 0 && (
             <span
               style={{
                 position: 'absolute',
-                top: -6,
-                right: -6,
+                top: -8,
+                right: 8,
                 background: '#f59e0b',
                 color: '#ffffff',
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: 900,
-                width: 26,
-                height: 26,
+                width: 28,
+                height: 28,
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
@@ -477,20 +481,22 @@ export const BakeryView: React.FC = () => {
             background: activeTab === 'bake_new' ? 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)' : 'var(--bg-card)',
             color: activeTab === 'bake_new' ? '#ffffff' : 'var(--text-main)',
             border: activeTab === 'bake_new' ? 'none' : '2px solid var(--border)',
-            borderRadius: 16,
-            padding: '14px 6px',
+            borderRadius: 18,
+            padding: '16px 10px',
+            minHeight: 82,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: 6,
-            boxShadow: activeTab === 'bake_new' ? '0 6px 16px rgba(22, 163, 74, 0.3)' : 'none',
+            boxShadow: activeTab === 'bake_new' ? '0 8px 20px rgba(22, 163, 74, 0.35)' : 'none',
             cursor: 'pointer',
             transition: 'all 0.15s ease'
           }}
         >
-          <span style={{ fontSize: 24 }}>🎂</span>
-          <span style={{ fontSize: 13, fontWeight: 900 }}>አዲስ ጋግር</span>
-          <span style={{ fontSize: 10, opacity: 0.85 }}>Bake New</span>
+          <span style={{ fontSize: 28 }}>🎂</span>
+          <span style={{ fontSize: 15, fontWeight: 900 }}>አዲስ ጋግር</span>
+          <span style={{ fontSize: 12, opacity: 0.88 }}>Bake New</span>
         </button>
       </div>
 
@@ -498,7 +504,7 @@ export const BakeryView: React.FC = () => {
       {/* 1. FRONT COUNTER REQUESTS (WHAT TO BAKE) */}
       {/* ========================================================================= */}
       {activeTab === 'requests' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 16 }}>
           {pendingRequests.length === 0 ? (
             <div
               style={{
@@ -617,20 +623,20 @@ export const BakeryView: React.FC = () => {
       {/* 2. READY CAKES & SEND TO COUNTER */}
       {/* ========================================================================= */}
       {activeTab === 'ready' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Active Baking Batches in Oven */}
           {activeBakingBatches.length > 0 && (
             <div>
-              <h3 style={{ fontSize: 15, fontWeight: 900, color: '#b45309', margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Flame size={18} /> እሳት ላይ ያሉ (Currently in Oven)
+              <h3 style={{ fontSize: 16, fontWeight: 900, color: '#b45309', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Flame size={20} /> እሳት ላይ ያሉ (Currently in Oven)
               </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
                 {activeBakingBatches.map(batch => (
                   <div
                     key={batch.id}
                     style={{
                       background: 'var(--bg-card)',
-                      borderRadius: 16,
+                      borderRadius: 18,
                       border: '2px solid #f59e0b',
                       padding: 14,
                       display: 'flex',
@@ -643,14 +649,14 @@ export const BakeryView: React.FC = () => {
                       <img
                         src={getCakePhoto(batch)}
                         alt=""
-                        style={{ width: 60, height: 60, borderRadius: 12, objectFit: 'cover' }}
+                        style={{ width: 68, height: 68, borderRadius: 14, objectFit: 'cover' }}
                       />
                       <div>
-                        <strong style={{ fontSize: 15, display: 'block', color: 'var(--text-main)' }}>
+                        <strong style={{ fontSize: 16, display: 'block', color: 'var(--text-main)' }}>
                           {batch.product_name_amharic || batch.product_name}
                         </strong>
                         <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                          {batch.variation_name} • {batch.quantity_produced} ኬክ
+                          {batch.variation_name} • <strong style={{ color: '#b45309' }}>{batch.quantity_produced} ኬክ</strong>
                         </span>
                       </div>
                     </div>
@@ -661,14 +667,15 @@ export const BakeryView: React.FC = () => {
                         background: '#16a34a',
                         color: '#ffffff',
                         border: 'none',
-                        borderRadius: 12,
-                        padding: '12px 16px',
+                        borderRadius: 14,
+                        padding: '12px 18px',
                         fontSize: 14,
                         fontWeight: 900,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 6
+                        gap: 6,
+                        boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)'
                       }}
                     >
                       <CheckCircle2 size={18} />
@@ -682,11 +689,11 @@ export const BakeryView: React.FC = () => {
 
           {/* Cakes Available to Send to Counter */}
           <div>
-            <h3 style={{ fontSize: 15, fontWeight: 900, color: '#0284c7', margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Package size={18} /> የበሰሉ / ለካውንተር መላኪያ (Finished Cakes to Send)
+            <h3 style={{ fontSize: 16, fontWeight: 900, color: '#0284c7', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Package size={20} /> የበሰሉ / ለካውንተር መላኪያ (Finished Cakes to Send)
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
               {allCakes.map(cake => {
                 const photo = getCakePhoto(cake);
                 const hasStock = cake.bakery_stock > 0;
@@ -706,23 +713,23 @@ export const BakeryView: React.FC = () => {
                     }}
                   >
                     <div>
-                      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
                         <img
                           src={photo}
                           alt=""
-                          style={{ width: 60, height: 60, borderRadius: 12, objectFit: 'cover' }}
+                          style={{ width: 68, height: 68, borderRadius: 14, objectFit: 'cover' }}
                         />
                         <div>
-                          <strong style={{ fontSize: 14, color: 'var(--text-main)', display: 'block' }}>
+                          <strong style={{ fontSize: 15, color: 'var(--text-main)', display: 'block' }}>
                             {cake.product_name_amharic || cake.product_name}
                           </strong>
-                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{cake.name}</span>
+                          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{cake.name}</span>
                         </div>
                       </div>
 
-                      <div style={{ background: 'var(--bg-app)', padding: 10, borderRadius: 10, textAlign: 'center', marginBottom: 10 }}>
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block' }}>ዳቦ ቤት ያለ ክምችት</span>
-                        <strong style={{ fontSize: 20, color: hasStock ? '#16a34a' : '#ef4444' }}>
+                      <div style={{ background: 'var(--bg-app)', padding: 12, borderRadius: 12, textAlign: 'center', marginBottom: 12 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block' }}>ዳቦ ቤት ያለ ክምችት</span>
+                        <strong style={{ fontSize: 22, color: hasStock ? '#16a34a' : '#ef4444' }}>
                           {cake.bakery_stock} ኬክ አለ
                         </strong>
                       </div>
@@ -737,21 +744,22 @@ export const BakeryView: React.FC = () => {
                       }}
                       style={{
                         width: '100%',
-                        padding: '12px',
-                        borderRadius: 12,
+                        padding: '14px',
+                        borderRadius: 14,
                         background: hasStock ? 'linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%)' : 'var(--border)',
                         color: hasStock ? '#ffffff' : 'var(--text-muted)',
                         border: 'none',
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: 900,
                         cursor: hasStock ? 'pointer' : 'not-allowed',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: 6
+                        gap: 8,
+                        boxShadow: hasStock ? '0 4px 12px rgba(2, 132, 199, 0.25)' : 'none'
                       }}
                     >
-                      <Send size={16} />
+                      <Send size={18} />
                       ለካውንተር ላክ (Send)
                     </button>
                   </div>
@@ -767,11 +775,11 @@ export const BakeryView: React.FC = () => {
       {/* ========================================================================= */}
       {activeTab === 'bake_new' && (
         <div>
-          <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--text-muted)', fontWeight: 700 }}>
+          <p style={{ margin: '0 0 16px', fontSize: 15, color: 'var(--text-muted)', fontWeight: 700 }}>
             የሚጋግሩትን ኬክ ፎቶ ይንኩ (Tap any cake to start baking):
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 16 }}>
             {allCakes.map(cake => {
               const photo = getCakePhoto(cake);
 
@@ -785,7 +793,7 @@ export const BakeryView: React.FC = () => {
                   }}
                   style={{
                     background: 'var(--bg-card)',
-                    borderRadius: 18,
+                    borderRadius: 20,
                     overflow: 'hidden',
                     border: '2px solid var(--border)',
                     boxShadow: 'var(--shadow-sm)',
@@ -795,7 +803,7 @@ export const BakeryView: React.FC = () => {
                     transition: 'transform 0.15s ease'
                   }}
                 >
-                  <div style={{ width: '100%', height: 130, position: 'relative' }}>
+                  <div style={{ width: '100%', height: 150, position: 'relative' }}>
                     <img
                       src={photo}
                       alt=""
@@ -803,33 +811,34 @@ export const BakeryView: React.FC = () => {
                     />
                   </div>
 
-                  <div style={{ padding: 12 }}>
-                    <h3 style={{ fontSize: 14, fontWeight: 900, margin: 0, color: 'var(--text-main)', lineHeight: 1.2 }}>
+                  <div style={{ padding: 14 }}>
+                    <h3 style={{ fontSize: 15, fontWeight: 900, margin: 0, color: 'var(--text-main)', lineHeight: 1.25 }}>
                       {cake.product_name_amharic || cake.product_name}
                     </h3>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>
                       {cake.name} {cake.size && `• ${cake.size}`}
                     </div>
 
                     <button
                       style={{
-                        marginTop: 10,
+                        marginTop: 12,
                         width: '100%',
-                        padding: '10px',
-                        borderRadius: 10,
+                        padding: '12px',
+                        borderRadius: 12,
                         background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)',
                         color: '#ffffff',
                         border: 'none',
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: 900,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: 4
+                        gap: 6,
+                        boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)'
                       }}
                     >
-                      <Flame size={14} /> ጋግር (Bake)
+                      <Flame size={16} /> ጋግር (Bake)
                     </button>
                   </div>
                 </div>
@@ -843,42 +852,45 @@ export const BakeryView: React.FC = () => {
       {/* MODAL 1: START BAKE STEPPER */}
       {/* ========================================================================= */}
       {selectedCakeForBake && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 400, borderRadius: 24, padding: 22, textAlign: 'center', boxShadow: 'var(--shadow-floating)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 440, borderRadius: 24, padding: 26, textAlign: 'center', boxShadow: 'var(--shadow-floating)' }}>
             <img
               src={getCakePhoto(selectedCakeForBake)}
               alt=""
-              style={{ width: 110, height: 110, borderRadius: 22, objectFit: 'cover', margin: '0 auto 12px', border: '3px solid #fef08a' }}
+              style={{ width: 120, height: 120, borderRadius: 22, objectFit: 'cover', margin: '0 auto 14px', border: '3px solid #fef08a', boxShadow: '0 4px 14px rgba(0,0,0,0.15)' }}
             />
-            <h3 style={{ fontSize: 18, fontWeight: 900, margin: 0 }}>
+            <h3 style={{ fontSize: 20, fontWeight: 900, margin: 0 }}>
               {selectedCakeForBake.product_name_amharic || selectedCakeForBake.product_name}
             </h3>
-            <p style={{ margin: '4px 0 16px', fontSize: 13, color: 'var(--text-muted)', fontWeight: 700 }}>
+            <p style={{ margin: '6px 0 20px', fontSize: 14, color: 'var(--text-muted)', fontWeight: 700 }}>
               ስንት ኬክ ይጋገራል? (How many cakes to bake?)
             </p>
 
             {/* Giant Touch Stepper */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 22 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24, marginBottom: 24 }}>
               <button
                 onClick={() => {
                   tactileFeedback('click');
                   setBakeQty(Math.max(1, bakeQty - 5));
                 }}
                 style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 18,
+                  width: 64,
+                  height: 64,
+                  borderRadius: 20,
                   border: '2px solid var(--border)',
                   background: 'var(--bg-app)',
-                  fontSize: 26,
+                  fontSize: 32,
                   fontWeight: 900,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
               >
                 -
               </button>
 
-              <span style={{ fontSize: 38, fontWeight: 900, color: '#ea580c', minWidth: 70, textAlign: 'center' }}>
+              <span style={{ fontSize: 44, fontWeight: 900, color: '#ea580c', minWidth: 80, textAlign: 'center' }}>
                 {bakeQty}
               </span>
 
@@ -888,24 +900,27 @@ export const BakeryView: React.FC = () => {
                   setBakeQty(bakeQty + 5);
                 }}
                 style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 18,
+                  width: 64,
+                  height: 64,
+                  borderRadius: 20,
                   border: '2px solid var(--border)',
                   background: 'var(--bg-app)',
-                  fontSize: 26,
+                  fontSize: 32,
                   fontWeight: 900,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
               >
                 +
               </button>
             </div>
 
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 12 }}>
               <button
                 onClick={() => setSelectedCakeForBake(null)}
-                style={{ flex: 1, padding: 14, borderRadius: 14, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}
+                style={{ flex: 1, padding: 16, borderRadius: 16, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}
               >
                 ተመለስ
               </button>
@@ -915,8 +930,8 @@ export const BakeryView: React.FC = () => {
                 onClick={handleStartNewBake}
                 style={{
                   flex: 2,
-                  padding: 14,
-                  borderRadius: 14,
+                  padding: 16,
+                  borderRadius: 16,
                   background: 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)',
                   color: '#ffffff',
                   border: 'none',
@@ -926,10 +941,11 @@ export const BakeryView: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 8
+                  gap: 8,
+                  boxShadow: '0 6px 18px rgba(234, 88, 12, 0.35)'
                 }}
               >
-                <Flame size={20} />
+                <Flame size={22} />
                 {isStartingBake ? 'እየጀመረ ነው...' : `🔥 ${bakeQty} ኬክ ጋግር`}
               </button>
             </div>
@@ -941,42 +957,45 @@ export const BakeryView: React.FC = () => {
       {/* MODAL 2: SEND TRANSFER TO COUNTER STEPPER */}
       {/* ========================================================================= */}
       {transferTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 400, borderRadius: 24, padding: 22, textAlign: 'center', boxShadow: 'var(--shadow-floating)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 440, borderRadius: 24, padding: 26, textAlign: 'center', boxShadow: 'var(--shadow-floating)' }}>
             <img
               src={getCakePhoto(transferTarget.cake)}
               alt=""
-              style={{ width: 110, height: 110, borderRadius: 22, objectFit: 'cover', margin: '0 auto 12px', border: '3px solid #bae6fd' }}
+              style={{ width: 120, height: 120, borderRadius: 22, objectFit: 'cover', margin: '0 auto 14px', border: '3px solid #bae6fd', boxShadow: '0 4px 14px rgba(0,0,0,0.15)' }}
             />
-            <h3 style={{ fontSize: 18, fontWeight: 900, margin: 0 }}>
+            <h3 style={{ fontSize: 20, fontWeight: 900, margin: 0 }}>
               {transferTarget.cake.product_name_amharic || transferTarget.cake.product_name}
             </h3>
-            <p style={{ margin: '4px 0 16px', fontSize: 13, color: 'var(--text-muted)', fontWeight: 700 }}>
+            <p style={{ margin: '6px 0 20px', fontSize: 14, color: 'var(--text-muted)', fontWeight: 700 }}>
               ስንት ኬክ ወደ ፊት ካውንተር ይላክ? (Max: {transferTarget.maxQty})
             </p>
 
             {/* Giant Stepper */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 22 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24, marginBottom: 24 }}>
               <button
                 onClick={() => {
                   tactileFeedback('click');
                   setTransferQty(Math.max(1, transferQty - 1));
                 }}
                 style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 18,
+                  width: 64,
+                  height: 64,
+                  borderRadius: 20,
                   border: '2px solid var(--border)',
                   background: 'var(--bg-app)',
-                  fontSize: 26,
+                  fontSize: 32,
                   fontWeight: 900,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
               >
                 -
               </button>
 
-              <span style={{ fontSize: 38, fontWeight: 900, color: '#0284c7', minWidth: 70, textAlign: 'center' }}>
+              <span style={{ fontSize: 44, fontWeight: 900, color: '#0284c7', minWidth: 80, textAlign: 'center' }}>
                 {transferQty}
               </span>
 
@@ -986,24 +1005,27 @@ export const BakeryView: React.FC = () => {
                   setTransferQty(Math.min(transferTarget.maxQty, transferQty + 1));
                 }}
                 style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 18,
+                  width: 64,
+                  height: 64,
+                  borderRadius: 20,
                   border: '2px solid var(--border)',
                   background: 'var(--bg-app)',
-                  fontSize: 26,
+                  fontSize: 32,
                   fontWeight: 900,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
               >
                 +
               </button>
             </div>
 
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 12 }}>
               <button
                 onClick={() => setTransferTarget(null)}
-                style={{ flex: 1, padding: 14, borderRadius: 14, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}
+                style={{ flex: 1, padding: 16, borderRadius: 16, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}
               >
                 ተመለስ
               </button>
@@ -1013,8 +1035,8 @@ export const BakeryView: React.FC = () => {
                 onClick={handleSendTransfer}
                 style={{
                   flex: 2,
-                  padding: 14,
-                  borderRadius: 14,
+                  padding: 16,
+                  borderRadius: 16,
                   background: 'linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%)',
                   color: '#ffffff',
                   border: 'none',
@@ -1024,10 +1046,11 @@ export const BakeryView: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 8
+                  gap: 8,
+                  boxShadow: '0 6px 18px rgba(2, 132, 199, 0.35)'
                 }}
               >
-                <Send size={20} />
+                <Send size={22} />
                 {isDispatchingTransfer ? 'እየላከ ነው...' : `🚚 ${transferQty} ኬክ ላክ`}
               </button>
             </div>

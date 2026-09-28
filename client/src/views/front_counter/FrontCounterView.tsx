@@ -378,41 +378,41 @@ export const FrontCounterView: React.FC = () => {
   const pendingOrders = cakeOrders.filter(o => o.status === 'CONFIRMED' || o.status === 'PREPARING' || o.status === 'PENDING');
 
   return (
-    <div style={{ maxWidth: 840, margin: '0 auto', paddingBottom: cart.length > 0 ? 120 : 80, fontFamily: 'var(--font-family)' }}>
+    <div style={{ width: '100%', maxWidth: '100%', margin: '0', padding: cart.length > 0 ? '16px 20px 140px' : '16px 20px 90px', boxSizing: 'border-box', fontFamily: 'var(--font-family)' }}>
       {/* Visual Top Header Bar */}
       <div
         style={{
           background: 'linear-gradient(135deg, #9d174d 0%, #db2777 100%)',
           color: '#ffffff',
-          padding: '16px 18px',
-          borderRadius: 20,
-          marginBottom: 16,
-          boxShadow: '0 8px 20px rgba(157, 23, 77, 0.25)',
+          padding: '20px 24px',
+          borderRadius: 22,
+          marginBottom: 18,
+          boxShadow: '0 8px 24px rgba(157, 23, 77, 0.25)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 14,
+              width: 52,
+              height: 52,
+              borderRadius: 16,
               background: 'rgba(255,255,255,0.25)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 26
+              fontSize: 28
             }}
           >
             🧁
           </div>
           <div>
-            <h1 style={{ fontSize: 18, fontWeight: 900, margin: 0, letterSpacing: '-0.02em' }}>
+            <h1 style={{ fontSize: 20, fontWeight: 900, margin: 0, letterSpacing: '-0.02em' }}>
               የፊት ኬክ መሸጫ
             </h1>
-            <p style={{ margin: '2px 0 0', fontSize: 12, opacity: 0.9 }}>
+            <p style={{ margin: '3px 0 0', fontSize: 13, opacity: 0.9 }}>
               Cake Sales Showcase • {user?.username}
             </p>
           </div>
@@ -428,23 +428,23 @@ export const FrontCounterView: React.FC = () => {
             background: 'rgba(255,255,255,0.2)',
             color: '#ffffff',
             border: 'none',
-            borderRadius: 12,
-            padding: '10px 14px',
-            fontSize: 13,
+            borderRadius: 14,
+            padding: '12px 18px',
+            fontSize: 14,
             fontWeight: 800,
             display: 'flex',
             alignItems: 'center',
-            gap: 6,
+            gap: 8,
             cursor: 'pointer'
           }}
         >
-          <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+          <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
           አድስ (Refresh)
         </button>
       </div>
 
-      {/* 3 Large, Picture-Driven Tab Buttons */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 18 }}>
+      {/* 3 Large, Picture-Driven Tab Buttons - Optimized for Tablets */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
         {/* Tab 1: Showcase & Sell */}
         <button
           onClick={() => {
@@ -455,20 +455,22 @@ export const FrontCounterView: React.FC = () => {
             background: activeTab === 'showcase' ? 'linear-gradient(135deg, #be185d 0%, #db2777 100%)' : 'var(--bg-card)',
             color: activeTab === 'showcase' ? '#ffffff' : 'var(--text-main)',
             border: activeTab === 'showcase' ? 'none' : '2px solid var(--border)',
-            borderRadius: 16,
-            padding: '14px 6px',
+            borderRadius: 18,
+            padding: '16px 10px',
+            minHeight: 82,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: 6,
-            boxShadow: activeTab === 'showcase' ? '0 6px 16px rgba(190, 24, 93, 0.3)' : 'none',
+            boxShadow: activeTab === 'showcase' ? '0 8px 20px rgba(190, 24, 93, 0.35)' : 'none',
             cursor: 'pointer',
             transition: 'all 0.15s ease'
           }}
         >
-          <span style={{ fontSize: 24 }}>🍰</span>
-          <span style={{ fontSize: 13, fontWeight: 900 }}>ኬክ መሸጫ</span>
-          <span style={{ fontSize: 10, opacity: 0.85 }}>Sell Cakes</span>
+          <span style={{ fontSize: 28 }}>🍰</span>
+          <span style={{ fontSize: 15, fontWeight: 900 }}>ኬክ መሸጫ</span>
+          <span style={{ fontSize: 12, opacity: 0.88 }}>Sell Cakes</span>
         </button>
 
         {/* Tab 2: Incoming from Bakery */}
@@ -482,39 +484,41 @@ export const FrontCounterView: React.FC = () => {
             background: activeTab === 'transfers' ? 'linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%)' : 'var(--bg-card)',
             color: activeTab === 'transfers' ? '#ffffff' : 'var(--text-main)',
             border: activeTab === 'transfers' ? 'none' : '2px solid var(--border)',
-            borderRadius: 16,
-            padding: '14px 6px',
+            borderRadius: 18,
+            padding: '16px 10px',
+            minHeight: 82,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: 6,
-            boxShadow: activeTab === 'transfers' ? '0 6px 16px rgba(2, 132, 199, 0.3)' : 'none',
+            boxShadow: activeTab === 'transfers' ? '0 8px 20px rgba(2, 132, 199, 0.35)' : 'none',
             cursor: 'pointer',
             transition: 'all 0.15s ease'
           }}
         >
-          <span style={{ fontSize: 24 }}>🚚</span>
-          <span style={{ fontSize: 13, fontWeight: 900 }}>የመጣ ርክክብ</span>
-          <span style={{ fontSize: 10, opacity: 0.85 }}>Incoming</span>
+          <span style={{ fontSize: 28 }}>🚚</span>
+          <span style={{ fontSize: 15, fontWeight: 900 }}>የመጣ ርክክብ</span>
+          <span style={{ fontSize: 12, opacity: 0.88 }}>Incoming</span>
 
           {pendingTransfers.length > 0 && (
             <span
               style={{
                 position: 'absolute',
-                top: -6,
-                right: -6,
+                top: -8,
+                right: 8,
                 background: '#ef4444',
                 color: '#ffffff',
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: 900,
-                width: 26,
-                height: 26,
+                width: 28,
+                height: 28,
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 border: '2px solid #ffffff',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                 animation: 'pulse 1.5s infinite'
               }}
             >
@@ -534,39 +538,41 @@ export const FrontCounterView: React.FC = () => {
             background: activeTab === 'orders' ? 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)' : 'var(--bg-card)',
             color: activeTab === 'orders' ? '#ffffff' : 'var(--text-main)',
             border: activeTab === 'orders' ? 'none' : '2px solid var(--border)',
-            borderRadius: 16,
-            padding: '14px 6px',
+            borderRadius: 18,
+            padding: '16px 10px',
+            minHeight: 82,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: 6,
-            boxShadow: activeTab === 'orders' ? '0 6px 16px rgba(217, 119, 6, 0.3)' : 'none',
+            boxShadow: activeTab === 'orders' ? '0 8px 20px rgba(217, 119, 6, 0.35)' : 'none',
             cursor: 'pointer',
             transition: 'all 0.15s ease'
           }}
         >
-          <span style={{ fontSize: 24 }}>🍽️</span>
-          <span style={{ fontSize: 13, fontWeight: 900 }}>አስተናጋጅ</span>
-          <span style={{ fontSize: 10, opacity: 0.85 }}>Waiter Orders</span>
+          <span style={{ fontSize: 28 }}>🍽️</span>
+          <span style={{ fontSize: 15, fontWeight: 900 }}>አስተናጋጅ</span>
+          <span style={{ fontSize: 12, opacity: 0.88 }}>Waiter Orders</span>
 
           {pendingOrders.length > 0 && (
             <span
               style={{
                 position: 'absolute',
-                top: -6,
-                right: -6,
+                top: -8,
+                right: 8,
                 background: '#ef4444',
                 color: '#ffffff',
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: 900,
-                width: 26,
-                height: 26,
+                width: 28,
+                height: 28,
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 border: '2px solid #ffffff',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
               }}
             >
               {pendingOrders.length}
@@ -583,8 +589,8 @@ export const FrontCounterView: React.FC = () => {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
-              gap: 14
+              gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
+              gap: 16
             }}
           >
             {allCakes.map(cake => {
@@ -599,7 +605,7 @@ export const FrontCounterView: React.FC = () => {
                   onClick={() => handleTapCake(cake)}
                   style={{
                     background: 'var(--bg-card)',
-                    borderRadius: 18,
+                    borderRadius: 20,
                     overflow: 'hidden',
                     border: cartItem
                       ? '3px solid #db2777'
@@ -607,7 +613,7 @@ export const FrontCounterView: React.FC = () => {
                       ? '2px dashed #fca5a5'
                       : '2px solid var(--border)',
                     boxShadow: cartItem
-                      ? '0 6px 18px rgba(219, 39, 119, 0.25)'
+                      ? '0 8px 22px rgba(219, 39, 119, 0.28)'
                       : 'var(--shadow-sm)',
                     display: 'flex',
                     flexDirection: 'column',
@@ -617,7 +623,7 @@ export const FrontCounterView: React.FC = () => {
                   }}
                 >
                   {/* Big Image Container with Badges */}
-                  <div style={{ position: 'relative', width: '100%', height: 135, background: '#f3f4f6' }}>
+                  <div style={{ position: 'relative', width: '100%', height: 150, background: '#f3f4f6' }}>
                     <img
                       src={photo}
                       alt={cake.product_name}
@@ -758,7 +764,7 @@ export const FrontCounterView: React.FC = () => {
       {/* 2. INCOMING CAKE DELIVERIES FROM BAKERY */}
       {/* ========================================================================= */}
       {activeTab === 'transfers' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 16 }}>
           {pendingTransfers.length === 0 ? (
             <div
               style={{
@@ -874,7 +880,7 @@ export const FrontCounterView: React.FC = () => {
       {/* 3. WAITER CAKE ORDERS QUEUE */}
       {/* ========================================================================= */}
       {activeTab === 'orders' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
           {pendingOrders.length === 0 ? (
             <div
               style={{
@@ -997,15 +1003,15 @@ export const FrontCounterView: React.FC = () => {
           style={{
             position: 'fixed',
             bottom: 20,
-            left: 16,
-            right: 16,
-            maxWidth: 808,
+            left: 20,
+            right: 20,
+            maxWidth: 960,
             margin: '0 auto',
             background: 'var(--bg-card)',
-            borderRadius: 22,
-            padding: '12px 16px',
+            borderRadius: 24,
+            padding: '14px 20px',
             border: '3px solid #db2777',
-            boxShadow: '0 12px 30px rgba(219, 39, 119, 0.35)',
+            boxShadow: '0 12px 36px rgba(219, 39, 119, 0.35)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -1087,25 +1093,25 @@ export const FrontCounterView: React.FC = () => {
       {/* MODAL 1: 1-TAP CHECKOUT FOR LOW-LITERACY STAFF */}
       {/* ========================================================================= */}
       {showCheckoutModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 440, borderRadius: 24, padding: 22, boxShadow: 'var(--shadow-floating)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <h3 style={{ fontSize: 18, fontWeight: 900, margin: 0, color: 'var(--text-main)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 480, borderRadius: 24, padding: 26, boxShadow: 'var(--shadow-floating)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: 20, fontWeight: 900, margin: 0, color: 'var(--text-main)' }}>
                 💵 የክፍያ መንገድ ምረጥ
               </h3>
-              <button onClick={() => setShowCheckoutModal(false)} style={{ background: 'none', border: 'none', fontSize: 20, color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
+              <button onClick={() => setShowCheckoutModal(false)} style={{ background: 'none', border: 'none', fontSize: 22, color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
             </div>
 
             {/* Total Big Text */}
-            <div style={{ background: '#f0fdf4', border: '2px solid #bbf7d0', borderRadius: 16, padding: '16px', textAlign: 'center', marginBottom: 16 }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: '#166534', display: 'block' }}>ጠቅላላ ክፍያ (Total)</span>
-              <strong style={{ fontSize: 32, fontWeight: 900, color: '#15803d' }}>
+            <div style={{ background: '#f0fdf4', border: '2px solid #bbf7d0', borderRadius: 18, padding: '18px', textAlign: 'center', marginBottom: 18 }}>
+              <span style={{ fontSize: 14, fontWeight: 800, color: '#166534', display: 'block' }}>ጠቅላላ ክፍያ (Total)</span>
+              <strong style={{ fontSize: 36, fontWeight: 900, color: '#15803d' }}>
                 {cartTotal.toLocaleString()} ብር (ETB)
               </strong>
             </div>
 
             {/* Giant Payment Mode Buttons */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 22 }}>
               {[
                 { id: 'CASH', label: 'ጥሬ ገንዘብ', sub: 'Cash', icon: '💵', color: '#16a34a' },
                 { id: 'TELEBIRR', label: 'ቴሌብር', sub: 'Telebirr', icon: '📱', color: '#0284c7' },
@@ -1118,35 +1124,35 @@ export const FrontCounterView: React.FC = () => {
                     setPaymentMethod(m.id as any);
                   }}
                   style={{
-                    padding: '16px 8px',
-                    borderRadius: 16,
+                    padding: '18px 8px',
+                    borderRadius: 18,
                     border: paymentMethod === m.id ? `3px solid ${m.color}` : '2px solid var(--border)',
                     background: paymentMethod === m.id ? '#fdf2f8' : 'var(--bg-app)',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 6,
+                    gap: 8,
                     cursor: 'pointer'
                   }}
                 >
-                  <span style={{ fontSize: 28 }}>{m.icon}</span>
-                  <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--text-main)' }}>{m.label}</span>
-                  <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{m.sub}</span>
+                  <span style={{ fontSize: 32 }}>{m.icon}</span>
+                  <span style={{ fontSize: 14, fontWeight: 900, color: 'var(--text-main)' }}>{m.label}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{m.sub}</span>
                 </button>
               ))}
             </div>
 
             {/* Action Buttons */}
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 12 }}>
               <button
                 onClick={() => setShowCheckoutModal(false)}
                 style={{
                   flex: 1,
-                  padding: 14,
-                  borderRadius: 14,
+                  padding: 16,
+                  borderRadius: 16,
                   background: 'var(--bg-app)',
                   border: '2px solid var(--border)',
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: 800,
                   cursor: 'pointer'
                 }}
@@ -1159,22 +1165,22 @@ export const FrontCounterView: React.FC = () => {
                 onClick={handleCompleteSale}
                 style={{
                   flex: 2,
-                  padding: 14,
-                  borderRadius: 14,
+                  padding: 16,
+                  borderRadius: 16,
                   background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)',
                   color: '#ffffff',
                   border: 'none',
-                  fontSize: 16,
+                  fontSize: 17,
                   fontWeight: 900,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 8,
                   cursor: 'pointer',
-                  boxShadow: '0 6px 16px rgba(22, 163, 74, 0.3)'
+                  boxShadow: '0 6px 18px rgba(22, 163, 74, 0.35)'
                 }}
               >
-                <CheckCircle2 size={20} />
+                <CheckCircle2 size={22} />
                 {isProcessingSale ? 'እየተመዘገበ ነው...' : '✅ ሽያጩን ጨርስ'}
               </button>
             </div>
@@ -1186,42 +1192,45 @@ export const FrontCounterView: React.FC = () => {
       {/* MODAL 2: 1-TAP REORDER REQUEST TO BAKERY */}
       {/* ========================================================================= */}
       {requestTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 400, borderRadius: 24, padding: 22, textAlign: 'center', boxShadow: 'var(--shadow-floating)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 440, borderRadius: 24, padding: 26, textAlign: 'center', boxShadow: 'var(--shadow-floating)' }}>
             <img
               src={getCakePhoto(requestTarget)}
               alt=""
-              style={{ width: 100, height: 100, borderRadius: 20, objectFit: 'cover', margin: '0 auto 12px', border: '3px solid #fbcfe8' }}
+              style={{ width: 120, height: 120, borderRadius: 22, objectFit: 'cover', margin: '0 auto 14px', border: '3px solid #fbcfe8', boxShadow: '0 4px 14px rgba(0,0,0,0.15)' }}
             />
-            <h3 style={{ fontSize: 18, fontWeight: 900, margin: 0 }}>
+            <h3 style={{ fontSize: 20, fontWeight: 900, margin: 0 }}>
               {requestTarget.product_name_amharic || requestTarget.product_name}
             </h3>
-            <p style={{ margin: '4px 0 16px', fontSize: 13, color: 'var(--text-muted)', fontWeight: 700 }}>
+            <p style={{ margin: '6px 0 20px', fontSize: 14, color: 'var(--text-muted)', fontWeight: 700 }}>
               ከዳቦ ቤት ተጨማሪ ኬክ ጠይቅ (Request from Bakery)
             </p>
 
             {/* Giant Stepper for Illiterate Staff */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 22 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24, marginBottom: 24 }}>
               <button
                 onClick={() => {
                   tactileFeedback('click');
                   setRequestQty(Math.max(1, requestQty - 1));
                 }}
                 style={{
-                  width: 54,
-                  height: 54,
-                  borderRadius: 16,
+                  width: 64,
+                  height: 64,
+                  borderRadius: 20,
                   border: '2px solid var(--border)',
                   background: 'var(--bg-app)',
-                  fontSize: 24,
+                  fontSize: 32,
                   fontWeight: 900,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
               >
                 -
               </button>
 
-              <span style={{ fontSize: 36, fontWeight: 900, color: '#be185d', minWidth: 60, textAlign: 'center' }}>
+              <span style={{ fontSize: 44, fontWeight: 900, color: '#be185d', minWidth: 80, textAlign: 'center' }}>
                 {requestQty}
               </span>
 
@@ -1231,24 +1240,27 @@ export const FrontCounterView: React.FC = () => {
                   setRequestQty(requestQty + 1);
                 }}
                 style={{
-                  width: 54,
-                  height: 54,
-                  borderRadius: 16,
+                  width: 64,
+                  height: 64,
+                  borderRadius: 20,
                   border: '2px solid var(--border)',
                   background: 'var(--bg-app)',
-                  fontSize: 24,
+                  fontSize: 32,
                   fontWeight: 900,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
               >
                 +
               </button>
             </div>
 
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 12 }}>
               <button
                 onClick={() => setRequestTarget(null)}
-                style={{ flex: 1, padding: 14, borderRadius: 14, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}
+                style={{ flex: 1, padding: 16, borderRadius: 16, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}
               >
                 ተመለስ
               </button>
@@ -1258,14 +1270,19 @@ export const FrontCounterView: React.FC = () => {
                 onClick={handleSendBakeRequest}
                 style={{
                   flex: 2,
-                  padding: 14,
-                  borderRadius: 14,
+                  padding: 16,
+                  borderRadius: 16,
                   background: 'linear-gradient(135deg, #be185d 0%, #db2777 100%)',
                   color: '#ffffff',
                   border: 'none',
                   fontSize: 16,
                   fontWeight: 900,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  boxShadow: '0 6px 18px rgba(190, 24, 93, 0.35)'
                 }}
               >
                 {isSendingRequest ? 'እየላከ ነው...' : `🔔 ${requestQty} ኬክ እዘዝ`}
