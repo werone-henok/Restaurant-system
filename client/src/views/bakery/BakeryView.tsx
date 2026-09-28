@@ -55,7 +55,7 @@ interface BakeRequest {
   requested_quantity: number;
   quantity_requested?: number;
   urgency: 'NORMAL' | 'HIGH' | 'URGENT';
-  status: 'REQUESTED' | 'ACCEPTED' | 'IN_PRODUCTION' | 'COMPLETED' | 'REJECTED' | 'CANCELLED';
+  status: 'REQUESTED' | 'ACCEPTED' | 'IN_PRODUCTION' | 'READY' | 'TRANSFERRED' | 'COMPLETED' | 'REJECTED' | 'CANCELLED';
   notes?: string;
   created_at: string;
   product_name: string;
@@ -286,9 +286,40 @@ export const BakeryView: React.FC = () => {
         body: JSON.stringify({ status: 'READY' })
       });
       gToast.success('✅ ኬኩ ተጋግሯል! ለካውንተር ዝግጁ ነው (Ready to Send to Counter!)');
+      setActiveTab('ready');
       loadData();
     } catch (err: any) {
       gToast.error(err.message || 'ማዘመን አልተቻለም');
+    }
+  };
+
+  // 1-Tap: Send a READY request to the counter as a physical transfer
+  const [sendingRequestId, setSendingRequestId] = useState<string | null>(null);
+  const handleSendRequestToCounter = async (req: BakeRequest) => {
+    tactileFeedback('click');
+    setSendingRequestId(req.id);
+    try {
+      // 1. Create the physical transfer record
+      await api.request('/bakery/transfers', {
+        method: 'POST',
+        body: JSON.stringify({
+          variation_id: req.variation_id,
+          quantity_sent: req.quantity_requested || req.requested_quantity,
+          notes: `ለካውንተር ተላከ / Sent from bake request #${req.id}`
+        })
+      });
+      // 2. Mark the request as TRANSFERRED
+      await api.request(`/bakery/requests/${req.id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'TRANSFERRED' })
+      });
+      tactileFeedback('success');
+      gToast.success(`🚚 ${req.quantity_requested || req.requested_quantity} ኬክ ወደ ካውንተር ተላከ! (Sent to Counter)`);
+      loadData();
+    } catch (err: any) {
+      gToast.error(err.message || 'ወደ ካውንተር መላክ አልተቻለም');
+    } finally {
+      setSendingRequestId(null);
     }
   };
 
@@ -408,6 +439,7 @@ export const BakeryView: React.FC = () => {
 
   // Counts
   const pendingRequests = requests.filter(r => r.status === 'REQUESTED' || r.status === 'IN_PRODUCTION');
+  const readyRequests = requests.filter(r => r.status === 'READY');
   const activeBakingBatches = batches.filter(b => b.status === 'BAKING');
 
   return (
@@ -827,8 +859,87 @@ export const BakeryView: React.FC = () => {
       {/* ========================================================================= */}
       {activeTab === 'ready' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          {/* ── SECTION A: READY requests waiting to be dispatched ── */}
+          {readyRequests.length > 0 && (
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 900, color: '#16a34a', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CheckCircle2 size={20} /> ዝግጁ — ወደ ካውንተር ለመላክ (Ready to Dispatch)
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 12 }}>
+                {readyRequests.map(req => {
+                  const photo = getCakePhoto(req);
+                  const qty = req.quantity_requested || req.requested_quantity;
+                  const isSending = sendingRequestId === req.id;
+                  return (
+                    <div
+                      key={req.id}
+                      style={{
+                        background: 'var(--bg-card)',
+                        borderRadius: 20,
+                        border: '3px solid #22c55e',
+                        padding: 16,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 12,
+                        boxShadow: '0 6px 20px rgba(22, 163, 74, 0.12)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                        <img
+                          src={photo}
+                          alt={req.product_name}
+                          style={{ width: 80, height: 80, borderRadius: 16, objectFit: 'cover', border: '2px solid #bbf7d0', flexShrink: 0 }}
+                        />
+                        <div style={{ flexGrow: 1 }}>
+                          <span style={{ fontSize: 11, fontWeight: 900, color: '#15803d', textTransform: 'uppercase' }}>
+                            ✅ ዝግጁ — ካውንተር ጠይቋል (Ready — Counter Requested)
+                          </span>
+                          <h3 style={{ fontSize: 18, fontWeight: 900, margin: '2px 0 0', color: 'var(--text-main)' }}>
+                            {req.product_name_amharic || req.product_name}
+                          </h3>
+                          <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 700 }}>
+                            {req.variation_name} {req.size && `• ${req.size}`}
+                          </div>
+                          <div style={{ fontSize: 20, fontWeight: 900, color: '#16a34a', marginTop: 4 }}>
+                            ብዛት: <span style={{ fontSize: 28, color: '#15803d' }}>{qty}</span> ኬክ
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleSendRequestToCounter(req)}
+                        disabled={isSending}
+                        style={{
+                          background: isSending ? '#e5e7eb' : 'linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%)',
+                          color: isSending ? '#6b7280' : '#ffffff',
+                          border: 'none',
+                          borderRadius: 14,
+                          padding: '16px',
+                          fontSize: 16,
+                          fontWeight: 900,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          cursor: isSending ? 'not-allowed' : 'pointer',
+                          boxShadow: isSending ? 'none' : '0 6px 16px rgba(2, 132, 199, 0.3)',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <Send size={20} />
+                        {isSending ? 'እየተላከ ነው...' : `🚚 ለካውንተር ላክ (Send to Counter)`}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Active Baking Batches in Oven */}
           {activeBakingBatches.length > 0 && (
+
             <div>
               <h3 style={{ fontSize: 16, fontWeight: 900, color: '#b45309', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Flame size={20} /> እሳት ላይ ያሉ (Currently in Oven)

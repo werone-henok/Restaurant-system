@@ -400,8 +400,13 @@ export const FrontCounterView: React.FC = () => {
     }
   };
 
-  // Cancel Pending Request
-  const handleCancelRequest = async (requestId: string) => {
+  // Cancel Pending Request — only allowed within 10 seconds of creation
+  const handleCancelRequest = async (requestId: string, createdAt: string) => {
+    const ageMs = Date.now() - new Date(createdAt).getTime();
+    if (ageMs > 10_000) {
+      gToast.error('ጥያቄው ዘግይቷል! ጥያቄ ከተላከ ከ10 ሴኮንድ ውስጥ ብቻ ሊሰረዝ ይችላል (Can only cancel within 10 seconds)');
+      return;
+    }
     tactileFeedback('click');
     try {
       await api.request(`/bakery/requests/${requestId}/status`, {
@@ -1351,23 +1356,28 @@ export const FrontCounterView: React.FC = () => {
                         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                           🕒 {new Date(req.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • ጠያቂ: {req.requested_by_name || 'Counter'}
                         </span>
-                        {isPending && (
-                          <button
-                            onClick={() => handleCancelRequest(req.id)}
-                            style={{
-                              background: '#fee2e2',
-                              color: '#b91c1c',
-                              border: 'none',
-                              borderRadius: 8,
-                              padding: '5px 10px',
-                              fontSize: 12,
-                              fontWeight: 800,
-                              cursor: 'pointer'
-                            }}
-                          >
-                            ሰርዝ
-                          </button>
-                        )}
+                        {isPending && (() => {
+                          const ageMs = Date.now() - new Date(req.created_at).getTime();
+                          const secsLeft = Math.max(0, Math.ceil((10_000 - ageMs) / 1000));
+                          if (secsLeft === 0) return null;
+                          return (
+                            <button
+                              onClick={() => handleCancelRequest(req.id, req.created_at)}
+                              style={{
+                                background: '#fee2e2',
+                                color: '#b91c1c',
+                                border: 'none',
+                                borderRadius: 8,
+                                padding: '5px 12px',
+                                fontSize: 12,
+                                fontWeight: 800,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              ሰርዝ ({secsLeft}s)
+                            </button>
+                          );
+                        })()}
                       </div>
                     </div>
                   );
