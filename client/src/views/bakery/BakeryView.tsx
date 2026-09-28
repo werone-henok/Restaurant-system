@@ -154,6 +154,7 @@ export const BakeryView: React.FC = () => {
   const [newCakeAmharic, setNewCakeAmharic] = useState('');
   const [newCakeCategory, setNewCakeCategory] = useState('Cake');
   const [newCakePhoto, setNewCakePhoto] = useState(PRESET_CAKE_PHOTOS[0].url);
+  const [newCakePhotoMode, setNewCakePhotoMode] = useState<'preset' | 'upload'>('preset');
   const [newCakeVariations, setNewCakeVariations] = useState<
     { variation_name: string; size: string; price: number; min_stock_level: number }[]
   >([
@@ -375,6 +376,8 @@ export const BakeryView: React.FC = () => {
       setShowAddCakeModal(false);
       setNewCakeName('');
       setNewCakeAmharic('');
+      setNewCakePhoto(PRESET_CAKE_PHOTOS[0].url);
+      setNewCakePhotoMode('preset');
       loadData();
     } catch (err: any) {
       gToast.error(err.message || 'ኬክ መመዝገብ አልተቻለም');
@@ -1709,18 +1712,79 @@ export const BakeryView: React.FC = () => {
                 />
               </div>
 
-              {/* Photo Upload: Camera or Files with Presets */}
+              {/* Photo Section: tabbed Camera/Upload vs Preset */}
               <div>
-                <ImageUploadCompressor
-                  value={newCakePhoto}
-                  onChange={setNewCakePhoto}
-                  label="የኬክ ፎቶ (በካሜራ ያንሱ ወይም ከፋይል ይምረጡ / Camera or File Upload)"
-                />
+                <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>
+                  ፎቶ ይምረጡ (Select Photo)
+                </label>
 
-                <div style={{ marginTop: 10 }}>
-                  <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-                    ወይም ከተዘጋጁት ፎቶዎች ይምረጡ (Or select a preset):
-                  </label>
+                {/* Tab toggle */}
+                <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+                  <button
+                    type="button"
+                    onClick={() => setNewCakePhotoMode('upload')}
+                    style={{
+                      flex: 1,
+                      padding: '10px 12px',
+                      borderRadius: 12,
+                      border: 'none',
+                      background: newCakePhotoMode === 'upload'
+                        ? 'linear-gradient(135deg, #b45309 0%, #d97706 100%)'
+                        : 'var(--bg-app)',
+                      color: newCakePhotoMode === 'upload' ? '#ffffff' : 'var(--text-muted)',
+                      fontSize: 13,
+                      fontWeight: 900,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      boxShadow: newCakePhotoMode === 'upload' ? '0 4px 12px rgba(180,83,9,0.3)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    📷 ፎቶ አንሳ / Upload
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewCakePhotoMode('preset')}
+                    style={{
+                      flex: 1,
+                      padding: '10px 12px',
+                      borderRadius: 12,
+                      border: 'none',
+                      background: newCakePhotoMode === 'preset'
+                        ? 'linear-gradient(135deg, #b45309 0%, #d97706 100%)'
+                        : 'var(--bg-app)',
+                      color: newCakePhotoMode === 'preset' ? '#ffffff' : 'var(--text-muted)',
+                      fontSize: 13,
+                      fontWeight: 900,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      boxShadow: newCakePhotoMode === 'preset' ? '0 4px 12px rgba(180,83,9,0.3)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    🎨 ዝግጁ ፎቶዎች (Presets)
+                  </button>
+                </div>
+
+                {/* Upload / Camera panel */}
+                {newCakePhotoMode === 'upload' && (
+                  <ImageUploadCompressor
+                    value={PRESET_CAKE_PHOTOS.some(p => p.url === newCakePhoto) ? '' : newCakePhoto}
+                    onChange={(url) => {
+                      setNewCakePhoto(url);
+                    }}
+                    label="በካሜራ ያንሱ ወይም ከፋይል ይምረጡ (Camera shot or file upload)"
+                  />
+                )}
+
+                {/* Preset grid panel */}
+                {newCakePhotoMode === 'preset' && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                     {PRESET_CAKE_PHOTOS.map(p => (
                       <div
@@ -1732,17 +1796,38 @@ export const BakeryView: React.FC = () => {
                           border: newCakePhoto === p.url ? '3px solid #b45309' : '2px solid var(--border)',
                           cursor: 'pointer',
                           position: 'relative',
-                          height: 65
+                          height: 65,
+                          transition: 'border-color 0.15s ease'
                         }}
                       >
                         <img src={p.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         <span style={{ position: 'absolute', bottom: 0, insetInline: 0, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, padding: '2px 4px', textAlign: 'center', fontWeight: 800 }}>
                           {p.label}
                         </span>
+                        {newCakePhoto === p.url && (
+                          <span style={{ position: 'absolute', top: 4, right: 4, background: '#b45309', color: '#fff', borderRadius: '50%', width: 18, height: 18, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>✓</span>
+                        )}
                       </div>
                     ))}
                   </div>
-                </div>
+                )}
+
+                {/* Current photo preview strip (always visible) */}
+                {newCakePhoto && (
+                  <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-app)', borderRadius: 12, padding: '8px 12px' }}>
+                    <img
+                      src={newCakePhoto}
+                      alt="preview"
+                      style={{ width: 48, height: 48, borderRadius: 10, objectFit: 'cover', border: '2px solid #b45309', flexShrink: 0 }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: '#b45309', display: 'block' }}>✅ ፎቶ ተመርጧል (Photo Selected)</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                        {newCakePhoto.startsWith('data:') ? 'Uploaded photo (compressed)' : newCakePhoto.replace(/\?.*/, '').split('/').pop()}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Variations list */}
