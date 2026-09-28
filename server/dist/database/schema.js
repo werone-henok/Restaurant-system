@@ -406,6 +406,7 @@ export function initDatabase() {
       in_transit_stock INTEGER DEFAULT 0,
       photo_url TEXT,
       is_available INTEGER DEFAULT 1,
+      unavailable_reason TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -639,6 +640,7 @@ export function runMigrations() {
         // Bakery integration columns
         "ALTER TABLE order_items ADD COLUMN bakery_variation_id TEXT",
         "ALTER TABLE menu_items ADD COLUMN bakery_variation_id TEXT",
+        "ALTER TABLE bakery_product_variations ADD COLUMN unavailable_reason TEXT",
         // User Account Requests (Forgot Password & Profile Changes with Admin/Owner Approval)
         "CREATE TABLE IF NOT EXISTS user_account_requests (id TEXT PRIMARY KEY, branch_id TEXT NOT NULL, user_id TEXT, username TEXT NOT NULL, full_name TEXT, role TEXT, request_type TEXT NOT NULL, requested_changes TEXT NOT NULL, status TEXT DEFAULT 'PENDING', reviewed_by_id TEXT, reviewed_by_name TEXT, admin_notes TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
         "CREATE INDEX IF NOT EXISTS idx_user_account_requests_branch ON user_account_requests(branch_id)",

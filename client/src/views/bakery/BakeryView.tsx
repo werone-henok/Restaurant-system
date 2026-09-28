@@ -54,8 +54,9 @@ interface BakeRequest {
   variation_id: string;
   requested_quantity: number;
   quantity_requested?: number;
+  quantity_fulfilled?: number;
   urgency: 'NORMAL' | 'HIGH' | 'URGENT';
-  status: 'REQUESTED' | 'ACCEPTED' | 'IN_PRODUCTION' | 'READY' | 'TRANSFERRED' | 'COMPLETED' | 'REJECTED' | 'CANCELLED';
+  status: 'REQUESTED' | 'ACCEPTED' | 'IN_PRODUCTION' | 'PARTIALLY_FULFILLED' | 'READY' | 'TRANSFERRED' | 'COMPLETED' | 'REJECTED' | 'CANCELLED';
   notes?: string;
   created_at: string;
   product_name: string;
@@ -165,6 +166,14 @@ export const BakeryView: React.FC = () => {
   // Delete Cake Modal (Admin & Owner ONLY)
   const [cakeToDelete, setCakeToDelete] = useState<Product | null>(null);
   const [isDeletingCake, setIsDeletingCake] = useState(false);
+
+  // Partial Bake & Ingredient Requisition Modal
+  const [selectedRequestForPartial, setSelectedRequestForPartial] = useState<BakeRequest | null>(null);
+  const [partialBakeQty, setPartialBakeQty] = useState(1);
+  const [partialReason, setPartialReason] = useState('ክሬም ቺዝ አልቋል (Out of Cream Cheese)');
+  const [partialIngredientNeeded, setPartialIngredientNeeded] = useState('ክሬም ቺዝ 2 ኪግ');
+  const [partialMarkUnavailable, setPartialMarkUnavailable] = useState(true);
+  const [isSubmittingPartial, setIsSubmittingPartial] = useState(false);
 
   const canCreateCake = user?.role === 'bakery' || user?.role === 'admin' || user?.role === 'owner';
   const canDeleteCake = user?.role === 'admin' || user?.role === 'owner';
@@ -278,12 +287,15 @@ export const BakeryView: React.FC = () => {
   };
 
   // 1-Tap: Mark a bake REQUEST as Ready (done baking, ready to send to counter)
-  const handleMarkRequestReady = async (requestId: string) => {
+  const handleMarkRequestReady = async (requestId: string, bakeQty?: number) => {
     tactileFeedback('success');
     try {
       await api.request(`/bakery/requests/${requestId}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ status: 'READY' })
+        body: JSON.stringify({
+          status: 'READY',
+          quantity_fulfilled: bakeQty
+        })
       });
       gToast.success('✅ ኬኩ ተጋግሯል! ለካውንተር ዝግጁ ነው (Ready to Send to Counter!)');
       setActiveTab('ready');
@@ -293,18 +305,44 @@ export const BakeryView: React.FC = () => {
     }
   };
 
+  // Submit Partial Bake & Ingredient Requisition to Storekeeper/Admin/Owner
+  const handleConfirmPartialBake = async () => {
+    if (!selectedRequestForPartial) return;
+    setIsSubmittingPartial(true);
+    try {
+      await api.request(`/bakery/requests/${selectedRequestForPartial.id}/partial-bake`, {
+        method: 'POST',
+        body: JSON.stringify({
+          bakeable_quantity: partialBakeQty,
+          reason: partialReason,
+          ingredient_needed: partialIngredientNeeded,
+          mark_unavailable: partialMarkUnavailable
+        })
+      });
+      tactileFeedback('success');
+      gToast.success(`⚠️ ለስቶር ጠባቂ ጥሬ ዕቃ ተጠይቋል! (${partialBakeQty} ኬክ በከፊል ይጋገራል)`);
+      setSelectedRequestForPartial(null);
+      loadData();
+    } catch (err: any) {
+      gToast.error(err.message || 'ማስመዝገብ አልተቻለም');
+    } finally {
+      setIsSubmittingPartial(false);
+    }
+  };
+
   // 1-Tap: Send a READY request to the counter as a physical transfer
   const [sendingRequestId, setSendingRequestId] = useState<string | null>(null);
   const handleSendRequestToCounter = async (req: BakeRequest) => {
     tactileFeedback('click');
     setSendingRequestId(req.id);
+    const qtyToSend = req.quantity_fulfilled || req.quantity_requested || req.requested_quantity;
     try {
       // 1. Create the physical transfer record
       await api.request('/bakery/transfers', {
         method: 'POST',
         body: JSON.stringify({
           variation_id: req.variation_id,
-          quantity_sent: req.quantity_requested || req.requested_quantity,
+          quantity_sent: qtyToSend,
           notes: `ለካውንተር ተላከ / Sent from bake request #${req.id}`,
           request_id: req.id
         })
@@ -315,7 +353,7 @@ export const BakeryView: React.FC = () => {
         body: JSON.stringify({ status: 'TRANSFERRED' })
       });
       tactileFeedback('success');
-      gToast.success(`🚚 ${req.quantity_requested || req.requested_quantity} ኬክ ወደ ካውንተር ተላከ! (Sent to Counter)`);
+      gToast.success(`🚚 ${qtyToSend} ኬክ ወደ ካውንተር ተላከ! (Sent to Counter)`);
       loadData();
     } catch (err: any) {
       gToast.error(err.message || 'ወደ ካውንተር መላክ አልተቻለም');
@@ -439,7 +477,7 @@ export const BakeryView: React.FC = () => {
   };
 
   // Counts
-  const pendingRequests = requests.filter(r => r.status === 'REQUESTED' || r.status === 'IN_PRODUCTION');
+  const pendingRequests = requests.filter(r => r.status === 'REQUESTED' || r.status === 'IN_PRODUCTION' || r.status === 'PARTIALLY_FULFILLED');
   const readyRequests = requests.filter(r => r.status === 'READY');
   const activeBakingBatches = batches.filter(b => b.status === 'BAKING');
 
@@ -730,7 +768,9 @@ export const BakeryView: React.FC = () => {
           ) : (
             pendingRequests.map(req => {
               const photo = getCakePhoto(req);
-              const qty = req.quantity_requested || req.requested_quantity;
+              const isPartial = req.status === 'PARTIALLY_FULFILLED';
+              const totalQty = req.quantity_requested || req.requested_quantity || 1;
+              const bakeableQty = isPartial && req.quantity_fulfilled !== undefined ? req.quantity_fulfilled : totalQty;
               const isBaking = req.status === 'IN_PRODUCTION';
 
               return (
@@ -739,7 +779,7 @@ export const BakeryView: React.FC = () => {
                   style={{
                     background: 'var(--bg-card)',
                     borderRadius: 20,
-                    border: isBaking ? '3px solid #f59e0b' : '3px solid #ef4444',
+                    border: isBaking ? '3px solid #f59e0b' : isPartial ? '3px solid #f97316' : '3px solid #ef4444',
                     padding: 16,
                     display: 'flex',
                     flexDirection: 'column',
@@ -761,8 +801,8 @@ export const BakeryView: React.FC = () => {
                       }}
                     />
                     <div style={{ flexGrow: 1 }}>
-                      <span style={{ fontSize: 11, fontWeight: 900, color: '#dc2626', textTransform: 'uppercase' }}>
-                        🔔 ካውንተሩ ጠይቋል (Front Counter Needs)
+                      <span style={{ fontSize: 11, fontWeight: 900, color: isPartial ? '#ea580c' : '#dc2626', textTransform: 'uppercase' }}>
+                        {isPartial ? '⚠️ በከፊል የሚጋገር (Partial Bake)' : '🔔 ካውንተሩ ጠይቋል (Front Counter Needs)'}
                       </span>
                       <h3 style={{ fontSize: 18, fontWeight: 900, margin: '2px 0 0', color: 'var(--text-main)' }}>
                         {req.product_name_amharic || req.product_name}
@@ -770,34 +810,79 @@ export const BakeryView: React.FC = () => {
                       <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 700 }}>
                         {req.variation_name} {req.size && `• ${req.size}`}
                       </div>
-                      <div style={{ fontSize: 18, fontWeight: 900, color: '#b45309', marginTop: 4 }}>
-                        የሚፈለገው ብዛት: <span style={{ fontSize: 26, color: '#dc2626' }}>{qty}</span> ኬክ
+                      <div style={{ fontSize: 16, fontWeight: 900, color: '#b45309', marginTop: 4 }}>
+                        የተጠየቀው: <span style={{ fontSize: 20, color: '#dc2626' }}>{totalQty}</span> ኬክ
+                        {isPartial && (
+                          <span style={{ marginLeft: 8, color: '#16a34a', fontWeight: 900, fontSize: 16 }}>
+                            • የሚጋገረው: <span style={{ fontSize: 20 }}>{bakeableQty}</span> ኬክ
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
 
+                  {req.notes && (
+                    <div style={{ background: '#fff7ed', border: '1.5px solid #fed7aa', borderRadius: 12, padding: '10px 12px', fontSize: 12, color: '#9a3412', fontWeight: 700, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                      <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1, color: '#ea580c' }} />
+                      <div>{req.notes}</div>
+                    </div>
+                  )}
+
                   {!isBaking ? (
-                    <button
-                      onClick={() => handleStartBakingRequest(req)}
-                      style={{
-                        background: 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: 14,
-                        padding: '16px',
-                        fontSize: 16,
-                        fontWeight: 900,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                        boxShadow: '0 6px 16px rgba(234, 88, 12, 0.3)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Flame size={22} />
-                      🔥 መጋገር ጀምር (START BAKING)
-                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <button
+                        onClick={() => handleStartBakingRequest(req)}
+                        style={{
+                          background: 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: 14,
+                          padding: '16px',
+                          fontSize: 16,
+                          fontWeight: 900,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          boxShadow: '0 6px 16px rgba(234, 88, 12, 0.3)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Flame size={22} />
+                        🔥 {isPartial ? `${bakeableQty} ኬክ መጋገር ጀምር` : 'መጋገር ጀምር (START BAKING)'}
+                      </button>
+
+                      {!isPartial && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            tactileFeedback('click');
+                            setSelectedRequestForPartial(req);
+                            setPartialBakeQty(Math.max(1, totalQty - 1));
+                            setPartialReason('ክሬም ቺዝ አልቋል (Out of Cream Cheese)');
+                            setPartialIngredientNeeded('ክሬም ቺዝ 2 ኪግ');
+                            setPartialMarkUnavailable(true);
+                          }}
+                          style={{
+                            background: '#fff7ed',
+                            color: '#c2410c',
+                            border: '2px solid #fed7aa',
+                            borderRadius: 14,
+                            padding: '12px',
+                            fontSize: 14,
+                            fontWeight: 900,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <AlertTriangle size={18} />
+                          ⚠️ በከፊል ጋግር / ጥሬ ዕቃ አነሰ (Partial Bake & Request Ingredients)
+                        </button>
+                      )}
+                    </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {/* Oven status indicator */}
@@ -817,12 +902,12 @@ export const BakeryView: React.FC = () => {
                         }}
                       >
                         <Flame size={20} className="animate-bounce" />
-                        እየተጋገረ ነው... (Currently Baking in Oven)
+                        እየተጋገረ ነው... ({bakeableQty} ኬክ በምድጃ ውስጥ)
                       </div>
 
                       {/* Mark as Ready button */}
                       <button
-                        onClick={() => handleMarkRequestReady(req.id)}
+                        onClick={() => handleMarkRequestReady(req.id, bakeableQty)}
                         style={{
                           background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)',
                           color: '#ffffff',
@@ -870,7 +955,8 @@ export const BakeryView: React.FC = () => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 12 }}>
                 {readyRequests.map(req => {
                   const photo = getCakePhoto(req);
-                  const qty = req.quantity_requested || req.requested_quantity;
+                  const isPartial = Boolean(req.quantity_fulfilled && req.quantity_requested && req.quantity_fulfilled < req.quantity_requested);
+                  const qty = req.quantity_fulfilled || req.quantity_requested || req.requested_quantity;
                   const isSending = sendingRequestId === req.id;
                   return (
                     <div
@@ -878,7 +964,7 @@ export const BakeryView: React.FC = () => {
                       style={{
                         background: 'var(--bg-card)',
                         borderRadius: 20,
-                        border: '3px solid #22c55e',
+                        border: isPartial ? '3px solid #f59e0b' : '3px solid #22c55e',
                         padding: 16,
                         display: 'flex',
                         flexDirection: 'column',
@@ -893,8 +979,8 @@ export const BakeryView: React.FC = () => {
                           style={{ width: 80, height: 80, borderRadius: 16, objectFit: 'cover', border: '2px solid #bbf7d0', flexShrink: 0 }}
                         />
                         <div style={{ flexGrow: 1 }}>
-                          <span style={{ fontSize: 11, fontWeight: 900, color: '#15803d', textTransform: 'uppercase' }}>
-                            ✅ ዝግጁ — ካውንተር ጠይቋል (Ready — Counter Requested)
+                          <span style={{ fontSize: 11, fontWeight: 900, color: isPartial ? '#b45309' : '#15803d', textTransform: 'uppercase' }}>
+                            {isPartial ? `⚠️ በከፊል ዝግጁ (${req.quantity_fulfilled} ከ ${req.quantity_requested})` : '✅ ዝግጁ — ካውንተር ጠይቋል (Ready — Counter Requested)'}
                           </span>
                           <h3 style={{ fontSize: 18, fontWeight: 900, margin: '2px 0 0', color: 'var(--text-main)' }}>
                             {req.product_name_amharic || req.product_name}
@@ -902,8 +988,8 @@ export const BakeryView: React.FC = () => {
                           <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 700 }}>
                             {req.variation_name} {req.size && `• ${req.size}`}
                           </div>
-                          <div style={{ fontSize: 20, fontWeight: 900, color: '#16a34a', marginTop: 4 }}>
-                            ብዛት: <span style={{ fontSize: 28, color: '#15803d' }}>{qty}</span> ኬክ
+                          <div style={{ fontSize: 20, fontWeight: 900, color: isPartial ? '#d97706' : '#16a34a', marginTop: 4 }}>
+                            ብዛት: <span style={{ fontSize: 28, color: isPartial ? '#b45309' : '#15803d' }}>{qty}</span> ኬክ
                           </div>
                         </div>
                       </div>
@@ -2079,6 +2165,201 @@ export const BakeryView: React.FC = () => {
                 }}
               >
                 {isDeletingCake ? 'እየሰረዘ ነው...' : 'አዎ ሰርዝ'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ========================================================================= */}
+      {/* MODAL 5: PARTIAL BAKE & INGREDIENT REQUISITION MODAL */}
+      {/* ========================================================================= */}
+      {selectedRequestForPartial && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 125, padding: 20 }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 520, borderRadius: 24, padding: 26, boxShadow: 'var(--shadow-floating)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 14, background: '#fff7ed', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <AlertTriangle size={24} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: 18, fontWeight: 900, margin: 0, color: 'var(--text-main)' }}>
+                    በከፊል መጋገር እና የጥሬ ዕቃ ጥያቄ
+                  </h3>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    Partial Bake & Store Requisition
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedRequestForPartial(null)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}
+              >
+                <X size={22} />
+              </button>
+            </div>
+
+            {/* Target Item Summary */}
+            <div style={{ background: 'var(--bg-app)', border: '1.5px solid var(--border)', borderRadius: 16, padding: 14, marginBottom: 18, display: 'flex', gap: 12, alignItems: 'center' }}>
+              <img
+                src={getCakePhoto(selectedRequestForPartial)}
+                alt=""
+                style={{ width: 60, height: 60, borderRadius: 12, objectFit: 'cover' }}
+              />
+              <div>
+                <h4 style={{ fontSize: 16, fontWeight: 900, margin: 0 }}>
+                  {selectedRequestForPartial.product_name_amharic || selectedRequestForPartial.product_name}
+                </h4>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 700 }}>
+                  {selectedRequestForPartial.variation_name} {selectedRequestForPartial.size && `• ${selectedRequestForPartial.size}`}
+                </div>
+                <div style={{ fontSize: 13, color: '#dc2626', fontWeight: 900, marginTop: 2 }}>
+                  ካውንተር የጠየቀው ሙሉ ብዛት: {selectedRequestForPartial.quantity_requested || selectedRequestForPartial.requested_quantity} ኬክ
+                </div>
+              </div>
+            </div>
+
+            {/* Field 1: Quantity that can be baked */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 900, color: 'var(--text-main)', marginBottom: 6 }}>
+                1. ባለው ጥሬ ዕቃ መጋገር የሚቻለው ብዛት (Bakeable Quantity):
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => setPartialBakeQty(q => Math.max(0, q - 1))}
+                  style={{ width: 44, height: 44, borderRadius: 12, border: '2px solid var(--border)', background: 'var(--bg-card)', fontSize: 20, fontWeight: 900, cursor: 'pointer' }}
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  min="0"
+                  max={(selectedRequestForPartial.quantity_requested || selectedRequestForPartial.requested_quantity || 1) - 1}
+                  value={partialBakeQty}
+                  onChange={(e) => setPartialBakeQty(Math.max(0, parseInt(e.target.value) || 0))}
+                  style={{ flex: 1, padding: '10px 14px', borderRadius: 12, border: '2px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 18, fontWeight: 900, textAlign: 'center' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setPartialBakeQty(q => Math.min((selectedRequestForPartial.quantity_requested || selectedRequestForPartial.requested_quantity || 1) - 1, q + 1))}
+                  style={{ width: 44, height: 44, borderRadius: 12, border: '2px solid var(--border)', background: 'var(--bg-card)', fontSize: 20, fontWeight: 900, cursor: 'pointer' }}
+                >
+                  +
+                </button>
+              </div>
+              <div style={{ fontSize: 12, color: '#b45309', fontWeight: 700, marginTop: 4 }}>
+                ℹ️ ከ {selectedRequestForPartial.quantity_requested || selectedRequestForPartial.requested_quantity} ውስጥ {partialBakeQty} ኬክ ይጋገራል፤ {(selectedRequestForPartial.quantity_requested || selectedRequestForPartial.requested_quantity || 0) - partialBakeQty} ኬክ በጥሬ ዕቃ እጥረት ምክንያት አይጋገርም::
+              </div>
+            </div>
+
+            {/* Field 2: Shortage Reason Chips */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 900, color: 'var(--text-main)', marginBottom: 6 }}>
+                2. የጥሬ ዕቃ እጥረት ምክንያት (Reason for Shortage):
+              </label>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                {[
+                  { label: '🧀 ክሬም ቺዝ አልቋል', ingredient: 'ክሬም ቺዝ 2 ኪግ' },
+                  { label: '🧈 ቅቤ አልቋል', ingredient: 'ቅቤ 2 ኪግ' },
+                  { label: '🥚 እንቁላል አነሰ', ingredient: 'እንቁላል 1 ካርቶን' },
+                  { label: '🌾 ዱቄት አልቋል', ingredient: 'የዳቦ ዱቄት 1 ጆንያ' },
+                  { label: '🍫 ቸኮሌት አልቋል', ingredient: 'ዳርክ ቸኮሌት 2 ኪግ' },
+                  { label: '🥛 ወተት/ክሬም አልቋል', ingredient: 'ዊፒንግ ክሬም 3 ሊትር' }
+                ].map(chip => (
+                  <button
+                    key={chip.label}
+                    type="button"
+                    onClick={() => {
+                      setPartialReason(chip.label);
+                      setPartialIngredientNeeded(chip.ingredient);
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 10,
+                      fontSize: 12,
+                      fontWeight: 800,
+                      border: partialReason === chip.label ? '2px solid #ea580c' : '1px solid var(--border)',
+                      background: partialReason === chip.label ? '#fff7ed' : 'var(--bg-app)',
+                      color: partialReason === chip.label ? '#c2410c' : 'var(--text-main)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="text"
+                value={partialReason}
+                onChange={(e) => setPartialReason(e.target.value)}
+                placeholder="ምክንያቱን ይግለጹ (Specify reason)..."
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 12, border: '2px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 14, boxSizing: 'border-box' }}
+              />
+            </div>
+
+            {/* Field 3: Ingredient Request to Storekeeper/Admin/Owner */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 900, color: 'var(--text-main)', marginBottom: 6 }}>
+                3. ለስቶር ጠባቂ / አስተዳዳሪ የሚላክ የጥሬ ዕቃ ጥያቄ (Requisition):
+              </label>
+              <input
+                type="text"
+                value={partialIngredientNeeded}
+                onChange={(e) => setPartialIngredientNeeded(e.target.value)}
+                placeholder="ለምሳሌ፡ ክሬም ቺዝ 2 ኪግ"
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 12, border: '2px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 14, fontWeight: 700, boxSizing: 'border-box' }}
+              />
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                ይህ ጥያቄ ወዲያውኑ ለስቶር ጠባቂ (Storekeeper)፣ ለአስተዳዳሪ (Admin) እና ለባለቤቱ (Owner) በማስታወቂያ ይደርሳል::
+              </div>
+            </div>
+
+            {/* Field 4: Mark Unavailable at Counter */}
+            <div style={{ marginBottom: 20, background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: 14, padding: '12px 14px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={partialMarkUnavailable}
+                  onChange={(e) => setPartialMarkUnavailable(e.target.checked)}
+                  style={{ width: 20, height: 20, accentColor: '#dc2626', cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: 13, fontWeight: 900, color: '#991b1b' }}>
+                  ⛔ ካውንተር ላይ ይህ ኬክ "ለጊዜው አይገኝም" ተብሎ ከምክንያቱ ጋር እንዲታይ (Mark Unavailable at Counter)
+                </span>
+              </label>
+              <div style={{ fontSize: 11, color: '#b91c1c', marginTop: 4, marginLeft: 30 }}>
+                ካውንተሩ ተጨማሪ እንዳይጠይቅ እና ለደንበኞች እንዳይሸጥ ያግዳል::
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                type="button"
+                onClick={() => setSelectedRequestForPartial(null)}
+                style={{ flex: 1, padding: 14, borderRadius: 14, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}
+              >
+                ይቅር (Cancel)
+              </button>
+              <button
+                type="button"
+                disabled={isSubmittingPartial}
+                onClick={handleConfirmPartialBake}
+                style={{
+                  flex: 2,
+                  padding: 14,
+                  borderRadius: 14,
+                  background: 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontSize: 15,
+                  fontWeight: 900,
+                  cursor: isSubmittingPartial ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 14px rgba(234, 88, 12, 0.35)'
+                }}
+              >
+                {isSubmittingPartial ? 'እየላከ ነው...' : '🚀 ጥያቄ ላክ እና በከፊል መዝግብ'}
               </button>
             </div>
           </div>

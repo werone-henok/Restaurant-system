@@ -43,7 +43,7 @@ bakeryRouter.get('/products', authenticate, (req, res) => {
         ELSE 'IN_STOCK'
       END as stock_status
     FROM bakery_product_variations v
-    WHERE v.product_id = ? AND v.is_available = 1
+    WHERE v.product_id = ?
     ORDER BY v.price ASC
   `);
     const populated = products.map(p => ({
@@ -808,6 +808,124 @@ bakeryRouter.patch('/requests/:id/status', authenticate, authorizeRole(['bakery'
     });
     requestDebouncedSync();
     res.json({ message: `Request status updated to ${status}`, id, status });
+});
+// Report partial bake due to ingredient shortage & dispatch ingredient request to storekeeper/admin/owner
+bakeryRouter.post('/requests/:id/partial-bake', authenticate, authorizeRole(['bakery', 'admin', 'owner']), (req, res) => {
+    const { id } = req.params;
+    const { bakeable_quantity, reason, ingredient_needed, mark_unavailable = true } = req.body;
+    const bakeableQty = Math.max(0, Number(bakeable_quantity) || 0);
+    const existing = db.prepare(`
+    SELECT r.*, p.name as product_name, p.name_amharic as product_name_amharic, v.variation_name
+    FROM bakery_requests r
+    JOIN bakery_products p ON r.product_id = p.id
+    JOIN bakery_product_variations v ON r.variation_id = v.id
+    WHERE r.id = ?
+  `).get(id);
+    if (!existing)
+        return res.status(404).json({ error: 'Bake request not found' });
+    const totalQty = existing.quantity_requested;
+    const shortageReason = (reason && String(reason).trim()) || 'የጥሬ ዕቃ እጥረት (Ingredient shortage)';
+    const formattedNote = `በከፊል የሚጋገር: ${bakeableQty}/${totalQty} | ምክንያት: ${shortageReason}${ingredient_needed ? ` | የተጠየቀ ጥሬ ዕቃ: ${ingredient_needed}` : ''}`;
+    const tx = db.transaction(() => {
+        // 1. Update request status
+        db.prepare(`
+      UPDATE bakery_requests
+      SET status = 'PARTIALLY_FULFILLED',
+          quantity_fulfilled = ?,
+          notes = ?,
+          handled_by_id = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(bakeableQty, formattedNote, req.user.id, id);
+        // 2. If marked unavailable at counter, set is_available = 0 with reason
+        if (mark_unavailable) {
+            db.prepare(`
+        UPDATE bakery_product_variations
+        SET is_available = 0,
+            unavailable_reason = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(shortageReason, existing.variation_id);
+        }
+    });
+    tx();
+    const prodName = existing.product_name_amharic || existing.product_name;
+    // 3. Send urgent ingredient requisition to Storekeeper, Admin, Owner
+    notifyRoles({
+        branchId: existing.branch_id,
+        targetRoles: ['storekeeper', 'admin', 'owner'],
+        title: `🚨 የጥሬ ዕቃ ጥያቄ: ${prodName}`,
+        titleAmharic: `🚨 ከዳቦ ቤት የጥሬ ዕቃ ጥያቄ ቀርቧል`,
+        message: `Bakery requested ingredients: "${ingredient_needed || shortageReason}" for ${existing.product_name}. Can only bake ${bakeableQty}/${totalQty}.`,
+        messageAmharic: `ለ${prodName} የሚያስፈልግ ጥሬ ዕቃ: "${ingredient_needed || shortageReason}" ተጠይቋል:: ከ${totalQty} ውስጥ ${bakeableQty} ብቻ ነው መጋገር የተቻለው::`,
+        type: 'LOW_STOCK',
+        linkRef: String(id)
+    });
+    // 4. Alert Front Counter that only partial is possible and cake is unavailable
+    notifyRoles({
+        branchId: existing.branch_id,
+        targetRoles: ['front_counter'],
+        title: `⚠️ በከፊል የሚዘጋጅ ኬክ: ${prodName}`,
+        titleAmharic: `⚠️ ከዳቦ ቤት: ${prodName} በከፊል ብቻ ነው የሚጋገረው`,
+        message: `Bakery can only bake ${bakeableQty}/${totalQty} for request #${existing.request_number}. Reason: ${shortageReason}`,
+        messageAmharic: `ከ${totalQty} ውስጥ ${bakeableQty} ብቻ ነው የሚዘጋጀው:: ምክንያት: ${shortageReason}`,
+        type: 'INFO',
+        linkRef: String(id)
+    });
+    // 5. Broadcast real-time events
+    broadcastEvent({
+        type: 'BAKERY_REQUEST_UPDATED',
+        branchId: existing.branch_id,
+        payload: {
+            requestId: id,
+            status: 'PARTIALLY_FULFILLED',
+            quantity_fulfilled: bakeableQty,
+            quantity_requested: totalQty,
+            requestNumber: existing.request_number,
+            notes: formattedNote
+        }
+    });
+    if (mark_unavailable) {
+        broadcastEvent({
+            type: 'BAKERY_ITEM_AVAILABILITY_CHANGED',
+            branchId: existing.branch_id,
+            payload: {
+                variationId: existing.variation_id,
+                is_available: 0,
+                unavailable_reason: shortageReason
+            }
+        });
+    }
+    requestDebouncedSync();
+    res.json({
+        message: 'Partial bake recorded and ingredient request dispatched successfully',
+        request: {
+            id,
+            status: 'PARTIALLY_FULFILLED',
+            quantity_fulfilled: bakeableQty,
+            notes: formattedNote
+        },
+        variation_unavailable: mark_unavailable
+    });
+});
+// Update variation availability status (Bakery, Admin, Owner)
+bakeryRouter.patch('/variations/:id/availability', authenticate, authorizeRole(['bakery', 'admin', 'owner']), (req, res) => {
+    const { id } = req.params;
+    const { is_available, unavailable_reason } = req.body;
+    const branchId = getBranch(req);
+    db.prepare(`
+    UPDATE bakery_product_variations
+    SET is_available = ?,
+        unavailable_reason = ?,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(is_available ? 1 : 0, is_available ? null : (unavailable_reason || null), id);
+    broadcastEvent({
+        type: 'BAKERY_ITEM_AVAILABILITY_CHANGED',
+        branchId,
+        payload: { variationId: id, is_available: is_available ? 1 : 0, unavailable_reason: is_available ? null : unavailable_reason }
+    });
+    res.json({ message: `Variation availability updated to ${is_available ? 'AVAILABLE' : 'UNAVAILABLE'}` });
 });
 // List bake requests
 bakeryRouter.get('/requests', authenticate, (req, res) => {

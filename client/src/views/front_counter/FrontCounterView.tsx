@@ -47,6 +47,8 @@ interface Variation {
   product_category?: string;
   image_url?: string;
   photo_url?: string;
+  is_available?: number;
+  unavailable_reason?: string;
 }
 
 interface Product {
@@ -480,7 +482,7 @@ export const FrontCounterView: React.FC = () => {
   // Stock status calculations
   const pendingTransfers = transfers.filter(t => t.status === 'PENDING' || t.status === 'IN_TRANSIT');
   const pendingOrders = cakeOrders.filter(o => o.status !== 'DELIVERED' && o.status !== 'COMPLETED' && o.status !== 'CANCELLED');
-  const activeBakeryRequests = requests.filter(r => r.status === 'REQUESTED' || r.status === 'IN_PRODUCTION' || r.status === 'ACCEPTED');
+  const activeBakeryRequests = requests.filter(r => r.status === 'REQUESTED' || r.status === 'IN_PRODUCTION' || r.status === 'ACCEPTED' || r.status === 'PARTIALLY_FULFILLED');
 
   // Compute all variations with low or zero stock across all products
   const lowStockItems: { product: Product; variation: Variation; counterStock: number; minStock: number; isOut: boolean }[] = [];
@@ -990,6 +992,7 @@ export const FrontCounterView: React.FC = () => {
                           {variations.map(v => {
                             const isSelected = v.id === activeVar?.id;
                             const stock = Number(v.counter_stock || 0);
+                            const isUnavailable = v.is_available === 0;
                             return (
                               <button
                                 key={v.id}
@@ -1004,14 +1007,14 @@ export const FrontCounterView: React.FC = () => {
                                   borderRadius: 10,
                                   fontSize: 12,
                                   fontWeight: 800,
-                                  border: isSelected ? '2px solid #db2777' : '1px solid var(--border)',
-                                  background: isSelected ? '#fdf2f8' : 'var(--bg-app)',
-                                  color: isSelected ? '#be185d' : 'var(--text-main)',
+                                  border: isSelected ? '2px solid #db2777' : isUnavailable ? '1.5px dashed #f87171' : '1px solid var(--border)',
+                                  background: isSelected ? '#fdf2f8' : isUnavailable ? '#fef2f2' : 'var(--bg-app)',
+                                  color: isSelected ? '#be185d' : isUnavailable ? '#dc2626' : 'var(--text-main)',
                                   cursor: 'pointer',
                                   transition: 'all 0.15s ease'
                                 }}
                               >
-                                {v.size || v.name || v.variation_name} ({stock})
+                                {isUnavailable ? '⛔ ' : ''}{v.size || v.name || v.variation_name} ({stock})
                               </button>
                             );
                           })}
@@ -1025,36 +1028,60 @@ export const FrontCounterView: React.FC = () => {
                         {Number(activeVar?.selling_price || activeVar?.price || 0)} ብር
                       </span>
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          tactileFeedback('click');
-                          const cakeObj: Variation = {
-                            ...activeVar,
-                            product_name: product.name,
-                            product_name_amharic: product.name_amharic,
-                            photo_url: product.photo_url
-                          };
-                          setRequestTarget(cakeObj);
-                          setRequestQty(!inStock ? 10 : 5);
-                        }}
-                        style={{
-                          background: !inStock ? '#fef2f2' : '#fdf2f8',
-                          color: !inStock ? '#dc2626' : '#be185d',
-                          border: !inStock ? '1.5px solid #fca5a5' : '1.5px solid #fbcfe8',
-                          borderRadius: 12,
-                          padding: '8px 14px',
-                          fontSize: 13,
-                          fontWeight: 900,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        <Bell size={15} /> {!inStock ? 'ከዳቦ ቤት እዘዝ' : 'ተጨማሪ እዘዝ'}
-                      </button>
+                      {activeVar?.is_available === 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+                          <div
+                            style={{
+                              background: '#fee2e2',
+                              color: '#b91c1c',
+                              border: '1.5px solid #f87171',
+                              borderRadius: 12,
+                              padding: '8px 14px',
+                              fontSize: 13,
+                              fontWeight: 900,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6
+                            }}
+                          >
+                            <AlertTriangle size={15} /> ⛔ ለጊዜው አይገኝም
+                          </div>
+                          <div style={{ fontSize: 11, color: '#dc2626', fontWeight: 800, maxWidth: 220, textAlign: 'right' }}>
+                            ምክንያት: {activeVar.unavailable_reason || 'የጥሬ ዕቃ እጥረት'}
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            tactileFeedback('click');
+                            const cakeObj: Variation = {
+                              ...activeVar,
+                              product_name: product.name,
+                              product_name_amharic: product.name_amharic,
+                              photo_url: product.photo_url
+                            };
+                            setRequestTarget(cakeObj);
+                            setRequestQty(!inStock ? 10 : 5);
+                          }}
+                          style={{
+                            background: !inStock ? '#fef2f2' : '#fdf2f8',
+                            color: !inStock ? '#dc2626' : '#be185d',
+                            border: !inStock ? '1.5px solid #fca5a5' : '1.5px solid #fbcfe8',
+                            borderRadius: 12,
+                            padding: '8px 14px',
+                            fontSize: 13,
+                            fontWeight: 900,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <Bell size={15} /> {!inStock ? 'ከዳቦ ቤት እዘዝ' : 'ተጨማሪ እዘዝ'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1295,6 +1322,7 @@ export const FrontCounterView: React.FC = () => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 14 }}>
                 {activeBakeryRequests.map(req => {
                   const isBaking = req.status === 'IN_PRODUCTION';
+                  const isPartial = req.status === 'PARTIALLY_FULFILLED' || Boolean(req.quantity_fulfilled !== undefined && req.quantity_fulfilled !== null && req.quantity_fulfilled < req.quantity_requested);
                   const isPending = req.status === 'REQUESTED';
 
                   return (
@@ -1303,7 +1331,7 @@ export const FrontCounterView: React.FC = () => {
                       style={{
                         background: 'var(--bg-card)',
                         borderRadius: 18,
-                        border: isBaking ? '3px solid #f97316' : '2px solid var(--border)',
+                        border: isBaking ? '3px solid #f97316' : isPartial ? '3px solid #f97316' : '2px solid var(--border)',
                         padding: 16,
                         display: 'flex',
                         flexDirection: 'column',
@@ -1321,15 +1349,15 @@ export const FrontCounterView: React.FC = () => {
                             fontWeight: 900,
                             padding: '3px 10px',
                             borderRadius: 10,
-                            background: isBaking ? '#ffedd5' : '#fef3c7',
-                            color: isBaking ? '#c2410c' : '#92400e',
-                            border: isBaking ? '1px solid #fdba74' : '1px solid #fde68a',
+                            background: isPartial ? '#fff7ed' : isBaking ? '#ffedd5' : '#fef3c7',
+                            color: isPartial ? '#ea580c' : isBaking ? '#c2410c' : '#92400e',
+                            border: isPartial ? '1px solid #fdba74' : isBaking ? '1px solid #fdba74' : '1px solid #fde68a',
                             display: 'flex',
                             alignItems: 'center',
                             gap: 4
                           }}
                         >
-                          {isBaking ? '🔥 እየተጋገረ ነው (Baking in Oven)' : '⏳ ጥያቄ ተልኳል (Waiting)'}
+                          {isPartial ? `⚠️ በከፊል የሚዘጋጅ (${req.quantity_fulfilled || 0}/${req.quantity_requested})` : isBaking ? '🔥 እየተጋገረ ነው (Baking in Oven)' : '⏳ ጥያቄ ተልኳል (Waiting)'}
                         </span>
                       </div>
 
@@ -1348,9 +1376,24 @@ export const FrontCounterView: React.FC = () => {
                           </div>
                           <div style={{ fontSize: 16, fontWeight: 900, color: '#be185d', marginTop: 2 }}>
                             የተጠየቀው ብዛት: <span style={{ fontSize: 20 }}>{req.quantity_requested}</span> ኬክ
+                            {isPartial && (
+                              <span style={{ marginLeft: 8, color: '#16a34a', fontWeight: 900, fontSize: 15 }}>
+                                • የሚጋገረው: <span style={{ fontSize: 18 }}>{req.quantity_fulfilled}</span> ኬክ
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
+
+                      {req.notes && (
+                        <div style={{ background: '#fff7ed', border: '1.5px solid #fed7aa', borderRadius: 12, padding: '10px 12px', fontSize: 12, color: '#9a3412', fontWeight: 700, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                          <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1, color: '#ea580c' }} />
+                          <div>
+                            <div style={{ fontWeight: 900, color: '#c2410c' }}>የዳቦ ቤት ማስታወሻ (Bakery Notice):</div>
+                            <div style={{ marginTop: 2 }}>{req.notes}</div>
+                          </div>
+                        </div>
+                      )}
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 10 }}>
                         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
