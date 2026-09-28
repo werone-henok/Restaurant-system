@@ -305,7 +305,8 @@ export const BakeryView: React.FC = () => {
         body: JSON.stringify({
           variation_id: req.variation_id,
           quantity_sent: req.quantity_requested || req.requested_quantity,
-          notes: `ለካውንተር ተላከ / Sent from bake request #${req.id}`
+          notes: `ለካውንተር ተላከ / Sent from bake request #${req.id}`,
+          request_id: req.id
         })
       });
       // 2. Mark the request as TRANSFERRED

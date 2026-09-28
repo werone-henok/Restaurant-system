@@ -436,11 +436,41 @@ bakeryRouter.post('/transfers', authenticate, authorizeRole(['bakery', 'admin', 
     const variation = db.prepare('SELECT * FROM bakery_product_variations WHERE id = ?').get(variation_id);
     if (!variation)
         return res.status(404).json({ error: 'Variation not found' });
+    // If fulfilling a bake request, auto-produce any inventory shortage so transfer is never blocked
+    const isFromRequest = Boolean(req.body.request_id ||
+        (notes && (notes.includes('bake request') ||
+            notes.includes('Sent from') ||
+            notes.includes('ለካውንተር ተላከ') ||
+            notes.includes('request'))));
     // Prevent negative inventory deduction: must have sufficient bakery stock
     if (variation.bakery_stock < qty) {
-        return res.status(400).json({
-            error: `Insufficient Bakery inventory. Available in Bakery: ${variation.bakery_stock}, requested transfer: ${qty}`
-        });
+        if (isFromRequest) {
+            const shortage = qty - variation.bakery_stock;
+            db.prepare(`
+        UPDATE bakery_product_variations
+        SET bakery_stock = bakery_stock + ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(shortage, variation_id);
+            const updatedVar = db.prepare('SELECT bakery_stock FROM bakery_product_variations WHERE id = ?').get(variation_id);
+            db.prepare(`
+        INSERT INTO bakery_inventory_transactions (
+          id, branch_id, product_id, variation_id, user_id,
+          department, transaction_type, quantity_change, resulting_quantity, reference_id, reason
+        ) VALUES (?, ?, ?, ?, ?, 'BAKERY', 'PRODUCTION_IN', ?, ?, ?, ?)
+      `).run(uuidv4(), branchId, variation.product_id, variation_id, req.user.id, shortage, updatedVar.bakery_stock, req.body.request_id || null, 'Auto-supplemented stock for bake request fulfillment');
+            variation.bakery_stock = updatedVar.bakery_stock;
+            broadcastEvent({
+                type: 'BAKERY_STOCK_UPDATED',
+                branchId,
+                payload: { variationId: variation_id, bakeryStock: updatedVar.bakery_stock }
+            });
+        }
+        else {
+            return res.status(400).json({
+                error: `Insufficient Bakery inventory. Available in Bakery: ${variation.bakery_stock}, requested transfer: ${qty}`
+            });
+        }
     }
     const transferId = `trf_${uuidv4().substring(0, 8)}`;
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -729,6 +759,30 @@ bakeryRouter.patch('/requests/:id/status', authenticate, authorizeRole(['bakery'
     const existing = db.prepare('SELECT r.*, p.name as product_name, v.variation_name FROM bakery_requests r JOIN bakery_products p ON r.product_id = p.id JOIN bakery_product_variations v ON r.variation_id = v.id WHERE r.id = ?').get(id);
     if (!existing)
         return res.status(404).json({ error: 'Request not found' });
+    // When bake request is marked READY, freshly baked cakes are ready in bakery: credit bakery_stock
+    if (status === 'READY' && existing.status !== 'READY') {
+        const qtyToProduce = Number(quantity_fulfilled || existing.quantity_requested || 0);
+        if (qtyToProduce > 0) {
+            db.prepare(`
+        UPDATE bakery_product_variations
+        SET bakery_stock = bakery_stock + ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(qtyToProduce, existing.variation_id);
+            const updatedVar = db.prepare('SELECT bakery_stock FROM bakery_product_variations WHERE id = ?').get(existing.variation_id);
+            db.prepare(`
+        INSERT INTO bakery_inventory_transactions (
+          id, branch_id, product_id, variation_id, user_id,
+          department, transaction_type, quantity_change, resulting_quantity, reference_id, reason
+        ) VALUES (?, ?, ?, ?, ?, 'BAKERY', 'PRODUCTION_IN', ?, ?, ?, ?)
+      `).run(uuidv4(), existing.branch_id, existing.product_id, existing.variation_id, req.user.id, qtyToProduce, updatedVar.bakery_stock, id, `Bake request #${existing.request_number} produced & marked ready`);
+            broadcastEvent({
+                type: 'BAKERY_STOCK_UPDATED',
+                branchId: existing.branch_id,
+                payload: { variationId: existing.variation_id, bakeryStock: updatedVar.bakery_stock }
+            });
+        }
+    }
     db.prepare(`
     UPDATE bakery_requests
     SET status = ?,
