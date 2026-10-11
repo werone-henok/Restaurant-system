@@ -6,7 +6,7 @@ import { ImageUploadCompressor } from '../../components/ImageUploadCompressor';
 import { DetailedReportsDashboard } from '../../components/DetailedReportsDashboard';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import { compressImageFile } from '../../utils/imageCompressor';
-import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, AlertTriangle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils, BarChart3, FolderPlus, Tag, Clock, Sparkles, Globe, Key, Lock, ShieldCheck, ShieldAlert, UserCheck, UserX, Camera, RefreshCw } from 'lucide-react';
+import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, AlertTriangle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils, BarChart3, FolderPlus, Tag, Clock, Sparkles, Globe, Key, Lock, ShieldCheck, ShieldAlert, UserCheck, UserX, Camera, RefreshCw, X } from 'lucide-react';
 import { CreateCategoryModal } from '../../components/CreateCategoryModal';
 import { TIMEZONE_OPTIONS, getDeviceTimezone } from '../../utils/timezone';
 import { gToast } from '../../utils/toast';
@@ -2022,75 +2022,134 @@ export const AdminView: React.FC = () => {
 
       {/* MODAL: ADD STAFF */}
       {showStaffModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 60 }}>
-          <div style={{ background: '#ffffff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 440, maxHeight: '90vh', overflowY: 'auto' }} className="animate-fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 800 }}>Create New Staff Member</h3>
-              <button onClick={() => setShowStaffModal(false)} style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)' }}>✕</button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, zIndex: 1100 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 20, width: '100%', maxWidth: 480, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))' }} className="animate-fade-in">
+            {/* Pinned Sticky Header */}
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Users size={18} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                    {language === 'am' ? 'አዲስ ሠራተኛ መዝግብ' : 'Create New Staff Member'}
+                  </h3>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {language === 'am' ? 'የሠራተኛውን ሚና፣ ቅርንጫፍና መረጃ ያስገቡ' : 'Assign role, branch and account info'}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowStaffModal(false)}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  background: 'var(--bg-subtle, #f1f5f9)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+                title={language === 'am' ? 'ዝጋ' : 'Close'}
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            <form onSubmit={handleCreateStaff} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Full Name</label>
-                <input type="text" required placeholder="e.g. Selamawit Desta" value={staffName} onChange={e => setStaffName(e.target.value)} style={{ width: '100%' }} />
-              </div>
-
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Username</label>
-                <input type="text" required placeholder="e.g. selam.d" value={staffUsername} onChange={e => setStaffUsername(e.target.value)} style={{ width: '100%' }} />
-              </div>
-
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Password</label>
-                <input type="password" required value={staffPassword} onChange={e => setStaffPassword(e.target.value)} style={{ width: '100%' }} />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <form onSubmit={handleCreateStaff} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, margin: 0 }}>
+              {/* Scrollable Form Body */}
+              <div style={{ padding: '16px 18px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Assigned Role</label>
-                  <select value={staffRole} onChange={e => setStaffRole(e.target.value as any)} style={{ width: '100%' }}>
-                    <option value="waiter">Waiter</option>
-                    <option value="cashier">Cashier</option>
-                    <option value="chef">Chef</option>
-                    <option value="barista">Barista</option>
-                    <option value="storekeeper">Storekeeper</option>
-                    <option value="bakery">Bakery / Baker Chef</option>
-                    <option value="front_counter">Front Cake Counter</option>
-                    <option value="admin">Administrator</option>
-                  </select>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Full Name</label>
+                  <input type="text" required placeholder="e.g. Selamawit Desta" value={staffName} onChange={e => setStaffName(e.target.value)} style={{ width: '100%' }} />
                 </div>
+
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Branch</label>
-                  <select value={staffBranch} onChange={e => setStaffBranch(e.target.value)} style={{ width: '100%' }}>
-                    {branches.map(b => (
-                      <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
-                  </select>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Username</label>
+                  <input type="text" required placeholder="e.g. selam.d" value={staffUsername} onChange={e => setStaffUsername(e.target.value)} style={{ width: '100%' }} />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Password</label>
+                  <input type="password" required value={staffPassword} onChange={e => setStaffPassword(e.target.value)} style={{ width: '100%' }} />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Assigned Role</label>
+                    <select value={staffRole} onChange={e => setStaffRole(e.target.value as any)} style={{ width: '100%' }}>
+                      <option value="waiter">Waiter</option>
+                      <option value="cashier">Cashier</option>
+                      <option value="chef">Chef</option>
+                      <option value="barista">Barista</option>
+                      <option value="storekeeper">Storekeeper</option>
+                      <option value="bakery">Bakery / Baker Chef</option>
+                      <option value="front_counter">Front Cake Counter</option>
+                      <option value="admin">Administrator</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Branch</label>
+                    <select value={staffBranch} onChange={e => setStaffBranch(e.target.value)} style={{ width: '100%' }}>
+                      {branches.map(b => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Phone (Optional)</label>
+                    <input type="tel" placeholder="+251 9..." value={staffPhone} onChange={e => setStaffPhone(e.target.value)} style={{ width: '100%' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Employee ID</label>
+                    <input type="text" placeholder="EMP-204" value={staffEmpId} onChange={e => setStaffEmpId(e.target.value)} style={{ width: '100%' }} />
+                  </div>
+                </div>
+
+                <div>
+                  <ImageUploadCompressor
+                    value={staffPhoto}
+                    onChange={setStaffPhoto}
+                    label={language === 'am' ? 'የሰራተኛው የመገለጫ ፎቶ (ካሜራ ወይም ምስል)' : 'Staff Profile Photo (Camera or Upload)'}
+                  />
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Phone (Optional)</label>
-                  <input type="tel" placeholder="+251 9..." value={staffPhone} onChange={e => setStaffPhone(e.target.value)} style={{ width: '100%' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Employee ID</label>
-                  <input type="text" placeholder="EMP-204" value={staffEmpId} onChange={e => setStaffEmpId(e.target.value)} style={{ width: '100%' }} />
-                </div>
-              </div>
+              {/* Pinned Sticky Footer */}
+              <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowStaffModal(false)}
+                  className="btn btn-secondary"
+                  style={{ height: 44, padding: '0 16px', fontWeight: 700 }}
+                >
+                  {language === 'am' ? 'ሰርዝ' : 'Cancel'}
+                </button>
 
-              <div>
-                <ImageUploadCompressor
-                  value={staffPhoto}
-                  onChange={setStaffPhoto}
-                  label={language === 'am' ? 'የሰራተኛው የመገለጫ ፎቶ (ካሜራ ወይም ምስል)' : 'Staff Profile Photo (Camera or Upload)'}
-                />
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn btn-primary"
+                  style={{ flex: 1, height: 44, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin" />
+                      {language === 'am' ? 'በመፍጠር ላይ...' : 'Creating...'}
+                    </>
+                  ) : (
+                    language === 'am' ? 'ሠራተኛ መዝግብና አንቃ' : 'Create & Activate Staff'
+                  )}
+                </button>
               </div>
-
-              <button type="submit" disabled={loading} className="btn btn-primary btn-block" style={{ height: 46, marginTop: 6 }}>
-                {loading ? 'Creating...' : 'Create & Activate Staff'}
-              </button>
             </form>
           </div>
         </div>
@@ -2098,43 +2157,104 @@ export const AdminView: React.FC = () => {
 
       {/* MODAL: CREATE / EDIT BRANCH */}
       {showBranchModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 60 }}>
-          <div style={{ background: '#ffffff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 440, maxHeight: '90vh', overflowY: 'auto' }} className="animate-fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 800 }}>{editingBranchId ? 'Edit Restaurant Branch' : 'Add New Restaurant Branch'}</h3>
-              <button onClick={() => setShowBranchModal(false)} style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)' }}>✕</button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, zIndex: 1100 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 20, width: '100%', maxWidth: 460, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))' }} className="animate-fade-in">
+            {/* Pinned Sticky Header */}
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Building2 size={18} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                    {editingBranchId ? (language === 'am' ? 'ቅርንጫፍ አሻሽል' : 'Edit Restaurant Branch') : (language === 'am' ? 'አዲስ ቅርንጫፍ መዝግብ' : 'Add New Restaurant Branch')}
+                  </h3>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {language === 'am' ? 'አድራሻ፣ ከተማና ታክስ ተመን' : 'Location, city & VAT rate'}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBranchModal(false)}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  background: 'var(--bg-subtle, #f1f5f9)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+                title={language === 'am' ? 'ዝጋ' : 'Close'}
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            <form onSubmit={handleSaveBranch} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Branch Name</label>
-                <input type="text" required placeholder="e.g. Hawassa Lakeside Branch" value={branchName} onChange={e => setBranchName(e.target.value)} style={{ width: '100%' }} />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <form onSubmit={handleSaveBranch} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, margin: 0 }}>
+              {/* Scrollable Form Body */}
+              <div style={{ padding: '16px 18px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>City</label>
-                  <input type="text" required placeholder="e.g. Hawassa" value={branchCity} onChange={e => setBranchCity(e.target.value)} style={{ width: '100%' }} />
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Branch Name</label>
+                  <input type="text" required placeholder="e.g. Hawassa Lakeside Branch" value={branchName} onChange={e => setBranchName(e.target.value)} style={{ width: '100%' }} />
                 </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>City</label>
+                    <input type="text" required placeholder="e.g. Hawassa" value={branchCity} onChange={e => setBranchCity(e.target.value)} style={{ width: '100%' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>VAT Rate (0.15 = 15%)</label>
+                    <input type="number" step="0.01" required value={branchVatRate} onChange={e => setBranchVatRate(Number(e.target.value))} style={{ width: '100%' }} />
+                  </div>
+                </div>
+
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>VAT Rate (0.15 = 15%)</label>
-                  <input type="number" step="0.01" required value={branchVatRate} onChange={e => setBranchVatRate(Number(e.target.value))} style={{ width: '100%' }} />
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Address / Location</label>
+                  <input type="text" placeholder="e.g. Lake View Boulevard" value={branchAddress} onChange={e => setBranchAddress(e.target.value)} style={{ width: '100%' }} />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Branch Phone</label>
+                  <input type="tel" placeholder="+251 9..." value={branchPhone} onChange={e => setBranchPhone(e.target.value)} style={{ width: '100%' }} />
                 </div>
               </div>
 
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Address / Location</label>
-                <input type="text" placeholder="e.g. Lake View Boulevard" value={branchAddress} onChange={e => setBranchAddress(e.target.value)} style={{ width: '100%' }} />
-              </div>
+              {/* Pinned Sticky Footer */}
+              <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowBranchModal(false)}
+                  className="btn btn-secondary"
+                  style={{ height: 44, padding: '0 16px', fontWeight: 700 }}
+                >
+                  {language === 'am' ? 'ሰርዝ' : 'Cancel'}
+                </button>
 
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Branch Phone</label>
-                <input type="tel" placeholder="+251 9..." value={branchPhone} onChange={e => setBranchPhone(e.target.value)} style={{ width: '100%' }} />
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn btn-primary"
+                  style={{ flex: 1, height: 44, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin" />
+                      {language === 'am' ? 'በማስቀመጥ ላይ...' : 'Saving...'}
+                    </>
+                  ) : editingBranchId ? (
+                    language === 'am' ? 'ለውጦችን መዝግብ' : 'Save Branch Changes'
+                  ) : (
+                    language === 'am' ? 'ቅርንጫፍ መዝግብ' : 'Create Branch'
+                  )}
+                </button>
               </div>
-
-              <button type="submit" disabled={loading} className="btn btn-primary btn-block" style={{ height: 46, marginTop: 6 }}>
-                {loading ? 'Saving...' : editingBranchId ? 'Save Branch Changes' : 'Create Branch'}
-              </button>
             </form>
           </div>
         </div>
@@ -2142,67 +2262,128 @@ export const AdminView: React.FC = () => {
 
       {/* MODAL: CREATE / EDIT TABLE & SECTION */}
       {showTableModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 60 }}>
-          <div style={{ background: '#ffffff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 440, maxHeight: '90vh', overflowY: 'auto' }} className="animate-fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 800 }}>{editingTableId ? 'Edit Table & Section' : 'Create Table & Section'}</h3>
-              <button onClick={() => setShowTableModal(false)} style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)' }}>✕</button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, zIndex: 1100 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 20, width: '100%', maxWidth: 460, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))' }} className="animate-fade-in">
+            {/* Pinned Sticky Header */}
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Utensils size={18} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                    {editingTableId ? (language === 'am' ? 'ጠረጴዛ አሻሽል' : 'Edit Table & Section') : (language === 'am' ? 'አዲስ ጠረጴዛ መዝግብ' : 'Create Table & Section')}
+                  </h3>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {language === 'am' ? 'የጠረጴዛ ቁጥር፣ ክፍልና የመቀመጫ ብዛት' : 'Table code, seating capacity & section'}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTableModal(false)}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  background: 'var(--bg-subtle, #f1f5f9)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+                title={language === 'am' ? 'ዝጋ' : 'Close'}
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            <form onSubmit={handleSaveTable} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Table Number / Code</label>
-                  <input type="text" required placeholder="e.g. T-12, VIP-3" value={tableNumber} onChange={e => setTableNumber(e.target.value)} style={{ width: '100%' }} />
+            <form onSubmit={handleSaveTable} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, margin: 0 }}>
+              {/* Scrollable Form Body */}
+              <div style={{ padding: '16px 18px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Table Number / Code</label>
+                    <input type="text" required placeholder="e.g. T-12, VIP-3" value={tableNumber} onChange={e => setTableNumber(e.target.value)} style={{ width: '100%' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Table Name</label>
+                    <input type="text" placeholder="e.g. Table 12" value={tableName} onChange={e => setTableName(e.target.value)} style={{ width: '100%' }} />
+                  </div>
                 </div>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Table Name</label>
-                  <input type="text" placeholder="e.g. Table 12" value={tableName} onChange={e => setTableName(e.target.value)} style={{ width: '100%' }} />
-                </div>
-              </div>
 
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Restaurant Area / Section</label>
-                <select value={tableSection} onChange={e => setTableSection(e.target.value)} style={{ width: '100%', marginBottom: tableSection === 'CUSTOM' ? 8 : 0 }}>
-                  <option value="Main Dining">Main Dining Hall</option>
-                  <option value="Window View">Window View</option>
-                  <option value="Balcony">Balcony Terrace</option>
-                  <option value="VIP Lounge">VIP Private Suite</option>
-                  <option value="Cocktail & Coffee Bar">Cocktail & Coffee Bar</option>
-                  <option value="Outdoor Garden">Outdoor Garden</option>
-                  <option value="CUSTOM">+ Create New Custom Section...</option>
-                </select>
-
-                {tableSection === 'CUSTOM' && (
-                  <input
-                    type="text"
-                    required
-                    placeholder="Enter new custom section name (e.g. Rooftop Sky Lounge)"
-                    value={customSection}
-                    onChange={e => setCustomSection(e.target.value)}
-                    style={{ width: '100%' }}
-                  />
-                )}
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Seating Capacity</label>
-                  <input type="number" min="1" max="50" required value={tableCapacity} onChange={e => setTableCapacity(Number(e.target.value))} style={{ width: '100%' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Branch</label>
-                  <select value={tableBranch} onChange={e => setTableBranch(e.target.value)} style={{ width: '100%' }}>
-                    {branches.map(b => (
-                      <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Restaurant Area / Section</label>
+                  <select value={tableSection} onChange={e => setTableSection(e.target.value)} style={{ width: '100%', marginBottom: tableSection === 'CUSTOM' ? 8 : 0 }}>
+                    <option value="Main Dining">Main Dining Hall</option>
+                    <option value="Window View">Window View</option>
+                    <option value="Balcony">Balcony Terrace</option>
+                    <option value="VIP Lounge">VIP Private Suite</option>
+                    <option value="Cocktail & Coffee Bar">Cocktail & Coffee Bar</option>
+                    <option value="Outdoor Garden">Outdoor Garden</option>
+                    <option value="CUSTOM">+ Create New Custom Section...</option>
                   </select>
+
+                  {tableSection === 'CUSTOM' && (
+                    <input
+                      type="text"
+                      required
+                      placeholder="Enter new custom section name (e.g. Rooftop Sky Lounge)"
+                      value={customSection}
+                      onChange={e => setCustomSection(e.target.value)}
+                      style={{ width: '100%' }}
+                    />
+                  )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Seating Capacity</label>
+                    <input type="number" min="1" max="50" required value={tableCapacity} onChange={e => setTableCapacity(Number(e.target.value))} style={{ width: '100%' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Branch</label>
+                    <select value={tableBranch} onChange={e => setTableBranch(e.target.value)} style={{ width: '100%' }}>
+                      {branches.map(b => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              <button type="submit" disabled={loading} className="btn btn-primary btn-block" style={{ height: 46, marginTop: 6 }}>
-                {loading ? 'Saving Table...' : editingTableId ? 'Save Table Changes' : 'Create Table & Section'}
-              </button>
+              {/* Pinned Sticky Footer */}
+              <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowTableModal(false)}
+                  className="btn btn-secondary"
+                  style={{ height: 44, padding: '0 16px', fontWeight: 700 }}
+                >
+                  {language === 'am' ? 'ሰርዝ' : 'Cancel'}
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn btn-primary"
+                  style={{ flex: 1, height: 44, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin" />
+                      {language === 'am' ? 'በማስቀመጥ ላይ...' : 'Saving Table...'}
+                    </>
+                  ) : editingTableId ? (
+                    language === 'am' ? 'ለውጦችን መዝግብ' : 'Save Table Changes'
+                  ) : (
+                    language === 'am' ? 'ጠረጴዛ መዝግብ' : 'Create Table & Section'
+                  )}
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -2210,100 +2391,171 @@ export const AdminView: React.FC = () => {
 
       {/* MODAL: CREATE / EDIT MENU ITEM */}
       {showMenuModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 60 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 20, width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--border)' }} className="animate-fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-main)' }}>{editingMenuItemId ? 'Edit Menu Item' : 'Add New Menu Item'}</h3>
-              <button onClick={() => setShowMenuModal(false)} style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)' }}>✕</button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, zIndex: 1100 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 20, width: '100%', maxWidth: 480, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))' }} className="animate-fade-in">
+            {/* Pinned Sticky Header */}
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Utensils size={18} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                    {editingMenuItemId ? (language === 'am' ? 'የምግብ ዝርዝር አሻሽል' : 'Edit Menu Item') : (language === 'am' ? 'አዲስ ምግብ መዝግብ' : 'Add New Menu Item')}
+                  </h3>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {language === 'am' ? 'የምግብ ዋጋና ዝርዝር መረጃዎችን ያስገቡ' : 'Dish pricing, station routing & photo'}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMenuModal(false)}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  background: 'var(--bg-subtle, #f1f5f9)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+                title={language === 'am' ? 'ዝጋ' : 'Close'}
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            <form onSubmit={handleSaveMenuItem} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Item Name (English)</label>
-                <input type="text" required placeholder="e.g. Gourmet Double Beef Burger" value={menuName} onChange={e => setMenuName(e.target.value)} style={{ width: '100%' }} />
-              </div>
-
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Item Name (Amharic - Optional)</label>
-                <input type="text" placeholder="e.g. ዳብል የበሬ በርገር" value={menuNameAmharic} onChange={e => setMenuNameAmharic(e.target.value)} style={{ width: '100%' }} />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <form onSubmit={handleSaveMenuItem} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, margin: 0 }}>
+              {/* Scrollable Form Body */}
+              <div style={{ padding: '16px 18px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>
-                      {language === 'am' ? 'ምድብ (Category)' : 'Category'}
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowCategoryModal(true)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--primary)',
-                        fontSize: 11,
-                        fontWeight: 800,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 2,
-                        padding: 0
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                    {language === 'am' ? 'የምግብ ስም (በእንግሊዝኛ)' : 'Item Name (English)'}
+                  </label>
+                  <input type="text" required placeholder="e.g. Gourmet Double Beef Burger" value={menuName} onChange={e => setMenuName(e.target.value)} style={{ width: '100%' }} />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                    {language === 'am' ? 'የምግብ ስም (በአማርኛ - አማራጭ)' : 'Item Name (Amharic - Optional)'}
+                  </label>
+                  <input type="text" placeholder="e.g. ዳብል የበሬ በርገር" value={menuNameAmharic} onChange={e => setMenuNameAmharic(e.target.value)} style={{ width: '100%' }} />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>
+                        {language === 'am' ? 'ምድብ (Category)' : 'Category'}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowCategoryModal(true)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--primary)',
+                          fontSize: 11,
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 2,
+                          padding: 0
+                        }}
+                      >
+                        <Plus size={11} /> {language === 'am' ? 'አዲስ' : 'New'}
+                      </button>
+                    </div>
+                    <select
+                      value={menuCategory}
+                      onChange={e => {
+                        if (e.target.value === '__NEW__') {
+                          setShowCategoryModal(true);
+                        } else {
+                          setMenuCategory(e.target.value);
+                        }
                       }}
+                      style={{ width: '100%' }}
                     >
-                      <Plus size={11} /> {language === 'am' ? 'አዲስ ምድብ' : 'New'}
-                    </button>
+                      {categories.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.icon ? `${c.icon} ` : ''}{c.name} {c.name_amharic ? `(${c.name_amharic})` : ''}
+                        </option>
+                      ))}
+                      <option value="__NEW__">+ {language === 'am' ? 'አዲስ ምድብ ፍጠር...' : 'Create New Category...'}</option>
+                    </select>
                   </div>
-                  <select
-                    value={menuCategory}
-                    onChange={e => {
-                      if (e.target.value === '__NEW__') {
-                        setShowCategoryModal(true);
-                      } else {
-                        setMenuCategory(e.target.value);
-                      }
-                    }}
-                    style={{ width: '100%' }}
-                  >
-                    {categories.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.icon ? `${c.icon} ` : ''}{c.name} {c.name_amharic ? `(${c.name_amharic})` : ''}
-                      </option>
-                    ))}
-                    <option value="__NEW__">+ {language === 'am' ? 'አዲስ ምድብ ፍጠር...' : 'Create New Category...'}</option>
+
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                      {language === 'am' ? 'ዋጋ (ብር)' : `Price (${t('currency')})`}
+                    </label>
+                    <input type="number" min="0" step="0.5" required value={menuPrice} onChange={e => setMenuPrice(Number(e.target.value))} style={{ width: '100%' }} />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                    {language === 'am' ? 'ዝግጅት የሚደረግበት ክፍል' : 'Preparation Routing'}
+                  </label>
+                  <select value={menuRouting} onChange={e => setMenuRouting(e.target.value as any)} style={{ width: '100%' }}>
+                    <option value="KITCHEN">🍳 KITCHEN (Main Cooking Station)</option>
+                    <option value="BAR">☕ BAR (Drinks & Coffee Station)</option>
+                    <option value="BOTH">⚡ BOTH (Split Stations)</option>
+                    <option value="BAKERY">🍰 BAKERY (Bakery & Pastry Kitchen / የዳቦና ኬክ ክፍል)</option>
+                    <option value="FRONT_COUNTER">🧁 FRONT COUNTER (Cake Display / የፊት ኬክ ካውንተር)</option>
                   </select>
                 </div>
 
+                <ImageUploadCompressor
+                  value={menuPhoto}
+                  onChange={setMenuPhoto}
+                  label={language === 'am' ? 'የምግብ ፎቶ (ከተንቀሳቃሽ ስልክ ወይም ፋይል)' : 'Dish Photo (Mobile Camera or Upload)'}
+                />
+
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Price ({t('currency')})</label>
-                  <input type="number" min="0" step="0.5" required value={menuPrice} onChange={e => setMenuPrice(Number(e.target.value))} style={{ width: '100%' }} />
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                    {language === 'am' ? 'ማብራሪያ' : 'Description'}
+                  </label>
+                  <textarea rows={2} placeholder="Ingredients, recipe notes, allergens..." value={menuDesc} onChange={e => setMenuDesc(e.target.value)} style={{ width: '100%' }} />
                 </div>
               </div>
 
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Preparation Routing</label>
-                <select value={menuRouting} onChange={e => setMenuRouting(e.target.value as any)} style={{ width: '100%' }}>
-                  <option value="KITCHEN">🍳 KITCHEN (Main Cooking Station)</option>
-                  <option value="BAR">☕ BAR (Drinks & Coffee Station)</option>
-                  <option value="BOTH">⚡ BOTH (Split Stations)</option>
-                  <option value="BAKERY">🍰 BAKERY (Bakery & Pastry Kitchen / የዳቦና ኬክ ክፍል)</option>
-                  <option value="FRONT_COUNTER">🧁 FRONT COUNTER (Cake Display / የፊት ኬክ ካውንተር)</option>
-                </select>
+              {/* Pinned Sticky Footer */}
+              <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowMenuModal(false)}
+                  className="btn btn-secondary"
+                  style={{ height: 44, padding: '0 16px', fontWeight: 700 }}
+                >
+                  {language === 'am' ? 'ሰርዝ' : 'Cancel'}
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn btn-primary"
+                  style={{ flex: 1, height: 44, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin" />
+                      {language === 'am' ? 'በማስቀመጥ ላይ...' : 'Saving Item...'}
+                    </>
+                  ) : editingMenuItemId ? (
+                    language === 'am' ? 'ለውጦችን መዝግብ' : 'Save Changes'
+                  ) : (
+                    language === 'am' ? 'ምግቡን መዝግብ' : 'Create Menu Item'
+                  )}
+                </button>
               </div>
-
-              <ImageUploadCompressor
-                value={menuPhoto}
-                onChange={setMenuPhoto}
-                label={language === 'am' ? 'የምግብ ፎቶ (ከተንቀሳቃሽ ስልክ ወይም ፋይል)' : 'Dish Photo (Mobile Camera or Upload)'}
-              />
-
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Description</label>
-                <textarea rows={2} placeholder="Ingredients, recipe notes, allergens..." value={menuDesc} onChange={e => setMenuDesc(e.target.value)} style={{ width: '100%' }} />
-              </div>
-
-              <button type="submit" disabled={loading} className="btn btn-primary btn-block" style={{ height: 46, marginTop: 6 }}>
-                {loading ? 'Saving Item...' : editingMenuItemId ? 'Save Changes' : 'Create Menu Item'}
-              </button>
             </form>
           </div>
         </div>
@@ -2311,35 +2563,56 @@ export const AdminView: React.FC = () => {
 
       {/* MODAL: APPROVE ACCOUNT / PASSWORD REQUEST */}
       {selectedReqForApproval && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 100 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 22, width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-floating)' }} className="animate-fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 34, height: 34, borderRadius: 17, background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, zIndex: 1100 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 20, width: '100%', maxWidth: 460, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))' }} className="animate-fade-in">
+            {/* Pinned Header */}
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a', flexShrink: 0 }}>
                   <UserCheck size={18} />
                 </div>
-                <h3 style={{ fontSize: 16, fontWeight: 900, margin: 0, color: 'var(--text-main)' }}>
-                  {language === 'am' ? 'ጥያቄውን አጽድቅና ለውጡን ተግብር' : 'Approve Request & Apply Changes'}
-                </h3>
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                    {language === 'am' ? 'ጥያቄውን አጽድቅና ለውጡን ተግብር' : 'Approve Request & Apply Changes'}
+                  </h3>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {language === 'am' ? 'የመለያ ወይም የይለፍ ቃል ማስተካከያ' : 'Staff account or credential update'}
+                  </span>
+                </div>
               </div>
               <button
+                type="button"
                 onClick={() => setSelectedReqForApproval(null)}
-                style={{ background: 'transparent', border: 'none', fontSize: 16, fontWeight: 700, color: 'var(--text-muted)', cursor: 'pointer' }}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  background: 'var(--bg-subtle, #f1f5f9)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+                title={language === 'am' ? 'ዝጋ' : 'Close'}
               >
-                ✕
+                <X size={18} />
               </button>
             </div>
 
-            <div style={{ background: 'var(--bg-subtle)', borderRadius: 12, padding: 12, marginBottom: 14 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)' }}>
-                {selectedReqForApproval.full_name || selectedReqForApproval.username}
+            {/* Scrollable Body */}
+            <div style={{ padding: '16px 18px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ background: 'var(--bg-subtle)', borderRadius: 12, padding: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)' }}>
+                  {selectedReqForApproval.full_name || selectedReqForApproval.username}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  @{selectedReqForApproval.username} • Role: {selectedReqForApproval.role?.toUpperCase()}
+                </div>
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                @{selectedReqForApproval.username} • Role: {selectedReqForApproval.role?.toUpperCase()}
-              </div>
-            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {/* If password requested or changed */}
               {(selectedReqForApproval.request_type === 'FORGOT_PASSWORD' || 
                 selectedReqForApproval.request_type === 'PASSWORD_CHANGE' || 
@@ -2373,30 +2646,31 @@ export const AdminView: React.FC = () => {
                   style={{ width: '100%' }}
                 />
               </div>
+            </div>
 
-              <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-                <button
-                  type="button"
-                  onClick={() => setSelectedReqForApproval(null)}
-                  disabled={isProcessingAction}
-                  className="btn btn-secondary"
-                  style={{ flex: 1, height: 42 }}
-                >
-                  {language === 'am' ? 'ተመለስ' : 'Cancel'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleApproveRequest}
-                  disabled={isProcessingAction}
-                  className="btn btn-success"
-                  style={{ flex: 2, height: 42, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                >
-                  <CheckCircle size={16} />
-                  {isProcessingAction 
-                    ? (language === 'am' ? 'በማጽደቅ ላይ...' : 'Approving...') 
-                    : (language === 'am' ? 'አረጋግጥና አጽድቅ' : 'Confirm & Apply')}
-                </button>
-              </div>
+            {/* Pinned Sticky Footer */}
+            <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => setSelectedReqForApproval(null)}
+                disabled={isProcessingAction}
+                className="btn btn-secondary"
+                style={{ flex: 1, height: 44, fontWeight: 700 }}
+              >
+                {language === 'am' ? 'ተመለስ' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={handleApproveRequest}
+                disabled={isProcessingAction}
+                className="btn btn-success"
+                style={{ flex: 2, height: 44, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                <CheckCircle size={16} />
+                {isProcessingAction 
+                  ? (language === 'am' ? 'በማጽደቅ ላይ...' : 'Approving...') 
+                  : (language === 'am' ? 'አረጋግጥና አጽድቅ' : 'Confirm & Apply')}
+              </button>
             </div>
           </div>
         </div>
@@ -2404,35 +2678,56 @@ export const AdminView: React.FC = () => {
 
       {/* MODAL: REJECT ACCOUNT / PASSWORD REQUEST */}
       {selectedReqForRejection && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 100 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 22, width: '100%', maxWidth: 440, maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-floating)' }} className="animate-fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 34, height: 34, borderRadius: 17, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, zIndex: 1100 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 20, width: '100%', maxWidth: 460, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))' }} className="animate-fade-in">
+            {/* Pinned Header */}
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', flexShrink: 0 }}>
                   <UserX size={18} />
                 </div>
-                <h3 style={{ fontSize: 16, fontWeight: 900, margin: 0, color: '#dc2626' }}>
-                  {language === 'am' ? 'ጥያቄውን ውድቅ አድርግ' : 'Reject Account Request'}
-                </h3>
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: '#dc2626' }}>
+                    {language === 'am' ? 'ጥያቄውን ውድቅ አድርግ' : 'Reject Account Request'}
+                  </h3>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {language === 'am' ? 'ውድቅ የተደረገበትን ምክንያት ያስገቡ' : 'Specify rejection reason'}
+                  </span>
+                </div>
               </div>
               <button
+                type="button"
                 onClick={() => setSelectedReqForRejection(null)}
-                style={{ background: 'transparent', border: 'none', fontSize: 16, fontWeight: 700, color: 'var(--text-muted)', cursor: 'pointer' }}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  background: 'var(--bg-subtle, #f1f5f9)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+                title={language === 'am' ? 'ዝጋ' : 'Close'}
               >
-                ✕
+                <X size={18} />
               </button>
             </div>
 
-            <div style={{ background: 'var(--bg-subtle)', borderRadius: 12, padding: 12, marginBottom: 14 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)' }}>
-                {selectedReqForRejection.full_name || selectedReqForRejection.username}
+            {/* Scrollable Body */}
+            <div style={{ padding: '16px 18px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ background: 'var(--bg-subtle)', borderRadius: 12, padding: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)' }}>
+                  {selectedReqForRejection.full_name || selectedReqForRejection.username}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  @{selectedReqForRejection.username} • Role: {selectedReqForRejection.role?.toUpperCase()}
+                </div>
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                @{selectedReqForRejection.username} • Role: {selectedReqForRejection.role?.toUpperCase()}
-              </div>
-            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
                   {language === 'am' ? 'ውድቅ የተደረገበት ምክንያት (Reason for Rejection)' : 'Reason for Rejection *'}
@@ -2446,30 +2741,31 @@ export const AdminView: React.FC = () => {
                   style={{ width: '100%' }}
                 />
               </div>
+            </div>
 
-              <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-                <button
-                  type="button"
-                  onClick={() => setSelectedReqForRejection(null)}
-                  disabled={isProcessingAction}
-                  className="btn btn-secondary"
-                  style={{ flex: 1, height: 42 }}
-                >
-                  {language === 'am' ? 'ተመለስ' : 'Cancel'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleRejectRequest}
-                  disabled={isProcessingAction}
-                  className="btn btn-danger"
-                  style={{ flex: 2, height: 42, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                >
-                  <XCircle size={16} />
-                  {isProcessingAction 
-                    ? (language === 'am' ? 'በማስወገድ ላይ...' : 'Rejecting...') 
-                    : (language === 'am' ? 'ውድቅ አድርግ' : 'Confirm Rejection')}
-                </button>
-              </div>
+            {/* Pinned Sticky Footer */}
+            <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => setSelectedReqForRejection(null)}
+                disabled={isProcessingAction}
+                className="btn btn-secondary"
+                style={{ flex: 1, height: 44, fontWeight: 700 }}
+              >
+                {language === 'am' ? 'ተመለስ' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={handleRejectRequest}
+                disabled={isProcessingAction}
+                className="btn btn-danger"
+                style={{ flex: 2, height: 44, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                <XCircle size={16} />
+                {isProcessingAction 
+                  ? (language === 'am' ? 'በማስወገድ ላይ...' : 'Rejecting...') 
+                  : (language === 'am' ? 'ውድቅ አድርግ' : 'Confirm Rejection')}
+              </button>
             </div>
           </div>
         </div>
@@ -2477,84 +2773,108 @@ export const AdminView: React.FC = () => {
 
       {/* MODAL: DIRECT STAFF PASSWORD RESET */}
       {directResetTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 100 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 22, width: '100%', maxWidth: 440, maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-floating)' }} className="animate-fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 34, height: 34, borderRadius: 17, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, zIndex: 1100 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 20, width: '100%', maxWidth: 460, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))' }} className="animate-fade-in">
+            {/* Pinned Header */}
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706', flexShrink: 0 }}>
                   <Key size={18} />
                 </div>
-                <h3 style={{ fontSize: 16, fontWeight: 900, margin: 0, color: 'var(--text-main)' }}>
-                  {language === 'am' ? 'የሰራተኛ የይለፍ ቃል ቀጥታ መቀየሪያ' : 'Direct Staff Password Reset'}
-                </h3>
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                    {language === 'am' ? 'የሰራተኛ የይለፍ ቃል ቀጥታ መቀየሪያ' : 'Direct Staff Password Reset'}
+                  </h3>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {language === 'am' ? 'አዲስ የይለፍ ቃል ያዘጋጁ' : 'Set new password & unlock account'}
+                  </span>
+                </div>
               </div>
               <button
+                type="button"
                 onClick={() => setDirectResetTarget(null)}
-                style={{ background: 'transparent', border: 'none', fontSize: 16, fontWeight: 700, color: 'var(--text-muted)', cursor: 'pointer' }}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  background: 'var(--bg-subtle, #f1f5f9)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+                title={language === 'am' ? 'ዝጋ' : 'Close'}
               >
-                ✕
+                <X size={18} />
               </button>
             </div>
 
-            <div style={{ background: 'var(--bg-subtle)', borderRadius: 12, padding: 12, marginBottom: 14 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)' }}>
-                {directResetTarget.full_name || directResetTarget.username}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                @{directResetTarget.username} • Role: {directResetTarget.role?.toUpperCase()}
-              </div>
-            </div>
+            <form onSubmit={handleDirectPasswordReset} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, margin: 0 }}>
+              {/* Scrollable Body */}
+              <div style={{ padding: '16px 18px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ background: 'var(--bg-subtle)', borderRadius: 12, padding: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)' }}>
+                    {directResetTarget.full_name || directResetTarget.username}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    @{directResetTarget.username} • Role: {directResetTarget.role?.toUpperCase()}
+                  </div>
+                </div>
 
-            <form onSubmit={handleDirectPasswordReset} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-                  {language === 'am' ? 'አዲስ የይለፍ ቃል (New Password)' : 'New Password * (min 6 characters)'}
-                </label>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Bakery#2026"
-                    value={directResetPassword}
-                    onChange={e => setDirectResetPassword(e.target.value)}
-                    style={{ flex: 1, fontFamily: 'monospace' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const randomPass = 'Staff' + Math.floor(100000 + Math.random() * 900000);
-                      setDirectResetPassword(randomPass);
-                    }}
-                    style={{
-                      background: 'var(--bg-subtle)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 8,
-                      padding: '0 10px',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap'
-                    }}
-                    title="Generate a quick temporary password"
-                  >
-                    🎲 Auto
-                  </button>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                    {language === 'am' ? 'አዲስ የይለፍ ቃል (New Password)' : 'New Password * (min 6 characters)'}
+                  </label>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Bakery#2026"
+                      value={directResetPassword}
+                      onChange={e => setDirectResetPassword(e.target.value)}
+                      style={{ flex: 1, fontFamily: 'monospace' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const randomPass = 'Staff' + Math.floor(100000 + Math.random() * 900000);
+                        setDirectResetPassword(randomPass);
+                      }}
+                      style={{
+                        background: 'var(--bg-subtle)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 8,
+                        padding: '0 10px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
+                      }}
+                      title="Generate a quick temporary password"
+                    >
+                      🎲 Auto
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: 8, fontSize: 11, color: '#166534' }}>
+                  💡 {language === 'am'
+                    ? 'ይህ እርምጃ ወዲያውኑ የይለፍ ቃሉን ይቀይራል እንዲሁም የተቆለፈ አካውንት ካለ ይከፍታል።'
+                    : 'This directly resets password and immediately unlocks account if locked.'}
                 </div>
               </div>
 
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: 8, fontSize: 11, color: '#166534' }}>
-                💡 {language === 'am'
-                  ? 'ይህ እርምጃ ወዲያውኑ የይለፍ ቃሉን ይቀይራል እንዲሁም የተቆለፈ አካውንት ካለ ይከፍታል።'
-                  : 'This directly resets password and immediately unlocks account if locked.'}
-              </div>
-
-              <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+              {/* Pinned Sticky Footer */}
+              <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
                 <button
                   type="button"
                   onClick={() => setDirectResetTarget(null)}
                   disabled={isDirectResetting}
                   className="btn btn-secondary"
-                  style={{ flex: 1, height: 42 }}
+                  style={{ flex: 1, height: 44, fontWeight: 700 }}
                 >
                   {language === 'am' ? 'ተመለስ' : 'Cancel'}
                 </button>
@@ -2562,7 +2882,7 @@ export const AdminView: React.FC = () => {
                   type="submit"
                   disabled={isDirectResetting || directResetPassword.trim().length < 6}
                   className="btn btn-primary"
-                  style={{ flex: 2, height: 42, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  style={{ flex: 2, height: 44, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                 >
                   <Key size={15} />
                   {isDirectResetting 

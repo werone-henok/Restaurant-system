@@ -816,114 +816,148 @@ export const ChefView: React.FC = () => {
 
       {/* Modal: Create Dish (Chef) */}
       {showDishModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 90 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 20, width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--border)' }} className="animate-fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
-                {language === 'am' ? 'አዲስ ምግብ መመዝገቢያ' : 'Add New Menu Dish'}
-              </h3>
-              <button onClick={() => setShowDishModal(false)} style={{ background: 'none', border: 'none', fontSize: 16, fontWeight: 700, color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, zIndex: 1100 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 20, width: '100%', maxWidth: 480, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))' }} className="animate-fade-in">
+            {/* Pinned Header */}
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Utensils size={18} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                    {language === 'am' ? 'አዲስ ምግብ መመዝገቢያ' : 'Add New Menu Dish'}
+                  </h3>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {language === 'am' ? 'የምግብ ዋጋና ዝርዝር መረጃዎችን ያስገቡ' : 'Dish pricing, routing & photo'}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDishModal(false)}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  background: 'var(--bg-subtle, #f1f5f9)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+                title={language === 'am' ? 'ዝጋ' : 'Close'}
+              >
+                ✕
+              </button>
             </div>
 
-            <form onSubmit={handleSaveDish} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-                  {language === 'am' ? 'የምግብ ስም (እንግሊዝኛ) *' : 'Dish Name (English) *'}
-                </label>
-                <input type="text" required placeholder="e.g. Special Doro Wat" value={dishName} onChange={e => setDishName(e.target.value)} style={{ width: '100%' }} />
-              </div>
-
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-                  {language === 'am' ? 'የምግብ ስም (አማርኛ - አማራጭ)' : 'Dish Name (Amharic - Optional)'}
-                </label>
-                <input type="text" placeholder="e.g. ልዩ የዶሮ ወጥ" value={dishNameAmharic} onChange={e => setDishNameAmharic(e.target.value)} style={{ width: '100%' }} />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <form onSubmit={handleSaveDish} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, margin: 0 }}>
+              {/* Scrollable Body */}
+              <div style={{ padding: '16px 18px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>
-                      {language === 'am' ? 'ምድብ' : 'Category'}
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowCategoryModal(true)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--primary)',
-                        fontSize: 11,
-                        fontWeight: 800,
-                        cursor: 'pointer',
-                        padding: 0
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                    {language === 'am' ? 'የምግብ ስም (እንግሊዝኛ) *' : 'Dish Name (English) *'}
+                  </label>
+                  <input type="text" required placeholder="e.g. Special Doro Wat" value={dishName} onChange={e => setDishName(e.target.value)} style={{ width: '100%' }} />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                    {language === 'am' ? 'የምግብ ስም (አማርኛ - አማራጭ)' : 'Dish Name (Amharic - Optional)'}
+                  </label>
+                  <input type="text" placeholder="e.g. ልዩ የዶሮ ወጥ" value={dishNameAmharic} onChange={e => setDishNameAmharic(e.target.value)} style={{ width: '100%' }} />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>
+                        {language === 'am' ? 'ምድብ' : 'Category'}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowCategoryModal(true)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--primary)',
+                          fontSize: 11,
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          padding: 0
+                        }}
+                      >
+                        + {language === 'am' ? 'አዲስ ምድብ' : 'New'}
+                      </button>
+                    </div>
+                    <select
+                      value={dishCategory}
+                      onChange={e => {
+                        if (e.target.value === '__NEW__') {
+                          setShowCategoryModal(true);
+                        } else {
+                          setDishCategory(e.target.value);
+                        }
                       }}
+                      style={{ width: '100%' }}
                     >
-                      + {language === 'am' ? 'አዲስ ምድብ' : 'New'}
-                    </button>
+                      {categories.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.icon ? `${c.icon} ` : ''}{c.name} {c.name_amharic ? `(${c.name_amharic})` : ''}
+                        </option>
+                      ))}
+                      <option value="__NEW__">+ {language === 'am' ? 'አዲስ ምድብ ፍጠር...' : 'Create New Category...'}</option>
+                    </select>
                   </div>
-                  <select
-                    value={dishCategory}
-                    onChange={e => {
-                      if (e.target.value === '__NEW__') {
-                        setShowCategoryModal(true);
-                      } else {
-                        setDishCategory(e.target.value);
-                      }
-                    }}
-                    style={{ width: '100%' }}
-                  >
-                    {categories.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.icon ? `${c.icon} ` : ''}{c.name} {c.name_amharic ? `(${c.name_amharic})` : ''}
-                      </option>
-                    ))}
-                    <option value="__NEW__">+ {language === 'am' ? 'አዲስ ምድብ ፍጠር...' : 'Create New Category...'}</option>
-                  </select>
+
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                      {language === 'am' ? `ዋጋ (${t('currency')})` : `Price (${t('currency')})`}
+                    </label>
+                    <input type="number" min="0" step="0.5" required value={dishPrice} onChange={e => setDishPrice(Number(e.target.value))} style={{ width: '100%' }} />
+                  </div>
                 </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                      {language === 'am' ? 'የማብሰያ ጣቢያ' : 'Station Routing'}
+                    </label>
+                    <select value={dishRouting} onChange={e => setDishRouting(e.target.value as any)} style={{ width: '100%' }}>
+                      <option value="KITCHEN">🍳 KITCHEN (ወጥ ቤት)</option>
+                      <option value="BAR">☕ BAR (መጠጥ ማዘጋጃ)</option>
+                      <option value="BOTH">⚡ BOTH (ሁለቱም)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                      {language === 'am' ? 'የማብሰያ ጊዜ (ደቂቃ)' : 'Prep Time (Mins)'}
+                    </label>
+                    <input type="number" min="1" max="180" value={dishPrepMinutes} onChange={e => setDishPrepMinutes(Number(e.target.value))} style={{ width: '100%' }} />
+                  </div>
+                </div>
+
+                <ImageUploadCompressor
+                  value={dishPhoto}
+                  onChange={setDishPhoto}
+                  label={language === 'am' ? 'የምግብ ፎቶ' : 'Dish Photo'}
+                />
 
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-                    {language === 'am' ? `ዋጋ (${t('currency')})` : `Price (${t('currency')})`}
+                    {language === 'am' ? 'የአዘገጃጀት ማስታወሻ / መግለጫ' : 'Recipe Notes & Description'}
                   </label>
-                  <input type="number" min="0" step="0.5" required value={dishPrice} onChange={e => setDishPrice(Number(e.target.value))} style={{ width: '100%' }} />
+                  <textarea rows={2} placeholder="Ingredients, prep instructions, allergens..." value={dishDesc} onChange={e => setDishDesc(e.target.value)} style={{ width: '100%' }} />
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-                    {language === 'am' ? 'የማብሰያ ጣቢያ' : 'Station Routing'}
-                  </label>
-                  <select value={dishRouting} onChange={e => setDishRouting(e.target.value as any)} style={{ width: '100%' }}>
-                    <option value="KITCHEN">🍳 KITCHEN (ወጥ ቤት)</option>
-                    <option value="BAR">☕ BAR (መጠጥ ማዘጋጃ)</option>
-                    <option value="BOTH">⚡ BOTH (ሁለቱም)</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-                    {language === 'am' ? 'የማብሰያ ጊዜ (ደቂቃ)' : 'Prep Time (Mins)'}
-                  </label>
-                  <input type="number" min="1" max="180" value={dishPrepMinutes} onChange={e => setDishPrepMinutes(Number(e.target.value))} style={{ width: '100%' }} />
-                </div>
-              </div>
-
-              <ImageUploadCompressor
-                value={dishPhoto}
-                onChange={setDishPhoto}
-                label={language === 'am' ? 'የምግብ ፎቶ' : 'Dish Photo'}
-              />
-
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-                  {language === 'am' ? 'የአዘገጃጀት ማስታወሻ / መግለጫ' : 'Recipe Notes & Description'}
-                </label>
-                <textarea rows={2} placeholder="Ingredients, prep instructions, allergens..." value={dishDesc} onChange={e => setDishDesc(e.target.value)} style={{ width: '100%' }} />
-              </div>
-
-              <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-                <button type="button" onClick={() => setShowDishModal(false)} className="btn btn-secondary" style={{ flex: 1, height: 44 }}>
+              {/* Pinned Sticky Footer */}
+              <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+                <button type="button" onClick={() => setShowDishModal(false)} className="btn btn-secondary" style={{ flex: 1, height: 44, fontWeight: 700 }}>
                   {language === 'am' ? 'ሰርዝ' : 'Cancel'}
                 </button>
                 <button type="submit" disabled={savingDish} className="btn btn-primary" style={{ flex: 2, height: 44, fontWeight: 800 }}>

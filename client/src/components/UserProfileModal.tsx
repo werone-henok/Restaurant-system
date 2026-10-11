@@ -203,13 +203,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.6)',
+        background: 'rgba(0,0,0,0.65)',
         backdropFilter: 'blur(4px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 100,
-        padding: 16
+        zIndex: 1100,
+        padding: 12
       }}
     >
       <input
@@ -225,187 +225,201 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
           background: 'var(--bg-card)',
           width: '100%',
           maxWidth: 520,
-          borderRadius: 24,
-          padding: 24,
-          boxShadow: 'var(--shadow-floating)',
-          maxHeight: '90vh',
-          overflowY: 'auto'
+          borderRadius: 20,
+          boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))',
+          maxHeight: 'min(92vh, calc(100dvh - 24px))',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          border: '1px solid var(--border)'
         }}
         className="animate-fade-in"
       >
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ position: 'relative', width: 48, height: 48, flexShrink: 0 }}>
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                title="ፎቶ ቀይር (Click to upload photo)"
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: '50%',
-                  background: 'var(--primary-light)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--primary)',
-                  fontWeight: 900,
-                  fontSize: 18,
-                  overflow: 'hidden',
-                  cursor: 'pointer',
-                  border: '2px solid var(--primary)',
-                  boxShadow: 'var(--shadow-sm)'
-                }}
-              >
-                {user.profile_photo ? (
-                  <img src={resolveImageUrl(user.profile_photo)} alt={user.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  user.full_name.charAt(0).toUpperCase()
-                )}
+        {/* Pinned Sticky Header + Tabs */}
+        <div style={{ padding: '16px 18px 12px 18px', borderBottom: '1px solid var(--border)', background: 'var(--bg-card)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ position: 'relative', width: 44, height: 44, flexShrink: 0 }}>
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  title="ፎቶ ቀይር (Click to upload photo)"
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: '50%',
+                    background: 'var(--primary-light)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--primary)',
+                    fontWeight: 900,
+                    fontSize: 17,
+                    overflow: 'hidden',
+                    cursor: 'pointer',
+                    border: '2px solid var(--primary)',
+                    boxShadow: 'var(--shadow-sm)'
+                  }}
+                >
+                  {user.profile_photo ? (
+                    <img src={resolveImageUrl(user.profile_photo)} alt={user.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    user.full_name.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="ፎቶ ቀይር (Upload photo)"
+                  style={{
+                    position: 'absolute',
+                    bottom: -2,
+                    right: -2,
+                    width: 20,
+                    height: 20,
+                    borderRadius: '50%',
+                    background: 'var(--primary)',
+                    color: '#ffffff',
+                    border: '2px solid var(--bg-card)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    padding: 0
+                  }}
+                >
+                  {uploadingPhoto ? <RefreshCw size={10} className="animate-spin" /> : <Camera size={10} />}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                title="ፎቶ ቀይር (Upload photo)"
-                style={{
-                  position: 'absolute',
-                  bottom: -2,
-                  right: -2,
-                  width: 22,
-                  height: 22,
-                  borderRadius: '50%',
-                  background: 'var(--primary)',
-                  color: '#ffffff',
-                  border: '2px solid var(--bg-card)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  padding: 0
-                }}
-              >
-                {uploadingPhoto ? <RefreshCw size={11} className="animate-spin" /> : <Camera size={11} />}
-              </button>
+              <div>
+                <h3 style={{ fontSize: 16, fontWeight: 900, margin: 0, color: 'var(--text-main)' }}>
+                  {user.full_name}
+                </h3>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  @{user.username} • <strong style={{ color: 'var(--primary)', textTransform: 'uppercase' }}>{user.role}</strong>
+                </span>
+              </div>
             </div>
-            <div>
-              <h3 style={{ fontSize: 17, fontWeight: 900, margin: 0, color: 'var(--text-main)' }}>
-                {user.full_name}
-              </h3>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                @{user.username} • <strong style={{ color: 'var(--primary)', textTransform: 'uppercase' }}>{user.role}</strong>
-              </span>
-            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: '50%',
+                background: 'var(--bg-subtle, #f1f5f9)',
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-main)',
+                cursor: 'pointer',
+                padding: 0
+              }}
+              title="ዝጋ (Close)"
+            >
+              <X size={18} />
+            </button>
           </div>
 
-          <button
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              padding: 4
-            }}
-          >
-            <X size={20} />
-          </button>
+          {/* 3 Nav Tabs */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            <button
+              onClick={() => {
+                tactileFeedback('click');
+                setActiveTab('profile');
+              }}
+              style={{
+                padding: '9px 4px',
+                borderRadius: 12,
+                border: 'none',
+                background: activeTab === 'profile' ? 'var(--primary)' : 'var(--bg-app)',
+                color: activeTab === 'profile' ? '#ffffff' : 'var(--text-main)',
+                fontSize: 12,
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 4
+              }}
+            >
+              <User size={14} /> መገለጫ (Profile)
+            </button>
+
+            <button
+              onClick={() => {
+                tactileFeedback('click');
+                setActiveTab('requestChange');
+              }}
+              style={{
+                padding: '9px 4px',
+                borderRadius: 12,
+                border: 'none',
+                background: activeTab === 'requestChange' ? 'var(--primary)' : 'var(--bg-app)',
+                color: activeTab === 'requestChange' ? '#ffffff' : 'var(--text-main)',
+                fontSize: 12,
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 4
+              }}
+            >
+              <Edit3 size={14} /> ለውጥ ጠይቅ (Request)
+            </button>
+
+            <button
+              onClick={() => {
+                tactileFeedback('click');
+                setActiveTab('myRequests');
+                loadMyRequests();
+              }}
+              style={{
+                position: 'relative',
+                padding: '9px 4px',
+                borderRadius: 12,
+                border: 'none',
+                background: activeTab === 'myRequests' ? 'var(--primary)' : 'var(--bg-app)',
+                color: activeTab === 'myRequests' ? '#ffffff' : 'var(--text-main)',
+                fontSize: 12,
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 4
+              }}
+            >
+              <Clock size={14} /> ሁኔታ (Status)
+              {pendingCount > 0 && (
+                <span
+                  style={{
+                    background: '#ef4444',
+                    color: '#ffffff',
+                    fontSize: 10,
+                    fontWeight: 900,
+                    width: 18,
+                    height: 18,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {pendingCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* 3 Nav Tabs */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 18 }}>
-          <button
-            onClick={() => {
-              tactileFeedback('click');
-              setActiveTab('profile');
-            }}
-            style={{
-              padding: '10px 4px',
-              borderRadius: 12,
-              border: 'none',
-              background: activeTab === 'profile' ? 'var(--primary)' : 'var(--bg-app)',
-              color: activeTab === 'profile' ? '#ffffff' : 'var(--text-main)',
-              fontSize: 12,
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4
-            }}
-          >
-            <User size={14} /> መገለጫ (Profile)
-          </button>
-
-          <button
-            onClick={() => {
-              tactileFeedback('click');
-              setActiveTab('requestChange');
-            }}
-            style={{
-              padding: '10px 4px',
-              borderRadius: 12,
-              border: 'none',
-              background: activeTab === 'requestChange' ? 'var(--primary)' : 'var(--bg-app)',
-              color: activeTab === 'requestChange' ? '#ffffff' : 'var(--text-main)',
-              fontSize: 12,
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4
-            }}
-          >
-            <Edit3 size={14} /> ለውጥ ጠይቅ (Request)
-          </button>
-
-          <button
-            onClick={() => {
-              tactileFeedback('click');
-              setActiveTab('myRequests');
-              loadMyRequests();
-            }}
-            style={{
-              position: 'relative',
-              padding: '10px 4px',
-              borderRadius: 12,
-              border: 'none',
-              background: activeTab === 'myRequests' ? 'var(--primary)' : 'var(--bg-app)',
-              color: activeTab === 'myRequests' ? '#ffffff' : 'var(--text-main)',
-              fontSize: 12,
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4
-            }}
-          >
-            <Clock size={14} /> ሁኔታ (Status)
-            {pendingCount > 0 && (
-              <span
-                style={{
-                  background: '#ef4444',
-                  color: '#ffffff',
-                  fontSize: 10,
-                  fontWeight: 900,
-                  width: 18,
-                  height: 18,
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                {pendingCount}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* TAB 1: PROFILE INFO & SIGN OUT */}
-        {activeTab === 'profile' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* Scrollable Tab Content Body */}
+        <div style={{ padding: '16px 18px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
+          {/* TAB 1: PROFILE INFO & SIGN OUT */}
+          {activeTab === 'profile' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {/* Profile Photo Uploader Card */}
             <div
               style={{
@@ -778,6 +792,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

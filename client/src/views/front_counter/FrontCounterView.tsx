@@ -2055,8 +2055,8 @@ export const FrontCounterView: React.FC = () => {
       {/* MODAL 1: 1-TAP REORDER REQUEST STEPPER TO BAKERY                          */}
       {/* ========================================================================= */}
       {requestTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
-          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 440, borderRadius: 24, padding: 26, textAlign: 'center', boxShadow: 'var(--shadow-floating)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 12 }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 440, borderRadius: 20, padding: 24, textAlign: 'center', maxHeight: 'min(92vh, calc(100dvh - 24px))', overflowY: 'auto', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)' }}>
             <img
               src={getCakePhoto(requestTarget)}
               alt=""
@@ -2162,8 +2162,8 @@ export const FrontCounterView: React.FC = () => {
       {/* MODAL 2: REJECT TRANSFER REASON PICKER                                    */}
       {/* ========================================================================= */}
       {rejectTransferTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 400, borderRadius: 24, padding: 22, boxShadow: 'var(--shadow-floating)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 12 }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 400, borderRadius: 20, padding: 22, maxHeight: 'min(92vh, calc(100dvh - 24px))', overflowY: 'auto', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)' }}>
             <h3 style={{ fontSize: 17, fontWeight: 900, margin: '0 0 14px', color: '#991b1b' }}>
               ❌ ኬኩን ያልተቀበሉበት ምክንያት
             </h3>
@@ -2216,21 +2216,42 @@ export const FrontCounterView: React.FC = () => {
       {/* MODAL 3: CREATE COMPLETE CAKE MENU ITEM (BAKERY, ADMIN, OWNER)            */}
       {/* ========================================================================= */}
       {showAddCakeModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110, padding: 20 }}>
-          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 540, borderRadius: 24, padding: 26, boxShadow: 'var(--shadow-floating)', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1150, padding: 12 }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 540, borderRadius: 20, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)' }} className="animate-fade-in">
+            {/* Pinned Sticky Header */}
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
               <div>
-                <h3 style={{ fontSize: 20, fontWeight: 900, margin: 0, color: 'var(--text-main)' }}>
+                <h3 style={{ fontSize: 17, fontWeight: 900, margin: 0, color: 'var(--text-main)' }}>
                   🎂 አዲስ ኬክ ወደ ምናሌ መዝግብ
                 </h3>
-                <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
                   የተመዘገበው ኬክ በካሺየር POS እና በካውንተር ማሳያ ላይ ይታያል
                 </p>
               </div>
-              <button onClick={() => setShowAddCakeModal(false)} style={{ background: 'none', border: 'none', fontSize: 22, color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
+              <button
+                type="button"
+                onClick={() => setShowAddCakeModal(false)}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  background: 'var(--bg-subtle, #f1f5f9)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+                title="ዝጋ (Close)"
+              >
+                ✕
+              </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Scrollable Form Body */}
+            <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
               {/* Product Names */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
@@ -2349,35 +2370,39 @@ export const FrontCounterView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-                <button
-                  type="button"
-                  onClick={() => setShowAddCakeModal(false)}
-                  style={{ flex: 1, padding: 14, borderRadius: 14, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}
-                >
-                  ተመለስ
-                </button>
-                <button
-                  type="button"
-                  disabled={isCreatingCake}
-                  onClick={handleCreateCake}
-                  style={{
-                    flex: 2,
-                    padding: 14,
-                    borderRadius: 14,
-                    background: 'linear-gradient(135deg, #db2777 0%, #be185d 100%)',
-                    color: '#ffffff',
-                    border: 'none',
-                    fontSize: 15,
-                    fontWeight: 900,
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(219, 39, 119, 0.3)'
-                  }}
-                >
-                  {isCreatingCake ? 'እየመዘገበ ነው...' : '✅ ኬኩን መዝግብ'}
-                </button>
-              </div>
+            </div>
+
+            {/* Pinned Sticky Footer */}
+            <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => setShowAddCakeModal(false)}
+                style={{ flex: 1, height: 44, padding: '0 16px', borderRadius: 12, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}
+              >
+                ተመለስ
+              </button>
+              <button
+                type="button"
+                disabled={isCreatingCake}
+                onClick={handleCreateCake}
+                style={{
+                  flex: 2,
+                  height: 44,
+                  borderRadius: 12,
+                  background: 'linear-gradient(135deg, #db2777 0%, #be185d 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontSize: 15,
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(219, 39, 119, 0.3)'
+                }}
+              >
+                {isCreatingCake ? 'እየመዘገበ ነው...' : '✅ ኬኩን መዝግብ'}
+              </button>
             </div>
           </div>
         </div>
@@ -2387,8 +2412,8 @@ export const FrontCounterView: React.FC = () => {
       {/* MODAL 4: DELETE CONFIRMATION (ADMIN & OWNER ONLY)                         */}
       {/* ========================================================================= */}
       {cakeToDelete && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 120, padding: 20 }}>
-          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 420, borderRadius: 24, padding: 26, textAlign: 'center', boxShadow: 'var(--shadow-floating)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 12 }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 420, borderRadius: 20, padding: 24, textAlign: 'center', maxHeight: 'min(92vh, calc(100dvh - 24px))', overflowY: 'auto', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)' }}>
             <div style={{ width: 64, height: 64, borderRadius: 20, background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 32 }}>
               <AlertTriangle size={36} />
             </div>

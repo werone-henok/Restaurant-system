@@ -921,11 +921,12 @@ export const CashierView: React.FC = () => {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0,0,0,0.5)',
+          background: 'rgba(0,0,0,0.65)',
+          backdropFilter: 'blur(4px)',
           display: 'flex',
           alignItems: 'flex-end',
           justifyContent: 'center',
-          zIndex: 50
+          zIndex: 1100
         }}>
           <div style={{
             background: '#ffffff',
@@ -934,7 +935,7 @@ export const CashierView: React.FC = () => {
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
             padding: 20,
-            maxHeight: '90vh',
+            maxHeight: 'min(92vh, calc(100dvh - 24px))',
             overflowY: 'auto'
           }} className="animate-fade-in">
             {renderSettlementPanel()}
@@ -947,12 +948,13 @@ export const CashierView: React.FC = () => {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0,0,0,0.6)',
+          background: 'rgba(0,0,0,0.65)',
+          backdropFilter: 'blur(4px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           padding: 16,
-          zIndex: 60
+          zIndex: 1150
         }}>
           <div style={{
             background: '#ffffff',

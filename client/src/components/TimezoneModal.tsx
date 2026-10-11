@@ -66,33 +66,50 @@ export const TimezoneModal: React.FC<TimezoneModalProps> = ({ isOpen, onClose })
     <div style={{
       position: 'fixed',
       inset: 0,
-      background: 'rgba(0,0,0,0.5)',
+      background: 'rgba(0,0,0,0.65)',
+      backdropFilter: 'blur(4px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: 16,
-      zIndex: 100
+      padding: 12,
+      zIndex: 1100
     }}>
       <div 
         className="animate-fade-in"
         style={{
           background: 'var(--bg-card)',
           border: '1px solid var(--border)',
-          borderRadius: 16,
+          borderRadius: 20,
           padding: 20,
           width: '100%',
           maxWidth: 420,
-          boxShadow: 'var(--shadow-lg)'
+          maxHeight: 'min(92vh, calc(100dvh - 24px))',
+          overflowY: 'auto',
+          boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))'
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-main)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-main)' }}>
             <Clock size={18} color="var(--primary)" />
             {language === 'am' ? 'የሰዓት ሰቅ ምርጫ (Timezone)' : 'Timezone & Clock Adjustment'}
           </h3>
           <button 
+            type="button"
             onClick={onClose}
-            style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              background: 'var(--bg-subtle, #f1f5f9)',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--text-main)',
+              cursor: 'pointer',
+              padding: 0
+            }}
+            title="Close"
           >
             ✕
           </button>
