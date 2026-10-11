@@ -11,6 +11,8 @@ import { CreateCategoryModal } from '../../components/CreateCategoryModal';
 import { TIMEZONE_OPTIONS, getDeviceTimezone } from '../../utils/timezone';
 import { gToast } from '../../utils/toast';
 import { tactileFeedback } from '../../utils/feedback';
+import { ModalPortal } from '../../components/ModalPortal';
+import { AiAssistantModal } from '../../components/AiAssistantModal';
 
 export const AdminView: React.FC = () => {
   const { 
@@ -24,6 +26,7 @@ export const AdminView: React.FC = () => {
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [tables, setTables] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
 
   // Menu Management State
   const [menuItems, setMenuItems] = useState<any[]>([]);
@@ -702,6 +705,39 @@ export const AdminView: React.FC = () => {
 
   return (
     <div className="view-body animate-fade-in">
+      {/* Top Admin Action Bar: AI Business Intelligence Copilot */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+        <button
+          type="button"
+          onClick={() => {
+            tactileFeedback('click');
+            setShowAiModal(true);
+          }}
+          style={{
+            background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%)',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: 12,
+            padding: '8px 16px',
+            fontSize: 13,
+            fontWeight: 900,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            boxShadow: '0 4px 14px rgba(124, 58, 237, 0.35)',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <Sparkles size={16} color="#fef08a" />
+          <span>{language === 'am' ? '✨ የስራ አስኪያጅ AI አማካሪ (AI Copilot)' : '✨ AI Business Copilot'}</span>
+        </button>
+
+        <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 700 }}>
+          {language === 'am' ? 'የቀጥታ ሽያጭ፣ የኩሽና እና የጥሬ ዕቃ ትንተና' : 'Live analytics, inventory risks & executive advice'}
+        </span>
+      </div>
+
       {/* Tab Navigation */}
       <div style={{ display: 'flex', background: 'var(--bg-subtle)', borderRadius: 10, padding: 4, marginBottom: 16, overflowX: 'auto' }}>
         <button
@@ -2022,7 +2058,8 @@ export const AdminView: React.FC = () => {
 
       {/* MODAL: ADD STAFF */}
       {showStaffModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, zIndex: 1100 }}>
+        <ModalPortal>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, boxSizing: 'border-box', zIndex: 100000 }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: 20, width: '100%', maxWidth: 480, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))' }} className="animate-fade-in">
             {/* Pinned Sticky Header */}
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
@@ -2153,11 +2190,13 @@ export const AdminView: React.FC = () => {
             </form>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* MODAL: CREATE / EDIT BRANCH */}
       {showBranchModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, zIndex: 1100 }}>
+        <ModalPortal>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, boxSizing: 'border-box', zIndex: 100000 }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: 20, width: '100%', maxWidth: 460, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))' }} className="animate-fade-in">
             {/* Pinned Sticky Header */}
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
@@ -2258,11 +2297,13 @@ export const AdminView: React.FC = () => {
             </form>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* MODAL: CREATE / EDIT TABLE & SECTION */}
       {showTableModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, zIndex: 1100 }}>
+        <ModalPortal>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, boxSizing: 'border-box', zIndex: 100000 }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: 20, width: '100%', maxWidth: 460, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))' }} className="animate-fade-in">
             {/* Pinned Sticky Header */}
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
@@ -2387,11 +2428,13 @@ export const AdminView: React.FC = () => {
             </form>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* MODAL: CREATE / EDIT MENU ITEM */}
       {showMenuModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, zIndex: 1100 }}>
+        <ModalPortal>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, boxSizing: 'border-box', zIndex: 100000 }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: 20, width: '100%', maxWidth: 480, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))' }} className="animate-fade-in">
             {/* Pinned Sticky Header */}
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
@@ -2559,11 +2602,13 @@ export const AdminView: React.FC = () => {
             </form>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* MODAL: APPROVE ACCOUNT / PASSWORD REQUEST */}
       {selectedReqForApproval && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, zIndex: 1100 }}>
+        <ModalPortal>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, boxSizing: 'border-box', zIndex: 100000 }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: 20, width: '100%', maxWidth: 460, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))' }} className="animate-fade-in">
             {/* Pinned Header */}
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
@@ -2674,11 +2719,13 @@ export const AdminView: React.FC = () => {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* MODAL: REJECT ACCOUNT / PASSWORD REQUEST */}
       {selectedReqForRejection && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, zIndex: 1100 }}>
+        <ModalPortal>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, boxSizing: 'border-box', zIndex: 100000 }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: 20, width: '100%', maxWidth: 460, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))' }} className="animate-fade-in">
             {/* Pinned Header */}
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
@@ -2769,11 +2816,13 @@ export const AdminView: React.FC = () => {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* MODAL: DIRECT STAFF PASSWORD RESET */}
       {directResetTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, zIndex: 1100 }}>
+        <ModalPortal>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, boxSizing: 'border-box', zIndex: 100000 }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: 20, width: '100%', maxWidth: 460, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))' }} className="animate-fade-in">
             {/* Pinned Header */}
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
@@ -2893,6 +2942,7 @@ export const AdminView: React.FC = () => {
             </form>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* MODAL: CREATE CATEGORY */}
@@ -2910,19 +2960,18 @@ export const AdminView: React.FC = () => {
 
       {/* MODAL: CLEAN DEMO DATA CONFIRMATION (CLIENT HANDOVER) */}
       {showCleanModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.65)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: 16
-        }}>
+        <ModalPortal>
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100000,
+            padding: 16,
+            boxSizing: 'border-box'
+          }}>
           <div style={{
             background: '#ffffff',
             borderRadius: 16,
@@ -3034,7 +3083,17 @@ export const AdminView: React.FC = () => {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
+
+      {/* AI Assistant Modal for Admin */}
+      <AiAssistantModal
+        isOpen={showAiModal}
+        onClose={() => setShowAiModal(false)}
+        branchId={currentBranchId}
+        language={language}
+        userRole="admin"
+      />
     </div>
   );
 };

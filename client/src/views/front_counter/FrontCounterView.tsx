@@ -4,6 +4,7 @@ import { api } from '../../api/client';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import { tactileFeedback } from '../../utils/feedback';
 import { gToast } from '../../utils/toast';
+import { ModalPortal } from '../../components/ModalPortal';
 import { ImageUploadCompressor } from '../../components/ImageUploadCompressor';
 import {
   CheckCircle2,
@@ -2055,7 +2056,8 @@ export const FrontCounterView: React.FC = () => {
       {/* MODAL 1: 1-TAP REORDER REQUEST STEPPER TO BAKERY                          */}
       {/* ========================================================================= */}
       {requestTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 12, boxSizing: 'border-box' }}>
+        <ModalPortal>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000, padding: 12, boxSizing: 'border-box' }}>
           <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 440, borderRadius: 20, padding: 22, textAlign: 'center', maxHeight: 'min(92vh, calc(100dvh - 24px))', overflowY: 'auto', overflowX: 'hidden', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)', boxSizing: 'border-box' }}>
             <img
               src={getCakePhoto(requestTarget)}
@@ -2156,13 +2158,15 @@ export const FrontCounterView: React.FC = () => {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* ========================================================================= */}
       {/* MODAL 2: REJECT TRANSFER REASON PICKER                                    */}
       {/* ========================================================================= */}
       {rejectTransferTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 12, boxSizing: 'border-box' }}>
+        <ModalPortal>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000, padding: 12, boxSizing: 'border-box' }}>
           <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 400, borderRadius: 20, padding: 20, maxHeight: 'min(92vh, calc(100dvh - 24px))', overflowY: 'auto', overflowX: 'hidden', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)', boxSizing: 'border-box' }}>
             <h3 style={{ fontSize: 17, fontWeight: 900, margin: '0 0 14px', color: '#991b1b' }}>
               ❌ ኬኩን ያልተቀበሉበት ምክንያት
@@ -2210,13 +2214,15 @@ export const FrontCounterView: React.FC = () => {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* ========================================================================= */}
       {/* MODAL 3: CREATE COMPLETE CAKE MENU ITEM (BAKERY, ADMIN, OWNER)            */}
       {/* ========================================================================= */}
       {showAddCakeModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1150, padding: 12, boxSizing: 'border-box' }}>
+        <ModalPortal>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000, padding: 12, boxSizing: 'border-box' }}>
           <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 520, borderRadius: 20, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)', boxSizing: 'border-box' }} className="animate-fade-in">
             {/* Pinned Sticky Header */}
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0, width: '100%', boxSizing: 'border-box' }}>
@@ -2415,13 +2421,15 @@ export const FrontCounterView: React.FC = () => {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* ========================================================================= */}
       {/* MODAL 4: DELETE CONFIRMATION (ADMIN & OWNER ONLY)                         */}
       {/* ========================================================================= */}
       {cakeToDelete && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 12, boxSizing: 'border-box' }}>
+        <ModalPortal>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000, padding: 12, boxSizing: 'border-box' }}>
           <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 420, borderRadius: 20, padding: 24, textAlign: 'center', maxHeight: 'min(92vh, calc(100dvh - 24px))', overflowY: 'auto', overflowX: 'hidden', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)', boxSizing: 'border-box' }}>
             <div style={{ width: 64, height: 64, borderRadius: 20, background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 32 }}>
               <AlertTriangle size={36} />
@@ -2464,6 +2472,7 @@ export const FrontCounterView: React.FC = () => {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
     </div>
   );

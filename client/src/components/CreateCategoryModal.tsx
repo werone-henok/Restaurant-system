@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { useApp } from '../context/AppContext';
 import { gToast } from '../utils/toast';
 import { Tag, Plus, X, Sparkles, FolderPlus } from 'lucide-react';
+import { ModalPortal } from './ModalPortal';
 
 interface CreateCategoryModalProps {
   isOpen: boolean;
@@ -74,17 +75,19 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      background: 'rgba(0,0,0,0.65)',
-      backdropFilter: 'blur(4px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 12,
-      zIndex: 1200
-    }}>
+    <ModalPortal>
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.65)',
+        backdropFilter: 'blur(4px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 12,
+        boxSizing: 'border-box',
+        zIndex: 100000
+      }}>
       <div
         className="animate-fade-in"
         style={{
@@ -296,5 +299,6 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
         </form>
       </div>
     </div>
+    </ModalPortal>
   );
 };

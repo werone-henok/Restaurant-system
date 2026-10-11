@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Building2, Globe, Wifi, WifiOff, RefreshCw, Moon, Sun, Clock } from 'lucide-react';
+import { Building2, Globe, Wifi, WifiOff, RefreshCw, Moon, Sun, Clock, Sparkles } from 'lucide-react';
 import { NotificationCenter } from './NotificationCenter';
 import { TimezoneModal } from './TimezoneModal';
+import { AiAssistantModal } from './AiAssistantModal';
 import { resolveImageUrl } from '../utils/imageUrl';
 
 export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile }) => {
@@ -14,6 +15,7 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
   } = useApp();
 
   const [showTimezoneModal, setShowTimezoneModal] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
   const [clockTick, setClockTick] = useState<number>(Date.now());
 
   useEffect(() => {
@@ -159,6 +161,31 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
           {darkMode ? <Sun size={14} /> : <Moon size={14} />}
         </button>
 
+        {/* AI Assistant Quick Launcher for Admin & Owner */}
+        {user && (user.role === 'admin' || user.role === 'owner') && (
+          <button
+            onClick={() => setShowAiModal(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '3px 8px',
+              borderRadius: 8,
+              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+              border: '1px solid rgba(255,255,255,0.3)',
+              color: '#ffffff',
+              fontSize: 11,
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(124, 58, 237, 0.4)'
+            }}
+            title={language === 'am' ? 'የስራ አስኪያጅ AI አማካሪ' : 'Executive AI Copilot'}
+          >
+            <Sparkles size={12} color="#fef08a" />
+            <span>AI</span>
+          </button>
+        )}
+
         {/* System Notifications */}
         {user && <NotificationCenter />}
 
@@ -186,6 +213,17 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
         isOpen={showTimezoneModal} 
         onClose={() => setShowTimezoneModal(false)} 
       />
+
+      {/* AI Assistant Modal available from Header */}
+      {user && (user.role === 'admin' || user.role === 'owner') && (
+        <AiAssistantModal
+          isOpen={showAiModal}
+          onClose={() => setShowAiModal(false)}
+          branchId={currentBranchId}
+          language={language}
+          userRole={user.role}
+        />
+      )}
     </header>
   );
 };

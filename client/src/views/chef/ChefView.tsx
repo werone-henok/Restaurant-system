@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
-import { ChefHat, Clock, CheckCircle2, Play, Flame, RefreshCw, Wifi, WifiOff, Search, History, Eye, Utensils, FolderPlus, Plus, Tag } from 'lucide-react';
+import { ChefHat, Clock, CheckCircle2, Play, Flame, RefreshCw, Wifi, WifiOff, Search, History, Eye, Utensils, FolderPlus, Plus, Tag, Volume2 } from 'lucide-react';
 import { UniversalStatusBadge } from '../../components/UniversalStatusBadge';
 import { OrderHistoryModal } from '../../components/OrderHistoryModal';
 import { CreateCategoryModal } from '../../components/CreateCategoryModal';
@@ -10,6 +10,9 @@ import { ImageUploadCompressor } from '../../components/ImageUploadCompressor';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import { gToast } from '../../utils/toast';
 import { formatOrderTime, formatOrderDateTime } from '../../utils/timezone';
+import { ModalPortal } from '../../components/ModalPortal';
+import { SoundSettingsModal } from '../../components/SoundSettingsModal';
+import { triggerNotificationSound } from '../../utils/soundNotifier';
 
 export const ChefView: React.FC = () => {
   const { currentBranchId, t, language } = useApp();
@@ -44,6 +47,7 @@ export const ChefView: React.FC = () => {
   const [dishDesc, setDishDesc] = useState('');
   const [dishPhoto, setDishPhoto] = useState('');
   const [savingDish, setSavingDish] = useState(false);
+  const [showSoundSettings, setShowSoundSettings] = useState(false);
 
   // Stable load function reference
   const loadKitchenQueue = useCallback(() => {
@@ -105,6 +109,7 @@ export const ChefView: React.FC = () => {
           loadCallbackRef.current();
           if (event.type === 'KITCHEN_NEW_ORDER') {
             gToast.info(`🔥 New order #${event.payload?.orderNumber} arrived!`);
+            triggerNotificationSound('chef', undefined, `Order #${event.payload?.orderNumber || ''}`);
           }
         }, 300);
       }
@@ -253,6 +258,30 @@ export const ChefView: React.FC = () => {
             {isConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
             {isConnected ? (language === 'am' ? 'ዙመም' : 'Live') : (language === 'am' ? 'ውድ' : 'Offline')}
           </div>
+
+          {/* Sound Notification Settings Button */}
+          <button
+            type="button"
+            onClick={() => setShowSoundSettings(true)}
+            title={language === 'am' ? 'የድምፅ ማሳወቂያ ማስተካከያ' : 'Notification Sound Settings'}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 8,
+              border: '1.5px solid #fed7aa',
+              background: '#fff7ed',
+              color: '#ea580c',
+              fontSize: 12,
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              cursor: 'pointer',
+              boxShadow: '0 1px 3px rgba(234, 88, 12, 0.1)'
+            }}
+          >
+            <Volume2 size={15} />
+            <span>{language === 'am' ? 'የድምፅ ቅንብር' : 'Sound Alerts'}</span>
+          </button>
 
           {/* Manual Refresh Button */}
           <button
@@ -816,7 +845,8 @@ export const ChefView: React.FC = () => {
 
       {/* Modal: Create Dish (Chef) */}
       {showDishModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, zIndex: 1100 }}>
+        <ModalPortal>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, boxSizing: 'border-box', zIndex: 100000 }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: 20, width: '100%', maxWidth: 480, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))' }} className="animate-fade-in">
             {/* Pinned Header */}
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
@@ -967,6 +997,7 @@ export const ChefView: React.FC = () => {
             </form>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* Modify Order Modal */}
@@ -980,6 +1011,13 @@ export const ChefView: React.FC = () => {
           }}
         />
       )}
+      {/* Sound Notification Settings Modal */}
+      <SoundSettingsModal
+        role="chef"
+        isOpen={showSoundSettings}
+        onClose={() => setShowSoundSettings(false)}
+        language={language}
+      />
     </div>
   );
 };

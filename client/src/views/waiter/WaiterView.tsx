@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
-import { Plus, Minus, Send, CheckCircle2, Clock, UtensilsCrossed, AlertCircle, ShoppingBag, Check, RefreshCw, Search, History, Eye } from 'lucide-react';
+import { Plus, Minus, Send, CheckCircle2, Clock, UtensilsCrossed, AlertCircle, ShoppingBag, Check, RefreshCw, Search, History, Eye, Volume2 } from 'lucide-react';
 import { OrderProgressStepper } from '../../components/OrderProgressStepper';
 import { UniversalStatusBadge } from '../../components/UniversalStatusBadge';
 import { OrderHistoryModal } from '../../components/OrderHistoryModal';
 import { ModifyOrderModal } from '../../components/ModifyOrderModal';
+import { SoundSettingsModal } from '../../components/SoundSettingsModal';
+import { triggerNotificationSound } from '../../utils/soundNotifier';
 import { tactileFeedback, speak } from '../../utils/feedback';
 import { gToast } from '../../utils/toast';
 import { resolveImageUrl } from '../../utils/imageUrl';
@@ -50,6 +52,7 @@ export const WaiterView: React.FC = () => {
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(api.isConnected);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showSoundSettings, setShowSoundSettings] = useState(false);
 
   const [isWide, setIsWide] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 860);
 
@@ -107,6 +110,7 @@ export const WaiterView: React.FC = () => {
           loadCallbackRef.current();
           if (event.type === 'ORDER_READY') {
             gToast.success(`🔔 Order #${event.payload?.orderNumber} is ready for delivery!`);
+            triggerNotificationSound('waiter', undefined, `Order #${event.payload?.orderNumber || ''} is ready`);
           }
         }, 300);
       }
@@ -1113,15 +1117,39 @@ export const WaiterView: React.FC = () => {
 
   return (
     <div className="view-body animate-fade-in">
-      {/* Connection Status + Refresh */}
+      {/* Connection Status + Sound Settings + Refresh */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: isConnected ? '#065f46' : '#991b1b', background: isConnected ? '#ecfdf5' : '#fef2f2', padding: '4px 10px', borderRadius: 20 }}>
           {isConnected ? '🟢 Live' : '🔴 Offline'}
         </div>
-        <button onClick={triggerRefresh} disabled={isRefreshing} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-          <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
-          <span style={{ fontSize: 11, fontWeight: 700 }}>{language === 'am' ? 'አድስ' : 'Refresh'}</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => setShowSoundSettings(true)}
+            title={language === 'am' ? 'የድምፅ ማሳወቂያ ማስተካከያ' : 'Notification Sound Settings'}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 8,
+              border: '1.5px solid #fed7aa',
+              background: '#fff7ed',
+              color: '#ea580c',
+              fontSize: 12,
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              cursor: 'pointer',
+              boxShadow: '0 1px 3px rgba(234, 88, 12, 0.1)'
+            }}
+          >
+            <Volume2 size={14} />
+            <span>{language === 'am' ? 'የድምፅ ቅንብር' : 'Sound Alerts'}</span>
+          </button>
+          <button onClick={triggerRefresh} disabled={isRefreshing} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
+            <span style={{ fontSize: 11, fontWeight: 700 }}>{language === 'am' ? 'አድስ' : 'Refresh'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Tab Switcher */}
@@ -1573,6 +1601,13 @@ export const WaiterView: React.FC = () => {
           }}
         />
       )}
+      {/* Sound Notification Settings Modal */}
+      <SoundSettingsModal
+        role="waiter"
+        isOpen={showSoundSettings}
+        onClose={() => setShowSoundSettings(false)}
+        language={language}
+      />
     </div>
   );
 };
