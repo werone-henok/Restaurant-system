@@ -34,6 +34,22 @@ interface ChatMessage {
   timestamp: string;
 }
 
+const AMHARIC_PROMPTS = [
+  '📊 የዛሬው ጠቅላላ ገቢ ስንት ነው?',
+  '⚠️ የሚያልቁ ጥሬ ዕቃዎች የትኞቹ ናቸው?',
+  '🍔 ከፍተኛ ሽያጭ ያስመዘገቡ ምግቦች የትኞቹ ናቸው?',
+  '🎂 የዳቦ እና ኬክ ካውንተር ሁኔታ ምን ይመስላል?',
+  '👥 ዛሬ ከፍተኛ ሽያጭ ያስመዘገበው አስተናጋጅ ማን ነው?'
+];
+
+const ENGLISH_PROMPTS = [
+  '📊 How much revenue did we generate today?',
+  '⚠️ Which ingredients are running out of stock?',
+  '🍔 What are our top-selling dishes?',
+  '🎂 What is our bakery counter status?',
+  '👥 Who is the top performing waiter today?'
+];
+
 export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({
   isOpen,
   onClose,
@@ -46,21 +62,27 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({
   const [metrics, setMetrics] = useState<any | null>(null);
   const [insights, setInsights] = useState<any[]>([]);
 
+  // Language state (defaults to prop, allows 1-tap live switching)
+  const [currentLang, setCurrentLang] = useState<'en' | 'am'>(language || 'en');
+  const isAmharic = currentLang === 'am';
+
   // Chat State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [sendingQuery, setSendingQuery] = useState(false);
-  const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([
-    '📊 How much revenue did we generate today?',
-    '⚠️ Which ingredients are running out of stock?',
-    '🍔 What are our top-selling dishes?',
-    '🎂 What is our bakery counter status?',
-    '👥 Who is the top performing waiter today?'
-  ]);
+  const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>(
+    language === 'am' ? AMHARIC_PROMPTS : ENGLISH_PROMPTS
+  );
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const isAmharic = language === 'am';
+  // Sync with prop when opened
+  useEffect(() => {
+    if (isOpen && language) {
+      setCurrentLang(language);
+      setSuggestedPrompts(language === 'am' ? AMHARIC_PROMPTS : ENGLISH_PROMPTS);
+    }
+  }, [isOpen, language]);
 
   // Load live insights on open
   useEffect(() => {
@@ -80,6 +102,23 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({
       }
     }
   }, [isOpen]);
+
+  const handleToggleLang = (lang: 'en' | 'am') => {
+    tactileFeedback('click');
+    setCurrentLang(lang);
+    setSuggestedPrompts(lang === 'am' ? AMHARIC_PROMPTS : ENGLISH_PROMPTS);
+    setMessages(prev => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        sender: 'ai',
+        text: lang === 'am'
+          ? '🇪🇹 ቋንቋው ወደ አማርኛ ተቀይሯል። የፈለጉትን ጥያቄ በአማርኛ መጠየቅ ይችላሉ።'
+          : '🇬🇧 Switched to English. Feel free to ask any question about live operations.',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
+  };
 
   useEffect(() => {
     if (activeTab === 'chat') {
@@ -121,7 +160,11 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({
     try {
       const res = await api.request<any>('/ai/chat', {
         method: 'POST',
-        body: JSON.stringify({ message: query, branchId })
+        body: JSON.stringify({ 
+          message: query, 
+          branchId,
+          language: currentLang 
+        })
       });
 
       if (res && res.reply) {
@@ -249,24 +292,75 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: '50%',
-                background: 'rgba(255,255,255,0.2)',
-                border: 'none',
-                color: '#ffffff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer'
-              }}
-            >
-              <X size={18} />
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {/* Language Switcher Pill */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  borderRadius: 20,
+                  padding: 3,
+                  border: '1px solid rgba(255, 255, 255, 0.3)'
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => handleToggleLang('am')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 16,
+                    border: 'none',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    background: isAmharic ? '#ffffff' : 'transparent',
+                    color: isAmharic ? '#4f46e5' : '#ffffff',
+                    transition: 'all 0.2s ease'
+                  }}
+                  title="ወደ አማርኛ ይቀይሩ"
+                >
+                  🇪🇹 አማርኛ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleLang('en')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 16,
+                    border: 'none',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    background: !isAmharic ? '#ffffff' : 'transparent',
+                    color: !isAmharic ? '#4f46e5' : '#ffffff',
+                    transition: 'all 0.2s ease'
+                  }}
+                  title="Switch to English"
+                >
+                  🇬🇧 EN
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={onClose}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.2)',
+                  border: 'none',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
           {/* Navigation Tab Switcher */}

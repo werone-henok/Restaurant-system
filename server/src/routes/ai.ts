@@ -40,14 +40,14 @@ aiRouter.get('/insights', async (req: AuthenticatedRequest, res: Response) => {
  */
 aiRouter.post('/chat', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { message, branchId } = req.body;
+    const { message, branchId, language } = req.body;
     const targetBranch = branchId || req.user?.branch_id || undefined;
 
     if (!message || typeof message !== 'string') {
       return res.status(400).json({ error: 'Message query is required' });
     }
 
-    const result = await processAiQuery(message, targetBranch);
+    const result = await processAiQuery(message, targetBranch, language);
     res.json({
       success: true,
       reply: result.reply,
