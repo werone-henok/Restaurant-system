@@ -134,7 +134,62 @@ async function runFullScenario() {
   console.log('\n🎉 ALL SUCCESS CRITERIA MET WITH ZERO ERRORS!');
 }
 
-runFullScenario().catch(err => {
+import { spawn } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+async function isServerRunning() {
+  try {
+    const res = await fetch('http://localhost:4001/api/health', { signal: AbortSignal.timeout(1000) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function waitForServer(timeoutMs = 15000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (await isServerRunning()) return true;
+    await new Promise(r => setTimeout(r, 400));
+  }
+  return false;
+}
+
+async function main() {
+  let serverProcess = null;
+  const alreadyRunning = await isServerRunning();
+
+  if (!alreadyRunning) {
+    console.log('⚡ Launching GourmetOS Server for test suite...');
+    serverProcess = spawn('node', ['dist/server.js'], {
+      cwd: __dirname,
+      stdio: 'inherit',
+      env: { ...process.env, PORT: '4001', NODE_ENV: 'development' }
+    });
+
+    const ready = await waitForServer();
+    if (!ready) {
+      if (serverProcess) serverProcess.kill();
+      throw new Error('Failed to start GourmetOS server for test scenario.');
+    }
+  }
+
+  try {
+    await runFullScenario();
+  } finally {
+    if (serverProcess) {
+      console.log('Shutting down temporary test server...');
+      serverProcess.kill();
+    }
+  }
+}
+
+main().catch(err => {
   console.error('Test scenario error:', err);
   process.exit(1);
 });
+

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from './context/AppContext';
-import { api } from './api/client';
+import { api, getApiBaseUrl } from './api/client';
 import { tactileFeedback } from './utils/feedback';
 import { Header } from './components/Header';
 import { TopUrgentBanner } from './components/TopUrgentBanner';
 import { UserProfileModal } from './components/UserProfileModal';
+import { LicenseLockScreen } from './components/LicenseLockScreen';
 import { resolveImageUrl } from './utils/imageUrl';
 import { OnboardingSlider } from './views/onboarding/OnboardingSlider';
 import { AuthView } from './views/auth/AuthView';
@@ -42,11 +43,54 @@ export const App: React.FC = () => {
   });
   const [activeTabOverride, setActiveTabOverride] = useState<string | null>(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [licenseState, setLicenseState] = useState<{
+    checked: boolean;
+    valid: boolean;
+    status: string;
+    message: string;
+    machineId: string;
+  } | null>(null);
+
+  const checkLicense = async () => {
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/license/status`);
+      if (res.ok) {
+        const data = await res.json();
+        setLicenseState({
+          checked: true,
+          valid: data.valid !== false,
+          status: data.status || 'ACTIVE',
+          message: data.message || '',
+          machineId: data.currentMachineId || ''
+        });
+      }
+    } catch (_) {
+      // Offline or network lag: do not crash
+    }
+  };
+
+  useEffect(() => {
+    checkLicense();
+  }, []);
 
   // Reset active tab override whenever logged-in user changes
   useEffect(() => {
     setActiveTabOverride(null);
   }, [user?.id, user?.role]);
+
+  // 0. Enforce Hardware Lock / License Activation
+  if (licenseState && licenseState.checked && !licenseState.valid) {
+    return (
+      <LicenseLockScreen
+        status={licenseState.status}
+        message={licenseState.message}
+        machineId={licenseState.machineId}
+        onActivated={() => {
+          checkLicense();
+        }}
+      />
+    );
+  }
 
   // 1. Show Onboarding if first launch
   if (!hasSeenOnboarding) {

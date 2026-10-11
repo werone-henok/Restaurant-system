@@ -57,7 +57,37 @@ export function seedDatabase() {
       insertBranch.run(b.id, b.name, b.city, b.address, b.phone);
     }
 
-    // 3. Tables for Addis Ababa Branch
+    // 3. Default Seed Users (All 9 staff roles)
+    const defaultPasswordHash = hashSecretSync('password123');
+    const defaultPinHash = hashSecretSync('1234');
+
+    const users = [
+      { id: 'usr_owner', name: 'Abebe Bikila (Owner)', username: 'owner', role: 'owner', branch_id: 'branch_addis' },
+      { id: 'usr_admin', name: 'Sara Tesfaye (Admin)', username: 'admin', role: 'admin', branch_id: 'branch_addis' },
+      { id: 'usr_cashier', name: 'Yohannes Getachew (Cashier)', username: 'cashier', role: 'cashier', branch_id: 'branch_addis' },
+      { id: 'usr_chef', name: 'David Bekele (Head Chef)', username: 'chef', role: 'chef', branch_id: 'branch_addis' },
+      { id: 'usr_barista', name: 'Almaz Alemu (Barista)', username: 'barista', role: 'barista', branch_id: 'branch_addis' },
+      { id: 'usr_waiter', name: 'Dawit Haile (Waiter)', username: 'waiter', role: 'waiter', branch_id: 'branch_addis' },
+      { id: 'usr_storekeeper', name: 'Mulugeta Tadesse (Storekeeper)', username: 'storekeeper', role: 'storekeeper', branch_id: 'branch_addis' },
+      { id: 'usr_bakery', name: 'Bethlehem Tadesse (Bakery)', username: 'bakery', role: 'bakery', branch_id: 'branch_addis' },
+      { id: 'usr_front_counter', name: 'Hana Girma (Cake Counter)', username: 'front_counter', role: 'front_counter', branch_id: 'branch_addis' }
+    ];
+
+    const insertUser = db.prepare(`
+      INSERT OR IGNORE INTO users (id, full_name, username, password_hash, pin_hash, phone, role, branch_id, status)
+      VALUES (?, ?, ?, ?, ?, '+251911000000', ?, ?, 'ACTIVE')
+    `);
+    for (const u of users) {
+      insertUser.run(u.id, u.name, u.username, defaultPasswordHash, defaultPinHash, u.role, u.branch_id);
+    }
+
+    // If NOT in demo seed mode, finish here: client enters all tables, menu items, cakes, and stock themselves!
+    if (process.env.SEED_DEMO_DATA !== 'true') {
+      console.log('[Seed] Core restaurant settings, branches, and staff accounts initialized. Clean production mode (no demo items).');
+      return;
+    }
+
+    // 4. Tables for Addis Ababa Branch (Demo mode only)
     const tables = [
       { id: 'tbl_01', branch_id: 'branch_addis', table_number: 'T-01', name: 'Table 1', section: 'Main Hall', capacity: 4 },
       { id: 'tbl_02', branch_id: 'branch_addis', table_number: 'T-02', name: 'Table 2', section: 'Main Hall', capacity: 4 },
@@ -77,27 +107,6 @@ export function seedDatabase() {
       insertTable.run(t.id, t.branch_id, t.table_number, t.name, t.section, t.capacity);
     }
 
-    // 4. Default Seed Users (1 for each role + owner + admin)
-    const defaultPasswordHash = hashSecretSync('password123');
-    const defaultPinHash = hashSecretSync('1234');
-
-    const users = [
-      { id: 'usr_owner', name: 'Abebe Bikila (Owner)', username: 'owner', role: 'owner', branch_id: 'branch_addis' },
-      { id: 'usr_admin', name: 'Sara Tesfaye (Admin)', username: 'admin', role: 'admin', branch_id: 'branch_addis' },
-      { id: 'usr_cashier', name: 'Yohannes Getachew (Cashier)', username: 'cashier', role: 'cashier', branch_id: 'branch_addis' },
-      { id: 'usr_chef', name: 'David Bekele (Head Chef)', username: 'chef', role: 'chef', branch_id: 'branch_addis' },
-      { id: 'usr_barista', name: 'Almaz Alemu (Barista)', username: 'barista', role: 'barista', branch_id: 'branch_addis' },
-      { id: 'usr_waiter', name: 'Dawit Haile (Waiter)', username: 'waiter', role: 'waiter', branch_id: 'branch_addis' },
-      { id: 'usr_storekeeper', name: 'Mulugeta Tadesse (Storekeeper)', username: 'storekeeper', role: 'storekeeper', branch_id: 'branch_addis' }
-    ];
-
-    const insertUser = db.prepare(`
-      INSERT INTO users (id, full_name, username, password_hash, pin_hash, phone, role, branch_id, status)
-      VALUES (?, ?, ?, ?, ?, '+251911000000', ?, ?, 'ACTIVE')
-    `);
-    for (const u of users) {
-      insertUser.run(u.id, u.name, u.username, defaultPasswordHash, defaultPinHash, u.role, u.branch_id);
-    }
 
     // 5. Menu Categories
     const categories = [
@@ -306,7 +315,11 @@ export function seedBakeryData() {
     db.prepare("UPDATE users SET role = ?, status = 'ACTIVE' WHERE username = ?").run(u.role, u.username);
   }
 
-  // 2. Ensure Bakery & Cakes menu category exists
+  // 2. Only seed demo bakery products, batches, and variations if SEED_DEMO_DATA=true
+  if (process.env.SEED_DEMO_DATA !== 'true') {
+    return;
+  }
+
   let cat = db.prepare("SELECT id FROM menu_categories WHERE name LIKE '%Bakery%' OR name LIKE '%Cake%' LIMIT 1").get() as any;
   if (!cat) {
     db.prepare(`

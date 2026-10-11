@@ -657,7 +657,10 @@ export function runMigrations() {
     // User Account Requests (Forgot Password & Profile Changes with Admin/Owner Approval)
     "CREATE TABLE IF NOT EXISTS user_account_requests (id TEXT PRIMARY KEY, branch_id TEXT NOT NULL, user_id TEXT, username TEXT NOT NULL, full_name TEXT, role TEXT, request_type TEXT NOT NULL, requested_changes TEXT NOT NULL, status TEXT DEFAULT 'PENDING', reviewed_by_id TEXT, reviewed_by_name TEXT, admin_notes TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
     "CREATE INDEX IF NOT EXISTS idx_user_account_requests_branch ON user_account_requests(branch_id)",
-    "CREATE INDEX IF NOT EXISTS idx_user_account_requests_status ON user_account_requests(status)"
+    "CREATE INDEX IF NOT EXISTS idx_user_account_requests_status ON user_account_requests(status)",
+
+    // System License & Hardware Anti-Theft Lock
+    "CREATE TABLE IF NOT EXISTS system_license (id TEXT PRIMARY KEY, license_key TEXT NOT NULL, license_token TEXT NOT NULL, restaurant_name TEXT NOT NULL, machine_id TEXT NOT NULL, plan TEXT NOT NULL, max_branches INTEGER DEFAULT 5, expires_at TEXT NOT NULL, status TEXT NOT NULL, last_verified_at DATETIME DEFAULT CURRENT_TIMESTAMP, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
   ];
 
   for (const sql of migrations) {

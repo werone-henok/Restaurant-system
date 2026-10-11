@@ -1,33 +1,37 @@
 import { Capacitor } from '@capacitor/core';
 
 export function getApiBaseUrl(): string {
+  // 1. In-app manual override saved by staff in UI
   if (typeof window !== 'undefined') {
     const saved = localStorage.getItem('gourmet_api_url');
     if (saved && saved.trim()) return saved.trim();
+  }
 
-    // Native mobile app (Android / BlueStacks / iOS): default to live cloud API
+  // 2. Build-time environment variable (VITE_API_URL)
+  const envUrl = (import.meta as any).env?.VITE_API_URL;
+  if (envUrl && envUrl.trim()) return envUrl.trim();
+
+  if (typeof window !== 'undefined') {
+    // 3. Native mobile app (Android / BlueStacks / iOS): default to live cloud API
     if (Capacitor.isNativePlatform()) {
       return 'https://restaurant-system-ipd2.onrender.com/api';
     }
 
     const host = window.location.hostname;
-    // Localhost development in desktop browser
+    // 4. Localhost development in desktop browser
     if (host === 'localhost' || host === '127.0.0.1') {
       return 'http://localhost:4001/api';
     }
-    // LAN Wi-Fi development (e.g. tablet/phone connected to host IP on port 5180)
+    // 5. LAN Wi-Fi development (e.g. tablet/phone connected to host IP on port 5180 or 5173)
     if ((window.location.port === '5180' || window.location.port === '5173') && (host.startsWith('192.168.') || host.startsWith('10.') || host.startsWith('172.'))) {
       return `http://${host}:4001/api`;
     }
 
-    // Direct web access (e.g. on Render, domain, or server port 4001)
+    // 6. Direct web access (e.g. unified deployment where server serves client)
     if (window.location.origin && window.location.port !== '5180' && window.location.port !== '5173') {
       return `${window.location.origin}/api`;
     }
   }
-
-  const envUrl = (import.meta as any).env?.VITE_API_URL;
-  if (envUrl && envUrl.trim()) return envUrl.trim();
 
   return 'https://restaurant-system-ipd2.onrender.com/api';
 }

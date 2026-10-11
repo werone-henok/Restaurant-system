@@ -26,7 +26,10 @@ import { adminRouter } from './routes/admin.js';
 import { uploadRouter } from './routes/upload.js';
 import { notificationRouter } from './routes/notifications.js';
 import { bakeryRouter } from './routes/bakery.js';
+import { licenseRouter } from './routes/license.js';
+import { licenseEnforcer } from './middleware/licenseEnforcer.js';
 import { initBackupScheduler } from './services/backupService.js';
+import { initLicenseService } from './services/licenseService.js';
 import { restoreLatestFromCloud, initAutoSync, downloadImageFromCloud, uploadImageToCloud, healMissingUploadedImages } from './services/cloudSyncService.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,6 +41,7 @@ async function bootstrap() {
     initDatabase();
     runMigrations();
     seedDatabase();
+    initLicenseService();
     healMissingUploadedImages().catch(e => console.warn('[CloudSync] Notice during missing images healing:', e));
     initBackupScheduler();
     initAutoSync();
@@ -204,6 +208,9 @@ async function bootstrap() {
             timestamp: new Date().toISOString()
         });
     });
+    // ── License Management & Hardware Protection (Must be before protected routes) ──
+    app.use('/api/license', licenseRouter);
+    app.use(licenseEnforcer);
     // ── API Routes ────────────────────────────────────────────────────
     app.use('/api/auth', authRouter);
     app.use('/api/branches', branchRouter);

@@ -5,11 +5,16 @@
   "main": "server/dist/server.js",
   "scripts": {
     "build": "cd server && npm install && npm run build",
+    "build:mobile": "cd client && npm run build && npx cap sync android",
     "start": "cd server && npm start",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node server/test_scenario.js",
+    "license:generate": "node server/scripts/generate-license.js",
+    "db:clean": "node server/scripts/clean-demo-data.js",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "PROPRIETARY - All Rights Reserved",
   "type": "commonjs"
 }

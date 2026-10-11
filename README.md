@@ -81,8 +81,8 @@ cd server
 npm install
 npm run dev
 ```
-- Running at: `http://localhost:4000`
-- WebSocket: `ws://localhost:4000/ws`
+- Running at: `http://localhost:4001`
+- WebSocket: `ws://localhost:4001/ws`
 
 ### Mobile Client
 ```bash
@@ -90,15 +90,26 @@ cd client
 npm install
 npm run dev
 ```
-- Available at: `http://localhost:5173`
+- Available at: `http://localhost:5180` (or `http://localhost:5173`)
+
+### 🐳 Run with Docker (Single Command)
+```bash
+docker compose up -d --build
+```
+- Complete system available at: `http://localhost:4001`
+
+### 🚀 Production Unified Build
+```bash
+npm run build
+npm start
+```
 
 ---
 
 ## 5. End-to-End Verification Test
 Run the automated restaurant test script that simulates the entire scenario (#72 in requirements):
 ```bash
-cd server
-node test_scenario.js
+npm test
 ```
 The test verifies:
 1. Waiter login & Order placement (Burger + Macchiato)
@@ -109,3 +120,9 @@ The test verifies:
 6. Split payment settlement (Telebirr + Cash) & receipt generation
 7. Automatic Bill-of-Materials (BOM) ingredient deduction from branch inventory
 8. Update of Owner consolidated metrics & audit logging.
+
+---
+
+## 6. Client Submission & Handover
+For the comprehensive production handover documentation, security setup, and client deployment guides, see [`CLIENT_HANDOVER_MANUAL.md`](./CLIENT_HANDOVER_MANUAL.md).
+

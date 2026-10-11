@@ -1,0 +1,25 @@
+services:
+  gourmetos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gourmetos-restaurant-system
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+    environment:
+      - NODE_ENV=production
+      - PORT=4001
+      - JWT_SECRET=${JWT_SECRET:-change-this-to-a-secure-secret-token-in-production}
+      - DB_PATH=/app/server/data/restaurant.db
+      - UPLOAD_DIR=/app/server/data/uploads
+      - CLIENT_ORIGIN=${CLIENT_ORIGIN:-http://localhost:4001}
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_KEY=${SUPABASE_KEY:-}
+      - SUPABASE_BUCKET=${SUPABASE_BUCKET:-restaurant-backups}
+    volumes:
+      - gourmetos-data:/app/server/data
+
+volumes:
+  gourmetos-data:
+    driver: local

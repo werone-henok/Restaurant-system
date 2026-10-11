@@ -35,6 +35,9 @@ export const CONFIG = {
   SUPABASE_KEY: process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '',
   SUPABASE_BUCKET: process.env.SUPABASE_BUCKET || 'restaurant-backups',
   CLOUD_SYNC_INTERVAL_MS: parseInt(process.env.CLOUD_SYNC_INTERVAL_MS || '300000', 10),
+  LICENSE_SECRET: process.env.LICENSE_SECRET || 'gourmetos-private-vendor-license-master-key-2026',
+  LICENSE_ENFORCE: process.env.LICENSE_ENFORCE !== 'false',
+  LICENSE_HEARTBEAT_URL: process.env.LICENSE_HEARTBEAT_URL || '',
   DEFAULT_CURRENCY: 'ETB',
   DEFAULT_TAX_RATE: 0.15, // 15% VAT standard Ethiopian tax
   ROLES: ['owner', 'admin', 'cashier', 'chef', 'barista', 'waiter', 'storekeeper', 'bakery', 'front_counter'] as const,
