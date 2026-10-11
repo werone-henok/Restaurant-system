@@ -2055,8 +2055,8 @@ export const FrontCounterView: React.FC = () => {
       {/* MODAL 1: 1-TAP REORDER REQUEST STEPPER TO BAKERY                          */}
       {/* ========================================================================= */}
       {requestTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 12 }}>
-          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 440, borderRadius: 20, padding: 24, textAlign: 'center', maxHeight: 'min(92vh, calc(100dvh - 24px))', overflowY: 'auto', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 12, boxSizing: 'border-box' }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 440, borderRadius: 20, padding: 22, textAlign: 'center', maxHeight: 'min(92vh, calc(100dvh - 24px))', overflowY: 'auto', overflowX: 'hidden', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)', boxSizing: 'border-box' }}>
             <img
               src={getCakePhoto(requestTarget)}
               alt=""
@@ -2126,7 +2126,7 @@ export const FrontCounterView: React.FC = () => {
             <div style={{ display: 'flex', gap: 12 }}>
               <button
                 onClick={() => setRequestTarget(null)}
-                style={{ flex: 1, padding: 16, borderRadius: 16, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}
+                style={{ flex: 1, padding: 14, borderRadius: 14, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}
               >
                 ተመለስ
               </button>
@@ -2136,8 +2136,8 @@ export const FrontCounterView: React.FC = () => {
                 onClick={handleSendBakeRequest}
                 style={{
                   flex: 2,
-                  padding: 16,
-                  borderRadius: 16,
+                  padding: 14,
+                  borderRadius: 14,
                   background: 'linear-gradient(135deg, #be185d 0%, #db2777 100%)',
                   color: '#ffffff',
                   border: 'none',
@@ -2162,8 +2162,8 @@ export const FrontCounterView: React.FC = () => {
       {/* MODAL 2: REJECT TRANSFER REASON PICKER                                    */}
       {/* ========================================================================= */}
       {rejectTransferTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 12 }}>
-          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 400, borderRadius: 20, padding: 22, maxHeight: 'min(92vh, calc(100dvh - 24px))', overflowY: 'auto', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 12, boxSizing: 'border-box' }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 400, borderRadius: 20, padding: 20, maxHeight: 'min(92vh, calc(100dvh - 24px))', overflowY: 'auto', overflowX: 'hidden', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)', boxSizing: 'border-box' }}>
             <h3 style={{ fontSize: 17, fontWeight: 900, margin: '0 0 14px', color: '#991b1b' }}>
               ❌ ኬኩን ያልተቀበሉበት ምክንያት
             </h3>
@@ -2216,15 +2216,15 @@ export const FrontCounterView: React.FC = () => {
       {/* MODAL 3: CREATE COMPLETE CAKE MENU ITEM (BAKERY, ADMIN, OWNER)            */}
       {/* ========================================================================= */}
       {showAddCakeModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1150, padding: 12 }}>
-          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 540, borderRadius: 20, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)' }} className="animate-fade-in">
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1150, padding: 12, boxSizing: 'border-box' }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 520, borderRadius: 20, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)', boxSizing: 'border-box' }} className="animate-fade-in">
             {/* Pinned Sticky Header */}
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
-              <div>
-                <h3 style={{ fontSize: 17, fontWeight: 900, margin: 0, color: 'var(--text-main)' }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0, width: '100%', boxSizing: 'border-box' }}>
+              <div style={{ minWidth: 0, flex: 1, paddingRight: 8 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 900, margin: 0, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   🎂 አዲስ ኬክ ወደ ምናሌ መዝግብ
                 </h3>
-                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
+                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   የተመዘገበው ኬክ በካሺየር POS እና በካውንተር ማሳያ ላይ ይታያል
                 </p>
               </div>
@@ -2242,7 +2242,8 @@ export const FrontCounterView: React.FC = () => {
                   justifyContent: 'center',
                   color: 'var(--text-main)',
                   cursor: 'pointer',
-                  padding: 0
+                  padding: 0,
+                  flexShrink: 0
                 }}
                 title="ዝጋ (Close)"
               >
@@ -2251,10 +2252,10 @@ export const FrontCounterView: React.FC = () => {
             </div>
 
             {/* Scrollable Form Body */}
-            <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ padding: '16px 18px', overflowY: 'auto', overflowX: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', gap: 14, width: '100%', boxSizing: 'border-box' }}>
               {/* Product Names */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 10, width: '100%', boxSizing: 'border-box' }}>
+                <div style={{ minWidth: 0, width: '100%', boxSizing: 'border-box' }}>
                   <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>የኬክ ስም (English) *</label>
                   <input
                     type="text"
@@ -2262,41 +2263,41 @@ export const FrontCounterView: React.FC = () => {
                     placeholder="e.g. Red Velvet Cake"
                     value={newCakeName}
                     onChange={(e) => setNewCakeName(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--border)', fontSize: 14 }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--border)', fontSize: 14, boxSizing: 'border-box', minWidth: 0 }}
                   />
                 </div>
-                <div>
+                <div style={{ minWidth: 0, width: '100%', boxSizing: 'border-box' }}>
                   <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>የኬክ ስም (አማርኛ)</label>
                   <input
                     type="text"
                     placeholder="ምሳሌ፡ ሬድ ቬልቬት ኬክ"
                     value={newCakeAmharic}
                     onChange={(e) => setNewCakeAmharic(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--border)', fontSize: 14 }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--border)', fontSize: 14, boxSizing: 'border-box', minWidth: 0 }}
                   />
                 </div>
               </div>
 
               {/* Photo Selector: Camera / File Upload & Presets */}
-              <div>
+              <div style={{ width: '100%', boxSizing: 'border-box' }}>
                 <ImageUploadCompressor
                   value={newCakePhoto}
                   onChange={setNewCakePhoto}
-                  label="የኬክ ፎቶ (በካሜራ ያንሱ ወይም ከፋይል ይምረጡ / Camera or File Upload)"
+                  label="የኬክ ፎቶ (በካሜራ ያንሱ ወይም ከፋይል ይምረጡ)"
                 />
 
-                <div style={{ marginTop: 10 }}>
+                <div style={{ marginTop: 8, width: '100%', boxSizing: 'border-box' }}>
                   <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-                    ወይም ከተዘጋጁት ፎቶዎች ይምረጡ (Or choose a photo preset):
+                    ወይም ከተዘጋጁት ፎቶዎች ይምረጡ (Choose preset photo):
                   </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6, width: '100%', boxSizing: 'border-box' }}>
                     {PRESET_CAKE_PHOTOS.map((p, idx) => (
                       <button
                         key={idx}
                         type="button"
                         onClick={() => setNewCakePhoto(p.url)}
                         style={{
-                          padding: 6,
+                          padding: 5,
                           borderRadius: 12,
                           border: newCakePhoto === p.url ? '3px solid #db2777' : '1px solid var(--border)',
                           background: 'var(--bg-app)',
@@ -2304,11 +2305,15 @@ export const FrontCounterView: React.FC = () => {
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
-                          gap: 4
+                          gap: 4,
+                          minWidth: 0,
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          overflow: 'hidden'
                         }}
                       >
-                        <img src={p.url} alt="" style={{ width: '100%', height: 50, borderRadius: 8, objectFit: 'cover' }} />
-                        <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-main)', textAlign: 'center' }}>{p.label}</span>
+                        <img src={p.url} alt="" style={{ width: '100%', height: 46, borderRadius: 8, objectFit: 'cover' }} />
+                        <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-main)', textAlign: 'center', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{p.label}</span>
                       </button>
                     ))}
                   </div>
@@ -2316,23 +2321,23 @@ export const FrontCounterView: React.FC = () => {
               </div>
 
               {/* Variations & Prices */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ width: '100%', boxSizing: 'border-box' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
                   <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)' }}>
                     የኬክ መጠኖችና መሸጫ ዋጋ (Sizes & Prices)
                   </label>
                   <button
                     type="button"
                     onClick={() => setNewCakeVariations([...newCakeVariations, { variation_name: 'Large 2kg', size: '2 ኪ.ግ (2kg)', price: 2000, min_stock_level: 2 }])}
-                    style={{ background: '#fdf2f8', color: '#be185d', border: '1px solid #fbcfe8', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}
+                    style={{ background: '#fdf2f8', color: '#be185d', border: '1px solid #fbcfe8', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
                   >
                     + መጠን ጨምር
                   </button>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', boxSizing: 'border-box' }}>
                   {newCakeVariations.map((v, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'var(--bg-app)', padding: 8, borderRadius: 10 }}>
+                    <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'var(--bg-app)', padding: 8, borderRadius: 10, width: '100%', boxSizing: 'border-box' }}>
                       <input
                         type="text"
                         placeholder="መጠን (e.g. ቁራጭ ወይም 1kg)"
@@ -2343,24 +2348,24 @@ export const FrontCounterView: React.FC = () => {
                           updated[idx].variation_name = e.target.value;
                           setNewCakeVariations(updated);
                         }}
-                        style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }}
+                        style={{ flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, boxSizing: 'border-box' }}
                       />
                       <input
                         type="number"
                         placeholder="ዋጋ (ብር)"
-                        value={v.price}
+                        value={v.price || ''}
                         onChange={(e) => {
                           const updated = [...newCakeVariations];
                           updated[idx].price = Number(e.target.value);
                           setNewCakeVariations(updated);
                         }}
-                        style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, fontWeight: 700 }}
+                        style={{ width: 85, flexShrink: 0, minWidth: 0, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, fontWeight: 700, boxSizing: 'border-box' }}
                       />
                       {newCakeVariations.length > 1 && (
                         <button
                           type="button"
                           onClick={() => setNewCakeVariations(newCakeVariations.filter((_, i) => i !== idx))}
-                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 4 }}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 4, flexShrink: 0 }}
                         >
                           <Trash2 size={16} />
                         </button>
@@ -2373,11 +2378,11 @@ export const FrontCounterView: React.FC = () => {
             </div>
 
             {/* Pinned Sticky Footer */}
-            <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+            <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0, width: '100%', boxSizing: 'border-box' }}>
               <button
                 type="button"
                 onClick={() => setShowAddCakeModal(false)}
-                style={{ flex: 1, height: 44, padding: '0 16px', borderRadius: 12, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}
+                style={{ flex: 1, minWidth: 0, height: 44, padding: '0 12px', borderRadius: 12, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 14, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', boxSizing: 'border-box' }}
               >
                 ተመለስ
               </button>
@@ -2387,18 +2392,22 @@ export const FrontCounterView: React.FC = () => {
                 onClick={handleCreateCake}
                 style={{
                   flex: 2,
+                  minWidth: 0,
                   height: 44,
+                  padding: '0 12px',
                   borderRadius: 12,
                   background: 'linear-gradient(135deg, #db2777 0%, #be185d 100%)',
                   color: '#ffffff',
                   border: 'none',
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: 900,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 4px 12px rgba(219, 39, 119, 0.3)'
+                  boxShadow: '0 4px 12px rgba(219, 39, 119, 0.3)',
+                  whiteSpace: 'nowrap',
+                  boxSizing: 'border-box'
                 }}
               >
                 {isCreatingCake ? 'እየመዘገበ ነው...' : '✅ ኬኩን መዝግብ'}
@@ -2412,8 +2421,8 @@ export const FrontCounterView: React.FC = () => {
       {/* MODAL 4: DELETE CONFIRMATION (ADMIN & OWNER ONLY)                         */}
       {/* ========================================================================= */}
       {cakeToDelete && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 12 }}>
-          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 420, borderRadius: 20, padding: 24, textAlign: 'center', maxHeight: 'min(92vh, calc(100dvh - 24px))', overflowY: 'auto', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 12, boxSizing: 'border-box' }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 420, borderRadius: 20, padding: 24, textAlign: 'center', maxHeight: 'min(92vh, calc(100dvh - 24px))', overflowY: 'auto', overflowX: 'hidden', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)', boxSizing: 'border-box' }}>
             <div style={{ width: 64, height: 64, borderRadius: 20, background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 32 }}>
               <AlertTriangle size={36} />
             </div>

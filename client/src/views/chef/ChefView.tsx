@@ -857,7 +857,7 @@ export const ChefView: React.FC = () => {
 
             <form onSubmit={handleSaveDish} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, margin: 0 }}>
               {/* Scrollable Body */}
-              <div style={{ padding: '16px 18px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ padding: '16px 18px', overflowY: 'auto', overflowX: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', gap: 12, width: '100%', boxSizing: 'border-box' }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
                     {language === 'am' ? 'የምግብ ስም (እንግሊዝኛ) *' : 'Dish Name (English) *'}

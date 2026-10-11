@@ -1663,8 +1663,8 @@ export const BakeryView: React.FC = () => {
       {/* MODAL 1: START BAKE STEPPER */}
       {/* ========================================================================= */}
       {selectedCakeForBake && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 12 }}>
-          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 440, borderRadius: 20, padding: 24, textAlign: 'center', maxHeight: 'min(92vh, calc(100dvh - 24px))', overflowY: 'auto', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 12, boxSizing: 'border-box' }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 440, borderRadius: 20, padding: 22, textAlign: 'center', maxHeight: 'min(92vh, calc(100dvh - 24px))', overflowY: 'auto', overflowX: 'hidden', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)', boxSizing: 'border-box' }}>
             <img
               src={getCakePhoto(selectedCakeForBake)}
               alt=""
@@ -1734,7 +1734,7 @@ export const BakeryView: React.FC = () => {
             <div style={{ display: 'flex', gap: 12 }}>
               <button
                 onClick={() => setSelectedCakeForBake(null)}
-                style={{ flex: 1, padding: 16, borderRadius: 16, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}
+                style={{ flex: 1, padding: 14, borderRadius: 14, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}
               >
                 ተመለስ
               </button>
@@ -1744,8 +1744,8 @@ export const BakeryView: React.FC = () => {
                 onClick={handleStartNewBake}
                 style={{
                   flex: 2,
-                  padding: 16,
-                  borderRadius: 16,
+                  padding: 14,
+                  borderRadius: 14,
                   background: 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)',
                   color: '#ffffff',
                   border: 'none',
@@ -1771,8 +1771,8 @@ export const BakeryView: React.FC = () => {
       {/* MODAL 2: SEND TRANSFER TO COUNTER STEPPER */}
       {/* ========================================================================= */}
       {transferTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 12 }}>
-          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 440, borderRadius: 20, padding: 24, textAlign: 'center', maxHeight: 'min(92vh, calc(100dvh - 24px))', overflowY: 'auto', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 12, boxSizing: 'border-box' }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 440, borderRadius: 20, padding: 22, textAlign: 'center', maxHeight: 'min(92vh, calc(100dvh - 24px))', overflowY: 'auto', overflowX: 'hidden', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)', boxSizing: 'border-box' }}>
             <img
               src={getCakePhoto(transferTarget.cake)}
               alt=""
@@ -1842,7 +1842,7 @@ export const BakeryView: React.FC = () => {
             <div style={{ display: 'flex', gap: 12 }}>
               <button
                 onClick={() => setTransferTarget(null)}
-                style={{ flex: 1, padding: 16, borderRadius: 16, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}
+                style={{ flex: 1, padding: 14, borderRadius: 14, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}
               >
                 ተመለስ
               </button>
@@ -1852,8 +1852,8 @@ export const BakeryView: React.FC = () => {
                 onClick={handleSendTransfer}
                 style={{
                   flex: 2,
-                  padding: 16,
-                  borderRadius: 16,
+                  padding: 14,
+                  borderRadius: 14,
                   background: 'linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%)',
                   color: '#ffffff',
                   border: 'none',
@@ -1879,11 +1879,11 @@ export const BakeryView: React.FC = () => {
       {/* MODAL 3: ADD NEW CAKE MENU ITEM (BAKERY, ADMIN, OWNER) */}
       {/* ========================================================================= */}
       {showAddCakeModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1150, padding: 12 }}>
-          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 540, borderRadius: 20, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)' }} className="animate-fade-in">
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1150, padding: 12, boxSizing: 'border-box' }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 520, borderRadius: 20, maxHeight: 'min(92vh, calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)', boxSizing: 'border-box' }} className="animate-fade-in">
             {/* Pinned Sticky Header */}
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0 }}>
-              <h3 style={{ fontSize: 17, fontWeight: 900, margin: 0, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexShrink: 0, width: '100%', boxSizing: 'border-box' }}>
+              <h3 style={{ fontSize: 16, fontWeight: 900, margin: 0, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 🎂 አዲስ ኬክ መመዝገቢያ (New Cake)
               </h3>
               <button
@@ -1900,7 +1900,8 @@ export const BakeryView: React.FC = () => {
                   justifyContent: 'center',
                   color: 'var(--text-main)',
                   cursor: 'pointer',
-                  padding: 0
+                  padding: 0,
+                  flexShrink: 0
                 }}
                 title="ዝጋ (Close)"
               >
@@ -1909,9 +1910,9 @@ export const BakeryView: React.FC = () => {
             </div>
 
             {/* Scrollable Form Body */}
-            <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ padding: '16px 18px', overflowY: 'auto', overflowX: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', gap: 14, width: '100%', boxSizing: 'border-box' }}>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
                   የኬክ ስም በአማርኛ (Amharic Name) *
                 </label>
                 <input
@@ -1919,12 +1920,12 @@ export const BakeryView: React.FC = () => {
                   placeholder="ለምሳሌ፡ የካሮት ኬክ"
                   value={newCakeAmharic}
                   onChange={(e) => setNewCakeAmharic(e.target.value)}
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 15, fontWeight: 700, boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-app)', fontSize: 14, fontWeight: 700, boxSizing: 'border-box' }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
                   የኬክ ስም በእንግሊዝኛ (English Name) *
                 </label>
                 <input
@@ -1932,31 +1933,32 @@ export const BakeryView: React.FC = () => {
                   placeholder="e.g. Carrot Cake"
                   value={newCakeName}
                   onChange={(e) => setNewCakeName(e.target.value)}
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 15, fontWeight: 700, boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-app)', fontSize: 14, fontWeight: 700, boxSizing: 'border-box' }}
                 />
               </div>
 
               {/* Photo Section: tabbed Camera/Upload vs Preset */}
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>
+              <div style={{ width: '100%', boxSizing: 'border-box' }}>
+                <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>
                   ፎቶ ይምረጡ (Select Photo)
                 </label>
 
                 {/* Tab toggle */}
-                <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 12, width: '100%', boxSizing: 'border-box' }}>
                   <button
                     type="button"
                     onClick={() => setNewCakePhotoMode('upload')}
                     style={{
                       flex: 1,
-                      padding: '10px 12px',
+                      minWidth: 0,
+                      padding: '8px 10px',
                       borderRadius: 12,
                       border: 'none',
                       background: newCakePhotoMode === 'upload'
                         ? 'linear-gradient(135deg, #b45309 0%, #d97706 100%)'
                         : 'var(--bg-app)',
                       color: newCakePhotoMode === 'upload' ? '#ffffff' : 'var(--text-muted)',
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: 900,
                       cursor: 'pointer',
                       display: 'flex',
@@ -1964,24 +1966,26 @@ export const BakeryView: React.FC = () => {
                       justifyContent: 'center',
                       gap: 6,
                       boxShadow: newCakePhotoMode === 'upload' ? '0 4px 12px rgba(180,83,9,0.3)' : 'none',
-                      transition: 'all 0.15s ease'
+                      transition: 'all 0.15s ease',
+                      whiteSpace: 'nowrap'
                     }}
                   >
-                    📷 ፎቶ አንሳ / Upload
+                    📷 ፎቶ አንሳ
                   </button>
                   <button
                     type="button"
                     onClick={() => setNewCakePhotoMode('preset')}
                     style={{
                       flex: 1,
-                      padding: '10px 12px',
+                      minWidth: 0,
+                      padding: '8px 10px',
                       borderRadius: 12,
                       border: 'none',
                       background: newCakePhotoMode === 'preset'
                         ? 'linear-gradient(135deg, #b45309 0%, #d97706 100%)'
                         : 'var(--bg-app)',
                       color: newCakePhotoMode === 'preset' ? '#ffffff' : 'var(--text-muted)',
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: 900,
                       cursor: 'pointer',
                       display: 'flex',
@@ -1989,10 +1993,11 @@ export const BakeryView: React.FC = () => {
                       justifyContent: 'center',
                       gap: 6,
                       boxShadow: newCakePhotoMode === 'preset' ? '0 4px 12px rgba(180,83,9,0.3)' : 'none',
-                      transition: 'all 0.15s ease'
+                      transition: 'all 0.15s ease',
+                      whiteSpace: 'nowrap'
                     }}
                   >
-                    🎨 ዝግጁ ፎቶዎች (Presets)
+                    🎨 ዝግጁ ፎቶዎች
                   </button>
                 </div>
 
@@ -2003,13 +2008,13 @@ export const BakeryView: React.FC = () => {
                     onChange={(url) => {
                       setNewCakePhoto(url);
                     }}
-                    label="በካሜራ ያንሱ ወይም ከፋይል ይምረጡ (Camera shot or file upload)"
+                    label="በካሜራ ያንሱ ወይም ከፋይል ይምረጡ"
                   />
                 )}
 
                 {/* Preset grid panel */}
                 {newCakePhotoMode === 'preset' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6, width: '100%', boxSizing: 'border-box' }}>
                     {PRESET_CAKE_PHOTOS.map(p => (
                       <div
                         key={p.url}
@@ -2020,12 +2025,15 @@ export const BakeryView: React.FC = () => {
                           border: newCakePhoto === p.url ? '3px solid #b45309' : '2px solid var(--border)',
                           cursor: 'pointer',
                           position: 'relative',
-                          height: 65,
+                          height: 60,
+                          minWidth: 0,
+                          width: '100%',
+                          boxSizing: 'border-box',
                           transition: 'border-color 0.15s ease'
                         }}
                       >
                         <img src={p.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        <span style={{ position: 'absolute', bottom: 0, insetInline: 0, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, padding: '2px 4px', textAlign: 'center', fontWeight: 800 }}>
+                        <span style={{ position: 'absolute', bottom: 0, insetInline: 0, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, padding: '2px 4px', textAlign: 'center', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
                           {p.label}
                         </span>
                         {newCakePhoto === p.url && (
@@ -2038,11 +2046,11 @@ export const BakeryView: React.FC = () => {
 
                 {/* Current photo preview strip (always visible) */}
                 {newCakePhoto && (
-                  <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-app)', borderRadius: 12, padding: '8px 12px' }}>
+                  <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-app)', borderRadius: 12, padding: '8px 12px', width: '100%', boxSizing: 'border-box' }}>
                     <img
                       src={newCakePhoto}
                       alt="preview"
-                      style={{ width: 48, height: 48, borderRadius: 10, objectFit: 'cover', border: '2px solid #b45309', flexShrink: 0 }}
+                      style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', border: '2px solid #b45309', flexShrink: 0 }}
                     />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ fontSize: 12, fontWeight: 800, color: '#b45309', display: 'block' }}>✅ ፎቶ ተመርጧል (Photo Selected)</span>
@@ -2055,9 +2063,9 @@ export const BakeryView: React.FC = () => {
               </div>
 
               {/* Variations list */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-muted)' }}>
+              <div style={{ width: '100%', boxSizing: 'border-box' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)' }}>
                     መጠኖችና ዋጋዎች (Sizes & Prices)
                   </label>
                   <button
@@ -2068,15 +2076,15 @@ export const BakeryView: React.FC = () => {
                         { variation_name: `Size ${newCakeVariations.length + 1}`, size: 'Extra Size', price: 200, min_stock_level: 2 }
                       ]);
                     }}
-                    style={{ background: 'none', border: 'none', color: '#b45309', fontWeight: 900, fontSize: 12, cursor: 'pointer' }}
+                    style={{ background: 'none', border: 'none', color: '#b45309', fontWeight: 900, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
                   >
                     + ሌላ መጠን ጨምር
                   </button>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', boxSizing: 'border-box' }}>
                   {newCakeVariations.map((v, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'var(--bg-app)', padding: 10, borderRadius: 12 }}>
+                    <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'var(--bg-app)', padding: 8, borderRadius: 10, width: '100%', boxSizing: 'border-box' }}>
                       <input
                         type="text"
                         placeholder="መጠን (e.g. ቁራጭ)"
@@ -2087,24 +2095,24 @@ export const BakeryView: React.FC = () => {
                           updated[idx].variation_name = e.target.value;
                           setNewCakeVariations(updated);
                         }}
-                        style={{ flex: 2, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, fontWeight: 700 }}
+                        style={{ flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, fontWeight: 700, boxSizing: 'border-box' }}
                       />
                       <input
                         type="number"
                         placeholder="ዋጋ (ETB)"
-                        value={v.price}
+                        value={v.price || ''}
                         onChange={(e) => {
                           const updated = [...newCakeVariations];
                           updated[idx].price = Number(e.target.value);
                           setNewCakeVariations(updated);
                         }}
-                        style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, fontWeight: 700 }}
+                        style={{ width: 85, flexShrink: 0, minWidth: 0, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, fontWeight: 700, boxSizing: 'border-box' }}
                       />
                       {newCakeVariations.length > 1 && (
                         <button
                           type="button"
                           onClick={() => setNewCakeVariations(newCakeVariations.filter((_, i) => i !== idx))}
-                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 4 }}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 4, flexShrink: 0 }}
                         >
                           <Trash2 size={16} />
                         </button>
@@ -2117,11 +2125,11 @@ export const BakeryView: React.FC = () => {
             </div>
 
             {/* Pinned Sticky Footer */}
-            <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+            <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0, width: '100%', boxSizing: 'border-box' }}>
               <button
                 type="button"
                 onClick={() => setShowAddCakeModal(false)}
-                style={{ flex: 1, height: 44, padding: '0 16px', borderRadius: 12, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}
+                style={{ flex: 1, minWidth: 0, height: 44, padding: '0 12px', borderRadius: 12, border: '2px solid var(--border)', background: 'var(--bg-app)', fontSize: 14, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', boxSizing: 'border-box' }}
               >
                 ተመለስ
               </button>
@@ -2131,18 +2139,22 @@ export const BakeryView: React.FC = () => {
                 onClick={handleCreateCake}
                 style={{
                   flex: 2,
+                  minWidth: 0,
                   height: 44,
+                  padding: '0 12px',
                   borderRadius: 12,
                   background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)',
                   color: '#ffffff',
                   border: 'none',
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: 900,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 4px 12px rgba(22, 163, 74, 0.3)'
+                  boxShadow: '0 4px 12px rgba(22, 163, 74, 0.3)',
+                  whiteSpace: 'nowrap',
+                  boxSizing: 'border-box'
                 }}
               >
                 {isCreatingCake ? 'እየመዘገበ ነው...' : '✅ ኬኩን መዝግብ'}
@@ -2156,8 +2168,8 @@ export const BakeryView: React.FC = () => {
       {/* MODAL 4: DELETE CONFIRMATION MODAL (ADMIN & OWNER ONLY) */}
       {/* ========================================================================= */}
       {cakeToDelete && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 12 }}>
-          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 420, borderRadius: 20, padding: 24, textAlign: 'center', maxHeight: 'min(92vh, calc(100dvh - 24px))', overflowY: 'auto', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 12, boxSizing: 'border-box' }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 420, borderRadius: 20, padding: 24, textAlign: 'center', maxHeight: 'min(92vh, calc(100dvh - 24px))', overflowY: 'auto', overflowX: 'hidden', boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))', border: '1px solid var(--border)', boxSizing: 'border-box' }}>
             <div style={{ width: 64, height: 64, borderRadius: 20, background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 32 }}>
               <AlertTriangle size={36} />
             </div>

@@ -107,9 +107,9 @@ export const ImageUploadCompressor: React.FC<ImageUploadCompressorProps> = ({
   const displaySrc = resolveImageUrl(value);
 
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>
+    <div style={{ marginBottom: 14, width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
+        <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', flex: '1 1 180px', minWidth: 0, wordBreak: 'break-word' }}>
           {label || (language === 'am' ? 'የምግብ ፎቶ (ከተንቀሳቃሽ ስልክ ወይም ፋይል)' : 'Dish Photo (Mobile Camera or Upload)')}
         </label>
         <button
@@ -124,7 +124,9 @@ export const ImageUploadCompressor: React.FC<ImageUploadCompressorProps> = ({
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: 4
+            gap: 4,
+            whiteSpace: 'nowrap',
+            flexShrink: 0
           }}
         >
           <LinkIcon size={12} />
@@ -135,13 +137,13 @@ export const ImageUploadCompressor: React.FC<ImageUploadCompressorProps> = ({
       </div>
 
       {showUrlInput ? (
-        <div>
+        <div style={{ width: '100%', boxSizing: 'border-box' }}>
           <input
             type="url"
             placeholder="https://images.unsplash.com/..."
             value={value || ''}
             onChange={e => onChange(e.target.value)}
-            style={{ width: '100%', marginBottom: 6 }}
+            style={{ width: '100%', boxSizing: 'border-box', marginBottom: 6 }}
           />
           {displaySrc && (
             <div style={{ width: '100%', height: 110, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', marginTop: 4 }}>
@@ -177,7 +179,9 @@ export const ImageUploadCompressor: React.FC<ImageUploadCompressorProps> = ({
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 8
+                gap: 8,
+                width: '100%',
+                boxSizing: 'border-box'
               }}
             >
               <div
@@ -220,10 +224,12 @@ export const ImageUploadCompressor: React.FC<ImageUploadCompressorProps> = ({
                 borderRadius: 14,
                 padding: 12,
                 background: '#ffffff',
-                boxShadow: 'var(--shadow-sm)'
+                boxShadow: 'var(--shadow-sm)',
+                width: '100%',
+                boxSizing: 'border-box'
               }}
             >
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                 <div
                   style={{
                     width: 76,
@@ -242,8 +248,8 @@ export const ImageUploadCompressor: React.FC<ImageUploadCompressorProps> = ({
                   />
                 </div>
 
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <div style={{ flex: '1 1 180px', minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
                     <span
                       style={{
                         fontSize: 11,
@@ -263,17 +269,17 @@ export const ImageUploadCompressor: React.FC<ImageUploadCompressorProps> = ({
                   </div>
 
                   {stats && (
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 6, wordBreak: 'break-word' }}>
                       {stats.originalSizeKb} KB ➔ <strong>{stats.compressedSizeKb} KB</strong> ({stats.compressionRatio}% {language === 'am' ? 'ቅናሽ' : 'lighter'})
                     </span>
                   )}
 
-                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="btn btn-secondary"
-                      style={{ padding: '4px 10px', fontSize: 11, fontWeight: 700 }}
+                      style={{ padding: '4px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}
                     >
                       <RefreshCw size={12} /> {language === 'am' ? 'ቀይር' : 'Change'}
                     </button>
@@ -291,7 +297,8 @@ export const ImageUploadCompressor: React.FC<ImageUploadCompressorProps> = ({
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 4
+                        gap: 4,
+                        whiteSpace: 'nowrap'
                       }}
                     >
                       <Trash2 size={12} /> {language === 'am' ? 'አስወግድ' : 'Remove'}
