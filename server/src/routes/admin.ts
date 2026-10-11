@@ -277,3 +277,80 @@ adminRouter.post('/cloud-sync/trigger', authenticate, authorizeRole(['admin', 'o
     res.status(500).json({ success: false, error: result.message, status: getSyncStatus() });
   }
 });
+
+adminRouter.post('/clean-demo-data', authenticate, authorizeRole(['admin', 'owner']), async (req: AuthenticatedRequest, res) => {
+  const tablesToClean = [
+    'order_items',
+    'order_status_history',
+    'payments',
+    'receipts',
+    'orders',
+    'order_counters',
+    'recipe_items',
+    'recipes',
+    'menu_items',
+    'menu_categories',
+    'inventory_movements',
+    'inventory_stock',
+    'waste_records',
+    'purchase_order_items',
+    'purchase_orders',
+    'stock_transfer_items',
+    'stock_transfers',
+    'ingredients',
+    'suppliers',
+    'restaurant_tables',
+    'bakery_inventory_transactions',
+    'bakery_waste_records',
+    'bakery_returns',
+    'bakery_stock_counts',
+    'bakery_price_suggestions',
+    'bakery_transfers',
+    'bakery_requests',
+    'bakery_batches',
+    'bakery_product_variations',
+    'bakery_products',
+    'expenses',
+    'attendance',
+    'notifications',
+    'audit_logs',
+    'user_account_requests'
+  ];
+
+  try {
+    db.pragma('foreign_keys = OFF');
+    const tx = db.transaction(() => {
+      for (const tableName of tablesToClean) {
+        try {
+          const info = db.prepare(`SELECT COUNT(*) as count FROM sqlite_master WHERE type='table' AND name=?`).get(tableName) as any;
+          if (info && info.count > 0) {
+            db.prepare(`DELETE FROM ${tableName}`).run();
+          }
+        } catch (_) {}
+      }
+    });
+    tx();
+    db.pragma('foreign_keys = ON');
+    try {
+      db.exec('VACUUM');
+    } catch (_) {}
+
+    // Trigger immediate cloud backup so cloud persistence stores the clean state
+    syncDatabaseToCloud('post_clean_demo_data').catch(() => {});
+
+    logAudit({
+      branchId: req.user?.branch_id || 'branch_addis',
+      userId: req.user!.id,
+      action: 'DEMO_DATA_CLEANED',
+      entityType: 'DATABASE',
+      details: { cleanedBy: req.user?.username }
+    });
+
+    res.json({
+      success: true,
+      message: 'Demo catalog (menu items, tables, ingredients, cakes, orders) cleaned successfully! Staff accounts and settings preserved.'
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to clean demo data' });
+  }
+});

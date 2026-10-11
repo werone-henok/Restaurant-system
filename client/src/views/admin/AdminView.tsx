@@ -5,7 +5,7 @@ import { CameraCapture } from '../../components/CameraCapture';
 import { ImageUploadCompressor } from '../../components/ImageUploadCompressor';
 import { DetailedReportsDashboard } from '../../components/DetailedReportsDashboard';
 import { resolveImageUrl } from '../../utils/imageUrl';
-import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils, BarChart3, FolderPlus, Tag, Clock, Sparkles, Globe, Key, Lock, ShieldCheck, ShieldAlert, UserCheck, UserX } from 'lucide-react';
+import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, AlertTriangle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils, BarChart3, FolderPlus, Tag, Clock, Sparkles, Globe, Key, Lock, ShieldCheck, ShieldAlert, UserCheck, UserX } from 'lucide-react';
 import { CreateCategoryModal } from '../../components/CreateCategoryModal';
 import { TIMEZONE_OPTIONS, getDeviceTimezone } from '../../utils/timezone';
 import { gToast } from '../../utils/toast';
@@ -101,6 +101,11 @@ export const AdminView: React.FC = () => {
   const [directResetTarget, setDirectResetTarget] = useState<any | null>(null);
   const [directResetPassword, setDirectResetPassword] = useState('');
   const [isDirectResetting, setIsDirectResetting] = useState(false);
+
+  // Clean Demo Data State (Client Handover)
+  const [isCleaningDemo, setIsCleaningDemo] = useState(false);
+  const [showCleanModal, setShowCleanModal] = useState(false);
+  const [cleanConfirmText, setCleanConfirmText] = useState('');
 
   // Expense form
   const [expenseCategory, setExpenseCategory] = useState('Electricity');
@@ -410,6 +415,29 @@ export const AdminView: React.FC = () => {
       gToast.error(err.message || 'Failed to update branding settings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCleanDemoData = async () => {
+    if (cleanConfirmText !== 'CLEAN' && cleanConfirmText !== 'አጥፋ') {
+      gToast.error(language === 'am' ? 'እባክዎ ለማረጋገጥ CLEAN ወይም አጥፋ ብለው ይጻፉ' : 'Please type CLEAN to confirm');
+      return;
+    }
+    try {
+      setIsCleaningDemo(true);
+      tactileFeedback('warning');
+      await api.request('/admin/clean-demo-data', {
+        method: 'POST',
+        body: JSON.stringify({})
+      });
+      gToast.success(language === 'am' ? 'የሙከራ መረጃዎች (ምግቦች፣ ጠረጴዛዎች፣ ኬኮች፣ ስቶክ) በሙሉ ተሰርዘዋል!' : 'All demo items and catalog wiped successfully!');
+      setShowCleanModal(false);
+      setCleanConfirmText('');
+      loadData();
+    } catch (err: any) {
+      gToast.error(err.message || 'Failed to wipe demo data');
+    } finally {
+      setIsCleaningDemo(false);
     }
   };
 
@@ -833,7 +861,8 @@ export const AdminView: React.FC = () => {
 
       {/* 4. BRANDING & APP NAME SETTINGS TAB */}
       {activeTab === 'settings' && (
-        <form onSubmit={handleSaveBranding} style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: 16, padding: 18, boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <form onSubmit={handleSaveBranding} style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: 16, padding: 18, boxShadow: 'var(--shadow-sm)' }}>
           <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
             <Settings size={18} color="var(--primary)" /> App Branding & Customization
           </h3>
@@ -1057,7 +1086,69 @@ export const AdminView: React.FC = () => {
             {loading ? 'Saving Settings...' : (language === 'am' ? 'ማስተካከያዎቹን መዝግብ' : 'Save Branding & Timezone Settings')}
           </button>
         </form>
-      )}
+
+        {/* Client Handover / Wipe Demo Catalog Section */}
+        <div style={{
+          background: '#ffffff',
+          border: '1px solid #fee2e2',
+          borderRadius: 16,
+          padding: 20,
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                background: '#fef2f2',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <Trash2 size={22} color="#dc2626" />
+              </div>
+              <div>
+                <h4 style={{ fontSize: 15, fontWeight: 800, color: '#991b1b', margin: 0 }}>
+                  {language === 'am' ? 'የደንበኛ ርክክብ / የሙከራ መረጃዎችን ማጽጃ' : 'Client Handover / Clean Slate Mode'}
+                </h4>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '3px 0 0 0', lineHeight: 1.4 }}>
+                  {language === 'am'
+                    ? 'የሙከራ ምግቦችን፣ ጠረጴዛዎችን፣ ኬኮችን፣ ስቶክ እና የሽያጭ ታሪክን ያጸዳል (የሰራተኞች መግቢያ፣ ቅርንጫፎች እና ላይሰንስ ሳይነኩ ይቀጥላሉ)'
+                    : 'Wipes all sample menu items, tables, cakes, stock, and orders for production delivery. Preserves staff accounts, branches, and licensing.'}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setCleanConfirmText('');
+                setShowCleanModal(true);
+              }}
+              style={{
+                padding: '11px 20px',
+                borderRadius: 10,
+                background: '#dc2626',
+                color: '#ffffff',
+                fontWeight: 800,
+                fontSize: 13,
+                border: 'none',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)'
+              }}
+            >
+              <Trash2 size={16} />
+              {language === 'am' ? 'የሙከራ መረጃዎችን አጽዳ' : 'Wipe Demo Items & Reset Catalog'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
       {/* 4. EXPENSES TAB */}
       {activeTab === 'expenses' && (
@@ -2135,6 +2226,134 @@ export const AdminView: React.FC = () => {
           setMenuCategory(newCat.id);
         }}
       />
+
+      {/* MODAL: CLEAN DEMO DATA CONFIRMATION (CLIENT HANDOVER) */}
+      {showCleanModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.65)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: 16
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: 16,
+            maxWidth: 480,
+            width: '100%',
+            padding: 24,
+            boxShadow: 'var(--shadow-lg)',
+            border: '1px solid #fca5a5'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                background: '#fee2e2',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <AlertTriangle size={24} color="#dc2626" />
+              </div>
+              <div>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#991b1b', margin: 0 }}>
+                  {language === 'am' ? 'የሙከራ መረጃዎችን ማጽጃ' : 'Wipe Demo Items & Catalog'}
+                </h3>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  {language === 'am' ? 'የደንበኛ ርክክብ ዝግጅት' : 'Client Handover Preparation'}
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: 10,
+              padding: 12,
+              marginBottom: 16,
+              fontSize: 12,
+              color: '#991b1b',
+              lineHeight: 1.5
+            }}>
+              <p style={{ margin: '0 0 8px 0', fontWeight: 700 }}>
+                ⚠️ {language === 'am' ? 'የሚከተሉት መረጃዎች በሙሉ ይሰረዛሉ:' : 'The following will be completely wiped:'}
+              </p>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                <li>{language === 'am' ? 'ሁሉም የሙከራ ምግቦች እና ካቴጎሪዎች' : 'All sample menu items & categories'}</li>
+                <li>{language === 'am' ? 'ሁሉም የሙከራ ጠረጴዛዎች' : 'All sample dining tables'}</li>
+                <li>{language === 'am' ? 'ሁሉም የሙከራ ኬኮች፣ ባቾች እና የዳቦ መጋገሪያ ምርቶች' : 'All sample cakes, bakery batches & variations'}</li>
+                <li>{language === 'am' ? 'ሁሉም የስቶክ/ዕቃዎች እና የግብይት መረጃዎች' : 'All stock ingredients & inventory transactions'}</li>
+                <li>{language === 'am' ? 'ሁሉም የሙከራ ትዕዛዞች፣ ክፍያዎች እና ሪፖርቶች' : 'All test orders, payments & sales history'}</li>
+              </ul>
+              <div style={{ marginTop: 8, fontWeight: 700, color: '#166534' }}>
+                ✅ {language === 'am' ? 'የሰራተኞች አካውንት፣ ቅርንጫፎች እና ላይሰንስ ሳይነኩ ይቀጥላሉ!' : 'Staff logins, branches, and system license remain untouched!'}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-main)', display: 'block', marginBottom: 6 }}>
+                {language === 'am' ? 'ለማረጋገጥ "CLEAN" ወይም "አጥፋ" ብለው ይጻፉ:' : 'Type "CLEAN" to confirm wipe:'}
+              </label>
+              <input
+                type="text"
+                value={cleanConfirmText}
+                onChange={e => setCleanConfirmText(e.target.value)}
+                placeholder="CLEAN"
+                style={{ width: '100%', fontFamily: 'monospace', fontWeight: 700, letterSpacing: 1 }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCleanModal(false);
+                  setCleanConfirmText('');
+                }}
+                disabled={isCleaningDemo}
+                className="btn btn-secondary"
+                style={{ flex: 1, height: 42 }}
+              >
+                {language === 'am' ? 'ተመለስ' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={handleCleanDemoData}
+                disabled={isCleaningDemo || (cleanConfirmText !== 'CLEAN' && cleanConfirmText !== 'አጥፋ')}
+                style={{
+                  flex: 1.5,
+                  height: 42,
+                  borderRadius: 8,
+                  background: (cleanConfirmText === 'CLEAN' || cleanConfirmText === 'አጥፋ') ? '#dc2626' : '#9ca3af',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: 13,
+                  border: 'none',
+                  cursor: (cleanConfirmText === 'CLEAN' || cleanConfirmText === 'አጥፋ') ? 'pointer' : 'not-allowed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6
+                }}
+              >
+                <Trash2 size={16} />
+                {isCleaningDemo 
+                  ? (language === 'am' ? 'በማጽዳት ላይ...' : 'Wiping Demo Items...') 
+                  : (language === 'am' ? 'ሁሉንም አጽዳ' : 'Confirm Wipe')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
