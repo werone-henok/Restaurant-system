@@ -103,62 +103,65 @@ export const TopUrgentBanner: React.FC = () => {
     <div
       style={{
         width: '100%',
+        maxWidth: '100vw',
         background: 'linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #ea580c 100%)',
         color: '#ffffff',
-        padding: '10px 16px',
+        padding: '8px 12px',
         boxSizing: 'border-box',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: 12,
+        flexWrap: 'wrap',
+        gap: 8,
         boxShadow: '0 4px 16px rgba(220, 38, 38, 0.35)',
         zIndex: 90,
         position: 'relative',
+        overflow: 'hidden',
         animation: 'pulse-border 2s infinite ease-in-out'
       }}
     >
-      {/* Left: Icon & Badge */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+      {/* Left: Icon & Badge & Text */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: '1 1 200px' }}>
         <div
           style={{
             background: 'rgba(255, 255, 255, 0.22)',
-            borderRadius: 10,
-            padding: '6px 8px',
+            borderRadius: 8,
+            padding: '4px 6px',
             display: 'flex',
             alignItems: 'center',
-            gap: 6,
+            gap: 4,
             flexShrink: 0
           }}
         >
-          <AlertTriangle size={18} color="#ffffff" className="animate-bounce" />
-          <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-            🚨 አስቸኳይ (URGENT)
+          <AlertTriangle size={15} color="#ffffff" className="animate-bounce" />
+          <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+            {language === 'am' ? '🚨 አስቸኳይ' : '🚨 URGENT'}
           </span>
         </div>
 
         {/* Text */}
-        <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, fontWeight: 900, whiteSpace: 'nowrap' }}>
+        <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'baseline', gap: 6, overflow: 'hidden' }}>
+          <span style={{ fontSize: 12, fontWeight: 900, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', maxWidth: '35vw' }}>
             {title}
           </span>
-          <span style={{ fontSize: 12, opacity: 0.95, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60vw' }}>
+          <span style={{ fontSize: 11, opacity: 0.95, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
             {message}
           </span>
         </div>
       </div>
 
       {/* Right: Controls & Acknowledge Button */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 'auto' }}>
         {urgentItems.length > 1 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(0,0,0,0.2)', padding: '2px 5px', borderRadius: 6 }}>
             <button
               type="button"
               onClick={() => setCurrentIndex(i => (i > 0 ? i - 1 : urgentItems.length - 1))}
               style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: 2, display: 'flex' }}
             >
-              <ChevronLeft size={14} />
+              <ChevronLeft size={13} />
             </button>
-            <span style={{ fontSize: 11, fontWeight: 800 }}>
+            <span style={{ fontSize: 10, fontWeight: 800 }}>
               {currentIndex + 1}/{urgentItems.length}
             </span>
             <button
@@ -166,7 +169,7 @@ export const TopUrgentBanner: React.FC = () => {
               onClick={() => setCurrentIndex(i => (i < urgentItems.length - 1 ? i + 1 : 0))}
               style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: 2, display: 'flex' }}
             >
-              <ChevronRight size={14} />
+              <ChevronRight size={13} />
             </button>
           </div>
         )}
@@ -178,22 +181,23 @@ export const TopUrgentBanner: React.FC = () => {
             background: '#ffffff',
             color: '#b91c1c',
             border: 'none',
-            borderRadius: 8,
-            padding: '6px 12px',
-            fontSize: 12,
+            borderRadius: 7,
+            padding: '5px 10px',
+            fontSize: 11,
             fontWeight: 900,
             display: 'flex',
             alignItems: 'center',
             gap: 4,
             cursor: 'pointer',
             boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+            whiteSpace: 'nowrap',
             transition: 'transform 0.1s ease'
           }}
           onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.96)')}
           onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
         >
-          <Check size={14} />
-          <span>ተረዳሁ (Dismiss)</span>
+          <Check size={13} />
+          <span>{language === 'am' ? 'ተረዳሁ' : 'Dismiss'}</span>
         </button>
 
         <button
@@ -205,12 +209,12 @@ export const TopUrgentBanner: React.FC = () => {
             border: 'none',
             color: 'rgba(255,255,255,0.8)',
             cursor: 'pointer',
-            padding: 4,
+            padding: 3,
             display: 'flex',
             alignItems: 'center'
           }}
         >
-          <X size={16} />
+          <X size={15} />
         </button>
       </div>
     </div>

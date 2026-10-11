@@ -268,7 +268,7 @@ adminRouter.post('/clean-demo-data', authenticate, authorizeRole(['admin', 'owne
         }
         catch (_) { }
         // Trigger immediate cloud backup so cloud persistence stores the clean state
-        syncDatabaseToCloud('post_clean_demo_data').catch(() => { });
+        await syncDatabaseToCloud('post_clean_demo_data');
         logAudit({
             branchId: req.user?.branch_id || 'branch_addis',
             userId: req.user.id,

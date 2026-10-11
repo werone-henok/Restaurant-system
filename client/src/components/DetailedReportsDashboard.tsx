@@ -225,8 +225,8 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
       </div>
 
       {/* Date Range Filter Bar */}
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '8px 10px', marginBottom: 14, boxShadow: 'var(--shadow-sm)' }}>
-        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '8px 10px', marginBottom: 14, boxShadow: 'var(--shadow-sm)', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', width: '100%', boxSizing: 'border-box' }}>
           {[
             { id: 'today', label: language === 'am' ? 'ዛሬ' : 'Today' },
             { id: 'yesterday', label: language === 'am' ? 'ትናንት' : 'Yesterday' },
@@ -238,9 +238,8 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
               key={p.id}
               onClick={() => setRange(p.id as any)}
               style={{
-                flex: 1,
-                minWidth: 70,
-                padding: '6px 10px',
+                flex: '0 0 auto',
+                padding: '6px 12px',
                 borderRadius: 8,
                 fontSize: 12,
                 fontWeight: 700,
@@ -256,27 +255,27 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
         </div>
 
         {range === 'custom' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--border)', flexWrap: 'wrap' }}>
             <Calendar size={14} color="var(--primary)" />
             <input
               type="date"
               value={customFrom}
               onChange={e => setCustomFrom(e.target.value)}
-              style={{ padding: '4px 8px', fontSize: 12, flex: 1 }}
+              style={{ padding: '4px 8px', fontSize: 12, flex: '1 1 120px' }}
             />
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{language === 'am' ? 'እስከ' : 'to'}</span>
             <input
               type="date"
               value={customTo}
               onChange={e => setCustomTo(e.target.value)}
-              style={{ padding: '4px 8px', fontSize: 12, flex: 1 }}
+              style={{ padding: '4px 8px', fontSize: 12, flex: '1 1 120px' }}
             />
           </div>
         )}
       </div>
 
       {/* Sub-Navigation Tabs */}
-      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 16, paddingBottom: 4 }}>
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 16, paddingBottom: 4, scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
         {[
           { id: 'overview', icon: BarChart3, label: language === 'am' ? 'ዋና ዳሽቦርድ' : 'Overview' },
           { id: 'hourly', icon: Clock, label: language === 'am' ? 'የሰዓት ትንታኔ (Rush)' : 'Hourly Heatmap' },
@@ -291,16 +290,17 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
               key={tTab.id}
               onClick={() => setActiveReportTab(tTab.id as any)}
               style={{
-                padding: '8px 14px',
+                flex: '0 0 auto',
+                padding: '7px 12px',
                 borderRadius: 10,
-                fontSize: 12,
+                fontSize: 11.5,
                 fontWeight: 800,
                 background: active ? 'var(--primary)' : 'var(--bg-card)',
                 color: active ? '#ffffff' : 'var(--text-main)',
                 border: active ? 'none' : '1px solid var(--border)',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 6,
+                gap: 5,
                 whiteSpace: 'nowrap',
                 boxShadow: active ? 'var(--shadow-sm)' : 'none'
               }}
@@ -465,7 +465,7 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
                       {language === 'am' ? 'በዚህ ወቅት ምንም ሽያጭ አልተመዘገበም' : 'No sales recorded for this period'}
                     </div>
                   ) : (
-                    <div style={{ width: '100%', height: 190 }}>
+                    <div style={{ width: '100%', minWidth: 0, maxWidth: '100%', height: 190, overflow: 'hidden' }}>
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={dailyTrend} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                           <XAxis 
@@ -497,7 +497,7 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
                       {language === 'am' ? 'ምንም የሰዓት መረጃ የለም' : 'No hourly sales recorded yet'}
                     </div>
                   ) : (
-                    <div style={{ width: '100%', height: 190 }}>
+                    <div style={{ width: '100%', minWidth: 0, maxWidth: '100%', height: 190, overflow: 'hidden' }}>
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={hourlyTrend} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                           <XAxis dataKey="hour" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
@@ -517,7 +517,7 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
           })()}
 
           {/* Top Selling Items Breakdown / Bar Graph */}
-          <div className="glass-card" style={{ padding: 14, marginBottom: 16 }}>
+          <div className="glass-card" style={{ padding: 14, marginBottom: 16, minWidth: 0, overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
               <div>
                 <h3 style={{ fontSize: 13, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -579,8 +579,8 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
                 {language === 'am' ? 'ምንም የምግብ መረጃ የለም' : 'No menu item data recorded'}
               </div>
             ) : itemsChartMode === 'bar' ? (
-              <div>
-                <div style={{ width: '100%', height: Math.max(160, topSellers.length * 36) }}>
+              <div style={{ width: '100%', minWidth: 0, overflow: 'hidden' }}>
+                <div style={{ width: '100%', minWidth: 0, maxWidth: '100%', height: Math.max(160, topSellers.length * 36), overflow: 'hidden' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       layout="vertical"
@@ -588,14 +588,15 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
                         ...item,
                         displayName: (language === 'am' && item.name_amharic) ? item.name_amharic : item.name
                       }))}
-                      margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+                      margin={{ top: 5, right: 15, left: -5, bottom: 5 }}
                     >
                       <XAxis type="number" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} allowDecimals={false} />
                       <YAxis
                         type="category"
                         dataKey="displayName"
                         tick={{ fontSize: 11, fill: 'var(--text-main)', fontWeight: 600 }}
-                        width={130}
+                        width={90}
+                        tickFormatter={(name: string) => name && name.length > 12 ? name.slice(0, 10) + '…' : name}
                       />
                       <Tooltip
                         contentStyle={{ background: 'var(--bg-card)', borderColor: 'var(--border)', borderRadius: 8, fontSize: 11 }}
@@ -613,18 +614,18 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
                   </ResponsiveContainer>
                 </div>
                 {/* Items detail list below the bar chart */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8, marginTop: 12, paddingTop: 10, borderTop: '1px dashed var(--border)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8, marginTop: 12, paddingTop: 10, borderTop: '1px dashed var(--border)', width: '100%', minWidth: 0 }}>
                   {topSellers.map((item: any, i: number) => {
                     const itemName = (language === 'am' && item.name_amharic) ? item.name_amharic : item.name;
                     return (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'var(--bg-subtle)', borderRadius: 8, fontSize: 11 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'var(--bg-subtle)', borderRadius: 8, fontSize: 11, minWidth: 0, gap: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', minWidth: 0, flex: 1 }}>
                           <div style={{ width: 8, height: 8, borderRadius: 2, background: CHART_COLORS[i % CHART_COLORS.length], flexShrink: 0 }} />
-                          <span style={{ fontWeight: 600, textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>{itemName}</span>
+                          <span style={{ fontWeight: 600, textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', minWidth: 0 }}>{itemName}</span>
                         </div>
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <strong style={{ color: 'var(--primary)', display: 'block' }}>{item.quantity_sold} {language === 'am' ? 'ተሸጧል' : 'sold'}</strong>
-                          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{item.revenue || 0} {t('currency')}</span>
+                          <strong style={{ color: 'var(--primary)', display: 'block', whiteSpace: 'nowrap' }}>{item.quantity_sold} {language === 'am' ? 'ተሸጧል' : 'sold'}</strong>
+                          <span style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{item.revenue || 0} {t('currency')}</span>
                         </div>
                       </div>
                     );
@@ -632,8 +633,8 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
                 </div>
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 120, height: 120, flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', minWidth: 0, overflow: 'hidden' }}>
+                <div style={{ width: 110, height: 110, flexShrink: 0, minWidth: 0 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -645,8 +646,8 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
                         nameKey="displayName"
                         cx="50%"
                         cy="50%"
-                        innerRadius={32}
-                        outerRadius={52}
+                        innerRadius={28}
+                        outerRadius={48}
                         paddingAngle={3}
                       >
                         {topSellers.map((_entry: any, index: number) => (
@@ -660,16 +661,16 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6, overflow: 'hidden' }}>
                   {topSellers.map((item: any, i: number) => {
                     const itemName = (language === 'am' && item.name_amharic) ? item.name_amharic : item.name;
                     return (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, minWidth: 0, gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', minWidth: 0, flex: 1 }}>
                           <div style={{ width: 8, height: 8, borderRadius: 2, background: CHART_COLORS[i % CHART_COLORS.length], flexShrink: 0 }} />
-                          <span style={{ fontWeight: 600, textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>{itemName}</span>
+                          <span style={{ fontWeight: 600, textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', minWidth: 0 }}>{itemName}</span>
                         </div>
-                        <strong style={{ color: 'var(--primary)', flexShrink: 0 }}>{item.quantity_sold} sold</strong>
+                        <strong style={{ color: 'var(--primary)', flexShrink: 0, whiteSpace: 'nowrap' }}>{item.quantity_sold} sold</strong>
                       </div>
                     );
                   })}
@@ -680,19 +681,19 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
 
           {/* Multi-Branch Comparison if available */}
           {dashboard.branchComparison?.length > 1 && (
-            <div className="glass-card" style={{ padding: 14 }}>
+            <div className="glass-card" style={{ padding: 14, minWidth: 0, overflow: 'hidden' }}>
               <h3 style={{ fontSize: 13, fontWeight: 800, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Building2 size={16} color="var(--primary)" />
                 {language === 'am' ? 'የቅርንጫፎች ንፅፅር' : 'Multi-Branch Comparison'}
               </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', minWidth: 0 }}>
                 {dashboard.branchComparison.map((b: any) => (
-                  <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: 'var(--bg-subtle)', borderRadius: 10, fontSize: 13 }}>
-                    <div>
-                      <strong>{b.name}</strong>
-                      <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)' }}>{b.city} • {b.orders_count} orders</span>
+                  <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: 'var(--bg-subtle)', borderRadius: 10, fontSize: 13, minWidth: 0, gap: 8 }}>
+                    <div style={{ minWidth: 0, overflow: 'hidden', flex: 1 }}>
+                      <strong style={{ display: 'block', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>{b.name}</strong>
+                      <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>{b.city} • {b.orders_count} orders</span>
                     </div>
-                    <span style={{ fontWeight: 800, color: 'var(--primary)' }}>
+                    <span style={{ fontWeight: 800, color: 'var(--primary)', flexShrink: 0, whiteSpace: 'nowrap' }}>
                       {b.sales} {t('currency')}
                     </span>
                   </div>
@@ -729,7 +730,7 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
           )}
 
           {/* Hourly Traffic Chart */}
-          <div className="glass-card" style={{ padding: 14, marginBottom: 16 }}>
+          <div className="glass-card" style={{ padding: 14, marginBottom: 16, minWidth: 0, overflow: 'hidden' }}>
             <h3 style={{ fontSize: 13, fontWeight: 800, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
               <Clock size={16} color="var(--primary)" />
               {language === 'am' ? 'የሰዓት ሽያጭ እና ትዕዛዝ ብዛት' : 'Sales & Orders by Hour of Day'}
@@ -739,7 +740,7 @@ export const DetailedReportsDashboard: React.FC<DetailedReportsDashboardProps> =
                 {language === 'am' ? 'ምንም የሰዓት መረጃ የለም' : 'No hourly data available for this range'}
               </div>
             ) : (
-              <div style={{ width: '100%', height: 200 }}>
+              <div style={{ width: '100%', minWidth: 0, maxWidth: '100%', height: 200, overflow: 'hidden' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={hourlyTrend} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                     <XAxis dataKey="hour" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />

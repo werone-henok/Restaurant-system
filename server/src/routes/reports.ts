@@ -98,7 +98,7 @@ reportRouter.get('/dashboard', authenticate, authorizeRole(['admin', 'owner']), 
     FROM order_items oi
     JOIN orders o ON oi.order_id = o.id
     JOIN menu_items mi ON oi.menu_item_id = mi.id
-    WHERE o.status = 'COMPLETED' AND ${orderDateClause} ${branchFilterOrders}
+    WHERE o.status = 'COMPLETED' AND (mi.deleted_at IS NULL OR mi.deleted_at = '') AND ${orderDateClause} ${branchFilterOrders}
     GROUP BY mi.id
     ORDER BY quantity_sold DESC LIMIT 10
   `).all(...dateParamsOrders, ...branchParamsOrders);
@@ -198,6 +198,7 @@ reportRouter.get('/dashboard', authenticate, authorizeRole(['admin', 'owner']), 
       WHERE o.status = 'COMPLETED' AND ${orderDateClause} ${branchFilterOrders}
       GROUP BY oi.menu_item_id
     ) sales ON mi.id = sales.menu_item_id
+    WHERE (mi.deleted_at IS NULL OR mi.deleted_at = '')
     GROUP BY mi.id
     ORDER BY total_revenue DESC LIMIT 20
   `).all(...dateParamsOrders, ...branchParamsOrders);
@@ -218,7 +219,7 @@ reportRouter.get('/dashboard', authenticate, authorizeRole(['admin', 'owner']), 
     SELECT COUNT(*) as count 
     FROM inventory_stock s
     JOIN ingredients i ON s.ingredient_id = i.id
-    WHERE s.current_quantity <= i.min_stock_level
+    WHERE i.is_active = 1 AND s.current_quantity <= i.min_stock_level
   `;
   const lowStockParams: any[] = [];
   if (!isConsolidated) {
