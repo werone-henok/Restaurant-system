@@ -127,13 +127,6 @@ export const AuthView: React.FC = () => {
     }
   };
 
-  // Quick Demo Account Switcher
-  const fillDemo = (u: string, p: string) => {
-    tactileFeedback('click');
-    setUsername(u);
-    setPassword(p);
-  };
-
   return (
     <div style={{
       minHeight: '100vh',
@@ -416,51 +409,6 @@ export const AuthView: React.FC = () => {
           >
             Register New Employee Account
           </button>
-
-          {/* Quick Demo Preload Buttons */}
-          <div style={{ marginTop: 20, padding: 14, background: 'var(--bg-subtle)', borderRadius: 14, border: '1px solid var(--border)' }}>
-            <span style={{ display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.05em' }}>
-              ⚡ 1-Tap Demo Switcher (All Roles)
-            </span>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-              <button type="button" onClick={() => fillDemo('bakery', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
-                <span style={{ fontSize: 16 }}>🍰</span>
-                <span style={{ fontWeight: 800 }}>Bakery</span>
-              </button>
-              <button type="button" onClick={() => fillDemo('front_counter', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: '#fce7f3', color: '#9d174d', border: '1px solid #fbcfe8', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
-                <span style={{ fontSize: 16 }}>🧁</span>
-                <span style={{ fontWeight: 800 }}>Counter</span>
-              </button>
-              <button type="button" onClick={() => fillDemo('waiter', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
-                <span style={{ fontSize: 16 }}>🍽️</span>
-                <span style={{ fontWeight: 700 }}>Waiter</span>
-              </button>
-              <button type="button" onClick={() => fillDemo('cashier', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
-                <span style={{ fontSize: 16 }}>💵</span>
-                <span style={{ fontWeight: 700 }}>Cashier</span>
-              </button>
-              <button type="button" onClick={() => fillDemo('chef', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
-                <span style={{ fontSize: 16 }}>🔥</span>
-                <span style={{ fontWeight: 700 }}>Chef</span>
-              </button>
-              <button type="button" onClick={() => fillDemo('barista', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
-                <span style={{ fontSize: 16 }}>☕</span>
-                <span style={{ fontWeight: 700 }}>Barista</span>
-              </button>
-              <button type="button" onClick={() => fillDemo('storekeeper', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
-                <span style={{ fontSize: 16 }}>📦</span>
-                <span style={{ fontWeight: 700 }}>Inventory</span>
-              </button>
-              <button type="button" onClick={() => fillDemo('admin', 'password123')} className="btn" style={{ padding: '8px 4px', fontSize: 11, background: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
-                <span style={{ fontSize: 16 }}>🛡️</span>
-                <span style={{ fontWeight: 700 }}>Admin</span>
-              </button>
-              <button type="button" onClick={() => fillDemo('owner', 'password123')} className="btn" style={{ padding: '8px 6px', fontSize: 11, background: 'var(--bg-card)', border: '2px solid var(--primary)', borderRadius: 10, gridColumn: 'span 4', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--text-main)', fontWeight: 800, cursor: 'pointer' }}>
-                <span style={{ fontSize: 16 }}>👑</span>
-                <span style={{ color: 'var(--text-main)', fontWeight: 800 }}>Owner (Executive)</span>
-              </button>
-            </div>
-          </div>
         </form>
       )}
 

@@ -46,3 +46,18 @@ expenseRouter.post('/', authenticate, authorizeRole(['admin', 'owner']), (req, r
     });
     res.status(201).json({ id, message: 'Expense recorded successfully' });
 });
+// 3. Delete Expense
+expenseRouter.delete('/:id', authenticate, authorizeRole(['admin', 'owner']), (req, res) => {
+    const { id } = req.params;
+    const result = db.prepare('DELETE FROM expenses WHERE id = ?').run(id);
+    if (result.changes === 0) {
+        return res.status(404).json({ error: 'Expense not found' });
+    }
+    logAudit({
+        userId: req.user.id,
+        action: 'EXPENSE_DELETED',
+        entityType: 'EXPENSE',
+        entityId: id
+    });
+    res.json({ success: true, message: 'Expense deleted successfully' });
+});

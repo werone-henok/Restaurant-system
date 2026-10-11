@@ -453,6 +453,72 @@ export const AdminView: React.FC = () => {
     }
   };
 
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    const confirmMsg = language === 'am'
+      ? `እርግጠኛ ነዎት "${userName}" የተባለውን ሠራተኛ መሰረዝ ይፈልጋሉ? ይህ እርምጃ ሊመለስ አይችልም።`
+      : `Are you sure you want to permanently delete staff member "${userName}"? This action cannot be undone.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      tactileFeedback('warning');
+      await api.request(`/admin/users/${userId}`, { method: 'DELETE' });
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      gToast.success(language === 'am' ? `ሠራተኛ "${userName}" በተሳካ ሁኔታ ተሰርዟል` : `Staff member "${userName}" deleted successfully`);
+    } catch (err: any) {
+      gToast.error(err.message || 'Failed to delete user');
+    }
+  };
+
+  const handleWipeSales = async () => {
+    const confirmMsg = language === 'am'
+      ? 'ማስጠንቀቂያ! የሽያጭ ታሪክ፣ የትዕዛዞች፣ የደረሰኞች እና የክፍያ መረጃዎችን በሙሉ መሰረዝ ይፈልጋሉ? ይህ እርምጃ ሊመለስ አይችልም።'
+      : 'WARNING! Permanently wipe all sales history, orders, payments, and receipts? This action cannot be undone.';
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setLoading(true);
+      tactileFeedback('warning');
+      await api.request('/admin/wipe-sales', { method: 'POST' });
+      gToast.success(language === 'am' ? 'የሽያጭ ታሪክ በሙሉ ተሰርዟል!' : 'All sales history wiped successfully!');
+      loadData();
+    } catch (err: any) {
+      gToast.error(err.message || 'Failed to wipe sales history');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleWipeExpenses = async () => {
+    const confirmMsg = language === 'am'
+      ? 'ማስጠንቀቂያ! የወጪ እና የግዢ መረጃዎችን በሙሉ መሰረዝ ይፈልጋሉ? ይህ እርምጃ ሊመለስ አይችልም።'
+      : 'WARNING! Permanently wipe all operational expenses, purchases, and waste records? This action cannot be undone.';
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setLoading(true);
+      tactileFeedback('warning');
+      await api.request('/admin/wipe-expenses', { method: 'POST' });
+      setExpenses([]);
+      gToast.success(language === 'am' ? 'የወጪ መረጃዎች በሙሉ ተሰርዘዋል!' : 'All expenses wiped successfully!');
+      loadData();
+    } catch (err: any) {
+      gToast.error(err.message || 'Failed to wipe expenses');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteExpense = async (expenseId: string) => {
+    try {
+      tactileFeedback('click');
+      await api.request(`/expenses/${expenseId}`, { method: 'DELETE' });
+      setExpenses(prev => prev.filter(e => e.id !== expenseId));
+      gToast.success(language === 'am' ? 'ወጪ ተሰርዟል' : 'Expense deleted');
+    } catch (err: any) {
+      gToast.error(err.message || 'Failed to delete expense');
+    }
+  };
+
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -729,12 +795,42 @@ export const AdminView: React.FC = () => {
                     {language === 'am' ? 'የይለፍ ቃል' : 'Password'}
                   </button>
                   {u.role !== 'owner' && (
-                    <button
-                      onClick={() => handleUserStatus(u.id, u.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE')}
-                      style={{ fontSize: 11, fontWeight: 700, color: u.status === 'ACTIVE' ? 'var(--danger)' : 'var(--accent)' }}
-                    >
-                      {u.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleUserStatus(u.id, u.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE')}
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: u.status === 'ACTIVE' ? 'var(--danger)' : 'var(--accent)',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '4px 6px'
+                        }}
+                      >
+                        {u.status === 'ACTIVE' ? (language === 'am' ? 'አግድ' : 'Suspend') : (language === 'am' ? 'አንቃ' : 'Activate')}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(u.id, u.full_name || u.username)}
+                        style={{
+                          background: '#fef2f2',
+                          border: '1px solid #fecaca',
+                          borderRadius: 6,
+                          padding: '4px 8px',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: '#dc2626',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          cursor: 'pointer'
+                        }}
+                        title={language === 'am' ? 'ሠራተኛን ሰርዝ' : 'Delete Staff'}
+                      >
+                        <Trash2 size={12} color="#dc2626" />
+                        {language === 'am' ? 'አጥፋ' : 'Delete'}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -1121,30 +1217,76 @@ export const AdminView: React.FC = () => {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setCleanConfirmText('');
-                setShowCleanModal(true);
-              }}
-              style={{
-                padding: '11px 20px',
-                borderRadius: 10,
-                background: '#dc2626',
-                color: '#ffffff',
-                fontWeight: 800,
-                fontSize: 13,
-                border: 'none',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)'
-              }}
-            >
-              <Trash2 size={16} />
-              {language === 'am' ? 'የሙከራ መረጃዎችን አጽዳ' : 'Wipe Demo Items & Reset Catalog'}
-            </button>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={handleWipeSales}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: 10,
+                  background: '#f97316',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: 12,
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  boxShadow: '0 2px 4px rgba(249, 115, 22, 0.2)'
+                }}
+              >
+                <Trash2 size={14} />
+                {language === 'am' ? 'የሽያጭ ታሪክ አጽዳ' : 'Wipe Sales History'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleWipeExpenses}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: 10,
+                  background: '#ea580c',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: 12,
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  boxShadow: '0 2px 4px rgba(234, 88, 12, 0.2)'
+                }}
+              >
+                <Trash2 size={14} />
+                {language === 'am' ? 'የወጪ መረጃዎችን አጽዳ' : 'Wipe Expenses History'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCleanConfirmText('');
+                  setShowCleanModal(true);
+                }}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: 10,
+                  background: '#dc2626',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: 12,
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)'
+                }}
+              >
+                <Trash2 size={14} />
+                {language === 'am' ? 'የሙከራ ካታሎግ አጽዳ' : 'Wipe Demo Items & Catalog'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1183,6 +1325,34 @@ export const AdminView: React.FC = () => {
             </button>
           </form>
 
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginTop: 16 }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase' }}>
+              {language === 'am' ? 'የተመዘገቡ ወጪዎች' : 'Operational Expenses'} ({expenses.length})
+            </span>
+            {expenses.length > 0 && (
+              <button
+                type="button"
+                onClick={handleWipeExpenses}
+                style={{
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: 8,
+                  padding: '5px 10px',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: '#dc2626',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  cursor: 'pointer'
+                }}
+              >
+                <Trash2 size={13} color="#dc2626" />
+                {language === 'am' ? 'ሁሉንም ወጪዎች አጥፋ' : 'Wipe All Expenses'}
+              </button>
+            )}
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {expenses.map(e => (
               <div key={e.id} style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: 12, padding: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1190,9 +1360,28 @@ export const AdminView: React.FC = () => {
                   <strong style={{ fontSize: 13 }}>{e.category}</strong>
                   <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)' }}>{e.description} • {e.expense_date}</span>
                 </div>
-                <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--danger)' }}>
-                  -{e.amount} {t('currency')}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--danger)' }}>
+                    -{e.amount} {t('currency')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteExpense(e.id)}
+                    style={{
+                      background: '#fef2f2',
+                      border: '1px solid #fecaca',
+                      borderRadius: 6,
+                      padding: 5,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer'
+                    }}
+                    title="Delete Expense"
+                  >
+                    <Trash2 size={13} color="#dc2626" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

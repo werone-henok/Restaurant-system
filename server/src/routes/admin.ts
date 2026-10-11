@@ -354,3 +354,121 @@ adminRouter.post('/clean-demo-data', authenticate, authorizeRole(['admin', 'owne
     res.status(500).json({ error: err.message || 'Failed to clean demo data' });
   }
 });
+
+// 8. Delete Staff Member (Owner & Admin only; cannot delete Owner or self)
+adminRouter.delete('/users/:id', authenticate, authorizeRole(['admin', 'owner']), (req: AuthenticatedRequest, res) => {
+  const targetId = req.params.id;
+
+  const targetUser = db.prepare('SELECT id, username, role, full_name FROM users WHERE id = ?').get(targetId) as any;
+  if (!targetUser) {
+    return res.status(404).json({ error: 'Staff member not found' });
+  }
+
+  if (targetUser.role === 'owner') {
+    return res.status(403).json({ error: 'Owner account cannot be deleted' });
+  }
+
+  if (req.user?.id === targetId) {
+    return res.status(400).json({ error: 'You cannot delete your own active account' });
+  }
+
+  try {
+    db.transaction(() => {
+      db.prepare('DELETE FROM user_permissions WHERE user_id = ?').run(targetId);
+      db.prepare('DELETE FROM user_account_requests WHERE user_id = ?').run(targetId);
+      db.prepare('DELETE FROM users WHERE id = ?').run(targetId);
+    })();
+
+    logAudit({
+      userId: req.user!.id,
+      action: 'USER_DELETED',
+      entityType: 'USER',
+      entityId: targetId,
+      details: { deletedUsername: targetUser.username, role: targetUser.role }
+    });
+
+    res.json({ success: true, message: `Staff member ${targetUser.full_name || targetUser.username} deleted successfully` });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to delete user' });
+  }
+});
+
+// 9. Wipe All Sales History & Orders Data
+adminRouter.post('/wipe-sales', authenticate, authorizeRole(['admin', 'owner']), async (req: AuthenticatedRequest, res) => {
+  const salesTables = [
+    'order_items',
+    'order_status_history',
+    'payments',
+    'receipts',
+    'orders',
+    'order_counters'
+  ];
+
+  try {
+    db.pragma('foreign_keys = OFF');
+    const tx = db.transaction(() => {
+      for (const t of salesTables) {
+        try {
+          db.prepare(`DELETE FROM ${t}`).run();
+        } catch (_) {}
+      }
+    });
+    tx();
+    db.pragma('foreign_keys = ON');
+
+    try { db.exec('VACUUM'); } catch (_) {}
+
+    await syncDatabaseToCloud('post_wipe_sales');
+
+    logAudit({
+      branchId: req.user?.branch_id || 'branch_addis',
+      userId: req.user!.id,
+      action: 'SALES_WIPED',
+      entityType: 'DATABASE',
+      details: { wipedBy: req.user?.username }
+    });
+
+    res.json({ success: true, message: 'All sales history, completed orders, payments, and receipts wiped successfully.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to wipe sales history' });
+  }
+});
+
+// 10. Wipe All Expenses History & Purchases Data
+adminRouter.post('/wipe-expenses', authenticate, authorizeRole(['admin', 'owner']), async (req: AuthenticatedRequest, res) => {
+  const expenseTables = [
+    'expenses',
+    'purchase_order_items',
+    'purchase_orders',
+    'waste_records'
+  ];
+
+  try {
+    db.pragma('foreign_keys = OFF');
+    const tx = db.transaction(() => {
+      for (const t of expenseTables) {
+        try {
+          db.prepare(`DELETE FROM ${t}`).run();
+        } catch (_) {}
+      }
+    });
+    tx();
+    db.pragma('foreign_keys = ON');
+
+    try { db.exec('VACUUM'); } catch (_) {}
+
+    await syncDatabaseToCloud('post_wipe_expenses');
+
+    logAudit({
+      branchId: req.user?.branch_id || 'branch_addis',
+      userId: req.user!.id,
+      action: 'EXPENSES_WIPED',
+      entityType: 'DATABASE',
+      details: { wipedBy: req.user?.username }
+    });
+
+    res.json({ success: true, message: 'All expense records, purchase orders, and waste records wiped successfully.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to wipe expenses history' });
+  }
+});
