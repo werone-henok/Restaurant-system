@@ -1,6 +1,82 @@
 async function runFullScenario() {
   console.log('=== STARTING END-TO-END RESTAURANT OPERATIONS TEST ===\n');
 
+  // 0. Ensure Table and Menu items exist (supports clean production DB)
+  const adminLogin = await fetch('http://localhost:4001/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: 'admin', password: 'password123' })
+  }).then(r => r.json());
+  const adminToken = adminLogin.token;
+
+  let tables = await fetch('http://localhost:4001/api/tables?branchId=branch_addis', {
+    headers: { 'Authorization': `Bearer ${adminToken}` }
+  }).then(r => r.json());
+  let targetTable = tables[0];
+  if (!targetTable) {
+    targetTable = await fetch('http://localhost:4001/api/tables', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+      body: JSON.stringify({
+        branch_id: 'branch_addis',
+        table_number: 'T-01',
+        name: 'Table 1',
+        section: 'Main Dining',
+        capacity: 4
+      })
+    }).then(r => r.json());
+  }
+
+  let menuItems = await fetch('http://localhost:4001/api/menu/items?all=true', {
+    headers: { 'Authorization': `Bearer ${adminToken}` }
+  }).then(r => r.json());
+
+  let burgerItem = menuItems.find(m => m.routing_destination === 'KITCHEN');
+  let macchiatoItem = menuItems.find(m => m.routing_destination === 'BAR');
+
+  if (!burgerItem || !macchiatoItem) {
+    let cats = await fetch('http://localhost:4001/api/menu/categories', {
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    }).then(r => r.json());
+    let catId = cats[0]?.id;
+    if (!catId) {
+      const newCat = await fetch('http://localhost:4001/api/menu/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+        body: JSON.stringify({ name: 'Classics', icon: 'Utensils', sort_order: 1 })
+      }).then(r => r.json());
+      catId = newCat.id;
+    }
+    if (!burgerItem) {
+      const createdBurger = await fetch('http://localhost:4001/api/menu/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+        body: JSON.stringify({
+          category_id: catId,
+          name: 'Gourmet Double Beef Burger',
+          price: 450.0,
+          routing_destination: 'KITCHEN',
+          is_active: 1
+        })
+      }).then(r => r.json());
+      burgerItem = { id: createdBurger.id, name: 'Gourmet Double Beef Burger', price: 450.0 };
+    }
+    if (!macchiatoItem) {
+      const createdMac = await fetch('http://localhost:4001/api/menu/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+        body: JSON.stringify({
+          category_id: catId,
+          name: 'Traditional Ethiopian Macchiato',
+          price: 90.0,
+          routing_destination: 'BAR',
+          is_active: 1
+        })
+      }).then(r => r.json());
+      macchiatoItem = { id: createdMac.id, name: 'Traditional Ethiopian Macchiato', price: 90.0 };
+    }
+  }
+
   // 1. Authenticate Waiter
   console.log('1. Logging in Waiter Dawit Haile...');
   const waiterLogin = await fetch('http://localhost:4001/api/auth/login', {
@@ -12,17 +88,17 @@ async function runFullScenario() {
   console.log('   ✓ Waiter authenticated successfully');
 
   // 2. Waiter creates Order (Burger + Macchiato)
-  console.log('2. Waiter creating Order #101 with 1x Gourmet Burger & 1x Macchiato...');
+  console.log('2. Waiter creating Order with 1x Gourmet Burger & 1x Macchiato...');
   const orderRes = await fetch('http://localhost:4001/api/orders', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${waiterToken}` },
     body: JSON.stringify({
       branch_id: 'branch_addis',
-      table_id: 'tbl_01',
+      table_id: targetTable.id,
       order_type: 'DINE_IN',
       items: [
-        { menu_item_id: 'menu_burger', name: 'Gourmet Double Beef Burger', price: 450.0, quantity: 1, routing_destination: 'KITCHEN' },
-        { menu_item_id: 'menu_macchiato', name: 'Traditional Ethiopian Macchiato', price: 90.0, quantity: 1, routing_destination: 'BAR' }
+        { menu_item_id: burgerItem.id, name: burgerItem.name || 'Gourmet Double Beef Burger', price: Number(burgerItem.price) || 450.0, quantity: 1, routing_destination: 'KITCHEN' },
+        { menu_item_id: macchiatoItem.id, name: macchiatoItem.name || 'Traditional Ethiopian Macchiato', price: Number(macchiatoItem.price) || 90.0, quantity: 1, routing_destination: 'BAR' }
       ],
       special_notes: 'Table 1 special request: crispy burger bun'
     })
@@ -129,7 +205,13 @@ async function runFullScenario() {
   }).then(r => r.json());
   console.log(`   ✓ Total Sales: ${dashboard.kpis.totalSales} ETB`);
   console.log(`   ✓ Total Completed Orders: ${dashboard.kpis.completedOrders}`);
-  console.log(`   ✓ Net Gross Profit: ${dashboard.kpis.netProfit} ETB`);
+  // 10. Clean up test data to leave database pristine for opening day
+  try {
+    await fetch('http://localhost:4001/api/admin/clean-demo-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` }
+    });
+  } catch (_) {}
 
   console.log('\n🎉 ALL SUCCESS CRITERIA MET WITH ZERO ERRORS!');
 }
