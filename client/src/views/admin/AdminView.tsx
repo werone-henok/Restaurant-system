@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
 import { CameraCapture } from '../../components/CameraCapture';
 import { ImageUploadCompressor } from '../../components/ImageUploadCompressor';
 import { DetailedReportsDashboard } from '../../components/DetailedReportsDashboard';
 import { resolveImageUrl } from '../../utils/imageUrl';
-import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, AlertTriangle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils, BarChart3, FolderPlus, Tag, Clock, Sparkles, Globe, Key, Lock, ShieldCheck, ShieldAlert, UserCheck, UserX } from 'lucide-react';
+import { compressImageFile } from '../../utils/imageCompressor';
+import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, AlertTriangle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils, BarChart3, FolderPlus, Tag, Clock, Sparkles, Globe, Key, Lock, ShieldCheck, ShieldAlert, UserCheck, UserX, Camera, RefreshCw } from 'lucide-react';
 import { CreateCategoryModal } from '../../components/CreateCategoryModal';
 import { TIMEZONE_OPTIONS, getDeviceTimezone } from '../../utils/timezone';
 import { gToast } from '../../utils/toast';
@@ -13,6 +14,7 @@ import { tactileFeedback } from '../../utils/feedback';
 
 export const AdminView: React.FC = () => {
   const { 
+    user, updateUser,
     currentBranchId, branches, refreshBranches, settings, refreshSettings, 
     t, language, setTimezoneMode, setSelectedTimezone, activeTimezone, formatTime 
   } = useApp();
@@ -48,15 +50,19 @@ export const AdminView: React.FC = () => {
   const [tableCapacity, setTableCapacity] = useState<number>(4);
   const [tableBranch, setTableBranch] = useState(currentBranchId);
 
-  // Staff Creation Form State
+  // Staff Creation & Photo Upload State
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [staffName, setStaffName] = useState('');
   const [staffUsername, setStaffUsername] = useState('');
   const [staffPassword, setStaffPassword] = useState('password123');
-  const [staffRole, setStaffRole] = useState<'waiter' | 'cashier' | 'chef' | 'barista' | 'storekeeper' | 'admin'>('waiter');
+  const [staffRole, setStaffRole] = useState<'waiter' | 'cashier' | 'chef' | 'barista' | 'storekeeper' | 'bakery' | 'front_counter' | 'admin'>('waiter');
   const [staffBranch, setStaffBranch] = useState(currentBranchId);
   const [staffPhone, setStaffPhone] = useState('');
   const [staffEmpId, setStaffEmpId] = useState('');
+  const [staffPhoto, setStaffPhoto] = useState<string>('');
+  const staffPhotoFileInputRef = useRef<HTMLInputElement>(null);
+  const [editingPhotoStaffId, setEditingPhotoStaffId] = useState<string | null>(null);
+  const [uploadingStaffPhotoId, setUploadingStaffPhotoId] = useState<string | null>(null);
 
   // Branch CRUD State
   const [showBranchModal, setShowBranchModal] = useState(false);
@@ -299,19 +305,88 @@ export const AdminView: React.FC = () => {
           password: staffPassword,
           role: staffRole,
           branch_id: staffBranch,
-          phone: staffPhone,
-          employee_id: staffEmpId
+          phone: staffPhone || undefined,
+          employee_id: staffEmpId || undefined,
+          profile_photo: staffPhoto.trim() || undefined
         })
       });
       setShowStaffModal(false);
       setStaffName('');
       setStaffUsername('');
+      setStaffPhone('');
+      setStaffEmpId('');
+      setStaffPhoto('');
       loadData();
       gToast.success('Staff member created and activated successfully!');
     } catch (err: any) {
       gToast.error(err.message || 'Failed to create staff member');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTriggerStaffPhotoUpload = (userId: string) => {
+    setEditingPhotoStaffId(userId);
+    staffPhotoFileInputRef.current?.click();
+  };
+
+  const handleStaffPhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const targetUserId = editingPhotoStaffId;
+    if (!file || !targetUserId) return;
+
+    if (!file.type.startsWith('image/')) {
+      gToast.error('Please select a valid image file');
+      return;
+    }
+
+    setUploadingStaffPhotoId(targetUserId);
+    tactileFeedback('click');
+    try {
+      const res = await compressImageFile(file, {
+        maxWidth: 600,
+        maxHeight: 600,
+        quality: 0.78,
+        format: 'image/jpeg'
+      });
+
+      let photoUrl = res.dataUrl;
+      try {
+        const uploadRes = await api.request<{ url: string }>('/upload', {
+          method: 'POST',
+          body: JSON.stringify({
+            dataUrl: res.dataUrl,
+            filename: `staff_${targetUserId}_${Date.now()}.jpg`
+          })
+        });
+        if (uploadRes?.url) {
+          photoUrl = uploadRes.url;
+        }
+      } catch (uploadErr) {
+        console.warn('Fallback to dataUrl:', uploadErr);
+      }
+
+      await api.request(`/admin/users/${targetUserId}/photo`, {
+        method: 'PATCH',
+        body: JSON.stringify({ profile_photo: photoUrl })
+      });
+
+      setUsers(prev => prev.map(u => u.id === targetUserId ? { ...u, profile_photo: photoUrl } : u));
+      if (user && user.id === targetUserId) {
+        updateUser({ profile_photo: photoUrl });
+      }
+
+      tactileFeedback('success');
+      gToast.success(language === 'am' ? 'የሰራተኛው የመገለጫ ፎቶ ተቀይሯል!' : 'Staff profile photo updated successfully!');
+    } catch (err: any) {
+      tactileFeedback('error');
+      gToast.error(err.message || 'Failed to update staff photo');
+    } finally {
+      setUploadingStaffPhotoId(null);
+      setEditingPhotoStaffId(null);
+      if (staffPhotoFileInputRef.current) {
+        staffPhotoFileInputRef.current.value = '';
+      }
     }
   };
 
@@ -724,6 +799,7 @@ export const AdminView: React.FC = () => {
             <button
               onClick={() => {
                 setStaffBranch(currentBranchId === 'ALL' ? branches[0]?.id : currentBranchId);
+                setStaffPhoto('');
                 setShowStaffModal(true);
               }}
               className="btn btn-primary"
@@ -733,6 +809,16 @@ export const AdminView: React.FC = () => {
             </button>
           </div>
 
+          {/* Hidden Staff Photo File Input */}
+          <input
+            ref={staffPhotoFileInputRef}
+            type="file"
+            accept="image/*"
+            capture="user"
+            onChange={handleStaffPhotoFileChange}
+            style={{ display: 'none' }}
+          />
+
           {/* Pending Approvals */}
           {pendingUsers.length > 0 && (
             <div style={{ marginBottom: 16 }}>
@@ -741,12 +827,36 @@ export const AdminView: React.FC = () => {
               </span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {pendingUsers.map(u => (
-                  <div key={u.id} style={{ background: '#fffbeb', border: '1.5px solid #fef3c7', borderRadius: 12, padding: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <strong style={{ fontSize: 13 }}>{u.full_name}</strong>
-                      <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)' }}>
-                        Role: {u.role.toUpperCase()} • Branch: {u.branch_name || u.branch_id}
-                      </span>
+                  <div key={u.id} style={{ background: '#fffbeb', border: '1.5px solid #fef3c7', borderRadius: 12, padding: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: '50%',
+                          overflow: 'hidden',
+                          background: 'var(--primary-light)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'var(--primary)',
+                          fontWeight: 900,
+                          fontSize: 15,
+                          flexShrink: 0
+                        }}
+                      >
+                        {u.profile_photo ? (
+                          <img src={resolveImageUrl(u.profile_photo)} alt={u.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          (u.full_name || u.username).charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <div>
+                        <strong style={{ fontSize: 13 }}>{u.full_name}</strong>
+                        <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)' }}>
+                          Role: {u.role.toUpperCase()} • Branch: {u.branch_name || u.branch_id}
+                        </span>
+                      </div>
                     </div>
                     <button onClick={() => handleUserStatus(u.id, 'ACTIVE')} className="btn btn-success" style={{ padding: '6px 12px', fontSize: 12 }}>
                       <CheckCircle size={14} /> Approve
@@ -760,12 +870,64 @@ export const AdminView: React.FC = () => {
           {/* Active Users */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {users.map(u => (
-              <div key={u.id} style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: 12, padding: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <strong style={{ fontSize: 13 }}>{u.full_name}</strong>
-                  <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)' }}>
-                    @{u.username} • <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{u.role.toUpperCase()}</span> • {u.branch_name || u.branch_id}
-                  </span>
+              <div key={u.id} style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: 12, padding: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {/* Staff Avatar with quick change trigger */}
+                  <div style={{ position: 'relative', width: 44, height: 44, flexShrink: 0 }}>
+                    <div
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: '50%',
+                        overflow: 'hidden',
+                        background: 'var(--primary-light)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--primary)',
+                        fontWeight: 900,
+                        fontSize: 16,
+                        border: '1.5px solid var(--primary)'
+                      }}
+                    >
+                      {u.profile_photo ? (
+                        <img src={resolveImageUrl(u.profile_photo)} alt={u.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        (u.full_name || u.username).charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={uploadingStaffPhotoId === u.id}
+                      onClick={() => handleTriggerStaffPhotoUpload(u.id)}
+                      title={language === 'am' ? 'የሰራተኛ ፎቶ ቀይር / ጫን' : 'Upload / Change staff photo'}
+                      style={{
+                        position: 'absolute',
+                        bottom: -2,
+                        right: -2,
+                        width: 20,
+                        height: 20,
+                        borderRadius: '50%',
+                        background: 'var(--primary)',
+                        color: '#ffffff',
+                        border: '2px solid #ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        padding: 0
+                      }}
+                    >
+                      {uploadingStaffPhotoId === u.id ? <RefreshCw size={10} className="animate-spin" /> : <Camera size={10} />}
+                    </button>
+                  </div>
+
+                  <div>
+                    <strong style={{ fontSize: 13, color: 'var(--text-main)' }}>{u.full_name}</strong>
+                    <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)' }}>
+                      @{u.username} • <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{u.role.toUpperCase()}</span> • {u.branch_name || u.branch_id}
+                    </span>
+                  </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span className={`badge badge-${u.status === 'ACTIVE' ? 'ready' : 'cancelled'}`}>
@@ -1892,6 +2054,8 @@ export const AdminView: React.FC = () => {
                     <option value="chef">Chef</option>
                     <option value="barista">Barista</option>
                     <option value="storekeeper">Storekeeper</option>
+                    <option value="bakery">Bakery / Baker Chef</option>
+                    <option value="front_counter">Front Cake Counter</option>
                     <option value="admin">Administrator</option>
                   </select>
                 </div>
@@ -1914,6 +2078,14 @@ export const AdminView: React.FC = () => {
                   <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Employee ID</label>
                   <input type="text" placeholder="EMP-204" value={staffEmpId} onChange={e => setStaffEmpId(e.target.value)} style={{ width: '100%' }} />
                 </div>
+              </div>
+
+              <div>
+                <ImageUploadCompressor
+                  value={staffPhoto}
+                  onChange={setStaffPhoto}
+                  label={language === 'am' ? 'የሰራተኛው የመገለጫ ፎቶ (ካሜራ ወይም ምስል)' : 'Staff Profile Photo (Camera or Upload)'}
+                />
               </div>
 
               <button type="submit" disabled={loading} className="btn btn-primary btn-block" style={{ height: 46, marginTop: 6 }}>

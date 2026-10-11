@@ -264,6 +264,28 @@ authRouter.post('/logout', authenticate, (req: AuthenticatedRequest, res) => {
   res.json({ message: 'Logged out successfully' });
 });
 
+// Update Current User's Profile Photo
+authRouter.patch('/profile-photo', authenticate, (req: AuthenticatedRequest, res) => {
+  const { profile_photo } = req.body;
+
+  db.prepare(`
+    UPDATE users
+    SET profile_photo = ?,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(profile_photo || null, req.user!.id);
+
+  logAudit({
+    branchId: req.user!.branch_id,
+    userId: req.user!.id,
+    action: 'PROFILE_PHOTO_UPDATED',
+    entityType: 'USER',
+    entityId: req.user!.id
+  });
+
+  res.json({ success: true, message: 'Profile photo updated successfully', profile_photo });
+});
+
 // 4. User Self-Registration
 authRouter.post('/register', validate(registerSchema), async (req, res) => {
   const { full_name, username, password, pin, phone, employee_id, requested_role, branch_id, profile_photo } = req.body;

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { api } from '../api/client';
 import { resolveImageUrl } from '../utils/imageUrl';
 import { tactileFeedback } from '../utils/feedback';
 import { gToast } from '../utils/toast';
+import { compressImageFile } from '../utils/imageCompressor';
 import {
   User,
   Lock,
@@ -19,7 +20,10 @@ import {
   X,
   Send,
   Eye,
-  EyeOff
+  EyeOff,
+  Camera,
+  RefreshCw,
+  Trash2
 } from 'lucide-react';
 
 interface UserProfileModalProps {
@@ -28,8 +32,12 @@ interface UserProfileModalProps {
 }
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) => {
-  const { user, logout } = useApp();
+  const { user, logout, updateUser, language } = useApp();
   const [activeTab, setActiveTab] = useState<'profile' | 'requestChange' | 'myRequests'>('profile');
+
+  // Photo uploader state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Request form state
   const [newFullName, setNewFullName] = useState(user?.full_name || '');
@@ -110,6 +118,84 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     }
   };
 
+  const handlePhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      gToast.error('እባክዎ ትክክለኛ የምስል ፋይል ይምረጡ (Please select a valid image file)');
+      return;
+    }
+
+    setUploadingPhoto(true);
+    tactileFeedback('click');
+    try {
+      // 1. Compress image client-side using canvas
+      const res = await compressImageFile(file, {
+        maxWidth: 600,
+        maxHeight: 600,
+        quality: 0.78,
+        format: 'image/jpeg'
+      });
+
+      // 2. Upload to server
+      let photoUrl = res.dataUrl;
+      try {
+        const uploadRes = await api.request<{ url: string }>('/upload', {
+          method: 'POST',
+          body: JSON.stringify({
+            dataUrl: res.dataUrl,
+            filename: `profile_${user.id}_${Date.now()}.jpg`
+          })
+        });
+        if (uploadRes?.url) {
+          photoUrl = uploadRes.url;
+        }
+      } catch (uploadErr) {
+        console.warn('Fallback to dataUrl:', uploadErr);
+      }
+
+      // 3. Update database via PATCH /api/auth/profile-photo
+      await api.request('/auth/profile-photo', {
+        method: 'PATCH',
+        body: JSON.stringify({ profile_photo: photoUrl })
+      });
+
+      // 4. Update local state and sessionStorage
+      updateUser({ profile_photo: photoUrl });
+
+      tactileFeedback('success');
+      gToast.success('የመገለጫ ፎቶ በተሳካ ሁኔታ ተቀይሯል! (Profile picture updated!)');
+    } catch (err: any) {
+      tactileFeedback('error');
+      gToast.error(err.message || 'ፎቶውን መቀየር አልተቻለም (Failed to update profile photo)');
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!window.confirm('የመገለጫ ፎቶውን ማስወገድ ይፈልጋሉ? (Remove profile photo?)')) return;
+    setUploadingPhoto(true);
+    tactileFeedback('click');
+    try {
+      await api.request('/auth/profile-photo', {
+        method: 'PATCH',
+        body: JSON.stringify({ profile_photo: null })
+      });
+      updateUser({ profile_photo: undefined });
+      tactileFeedback('success');
+      gToast.success('የመገለጫ ፎቶ ተሰርዟል (Profile photo removed)');
+    } catch (err: any) {
+      gToast.error(err.message || 'ፎቶውን ማስወገድ አልተቻለም');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const pendingCount = myRequests.filter(r => r.status === 'PENDING').length;
 
   return (
@@ -126,6 +212,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
         padding: 16
       }}
     >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="user"
+        onChange={handlePhotoSelected}
+        style={{ display: 'none' }}
+      />
       <div
         style={{
           background: 'var(--bg-card)',
@@ -141,28 +235,57 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       >
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: '50%',
-                background: 'var(--primary-light)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--primary)',
-                fontWeight: 900,
-                fontSize: 18,
-                overflow: 'hidden',
-                flexShrink: 0
-              }}
-            >
-              {user.profile_photo ? (
-                <img src={resolveImageUrl(user.profile_photo)} alt={user.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                user.full_name.charAt(0).toUpperCase()
-              )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ position: 'relative', width: 48, height: 48, flexShrink: 0 }}>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                title="ፎቶ ቀይር (Click to upload photo)"
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  background: 'var(--primary-light)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--primary)',
+                  fontWeight: 900,
+                  fontSize: 18,
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  border: '2px solid var(--primary)',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+              >
+                {user.profile_photo ? (
+                  <img src={resolveImageUrl(user.profile_photo)} alt={user.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  user.full_name.charAt(0).toUpperCase()
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                title="ፎቶ ቀይር (Upload photo)"
+                style={{
+                  position: 'absolute',
+                  bottom: -2,
+                  right: -2,
+                  width: 22,
+                  height: 22,
+                  borderRadius: '50%',
+                  background: 'var(--primary)',
+                  color: '#ffffff',
+                  border: '2px solid var(--bg-card)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+              >
+                {uploadingPhoto ? <RefreshCw size={11} className="animate-spin" /> : <Camera size={11} />}
+              </button>
             </div>
             <div>
               <h3 style={{ fontSize: 17, fontWeight: 900, margin: 0, color: 'var(--text-main)' }}>
@@ -283,6 +406,99 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
         {/* TAB 1: PROFILE INFO & SIGN OUT */}
         {activeTab === 'profile' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* Profile Photo Uploader Card */}
+            <div
+              style={{
+                background: 'var(--bg-app)',
+                borderRadius: 16,
+                padding: 12,
+                border: '1px solid var(--border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div
+                  style={{
+                    width: 46,
+                    height: 46,
+                    borderRadius: '50%',
+                    background: 'var(--primary-light)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--primary)',
+                    fontWeight: 900,
+                    fontSize: 18,
+                    overflow: 'hidden',
+                    border: '1.5px solid var(--primary)',
+                    flexShrink: 0
+                  }}
+                >
+                  {user.profile_photo ? (
+                    <img src={resolveImageUrl(user.profile_photo)} alt={user.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    user.full_name.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)', display: 'block' }}>
+                    {language === 'am' ? 'የመገለጫ ፎቶ' : 'Profile Picture'}
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block' }}>
+                    {language === 'am' ? 'ካሜራ ወይም ምስል ይምረጡ' : 'Upload or take a photo'}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button
+                  type="button"
+                  disabled={uploadingPhoto}
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: 10,
+                    background: 'var(--primary)',
+                    color: '#ffffff',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  {uploadingPhoto ? <RefreshCw size={13} className="animate-spin" /> : <Camera size={13} />}
+                  {uploadingPhoto ? (language === 'am' ? 'እየጫነ...' : 'Uploading...') : (language === 'am' ? 'ፎቶ ቀይር' : 'Change')}
+                </button>
+                {user.profile_photo && (
+                  <button
+                    type="button"
+                    disabled={uploadingPhoto}
+                    onClick={handleRemovePhoto}
+                    title={language === 'am' ? 'ፎቶ አስወግድ' : 'Remove photo'}
+                    style={{
+                      padding: 8,
+                      borderRadius: 10,
+                      background: 'var(--bg-subtle)',
+                      color: 'var(--danger)',
+                      border: '1px solid var(--border)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div style={{ background: 'var(--bg-app)', borderRadius: 16, padding: 16, border: '1px solid var(--border)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>

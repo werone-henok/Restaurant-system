@@ -85,7 +85,8 @@ export const createStaffSchema = z.object({
   phone: z.string().optional(),
   employee_id: z.string().optional(),
   role: z.enum(['owner', 'admin', 'cashier', 'chef', 'barista', 'waiter', 'storekeeper', 'bakery', 'front_counter']),
-  branch_id: z.string().min(1)
+  branch_id: z.string().min(1),
+  profile_photo: z.string().optional().nullable()
 });
 
 export const updateUserStatusSchema = z.object({

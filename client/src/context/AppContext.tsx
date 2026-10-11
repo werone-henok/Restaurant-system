@@ -55,6 +55,7 @@ interface AppContextType {
   toggleDarkMode: () => void;
   login: (user: User, token: string) => void;
   logout: () => void;
+  updateUser: (updatedFields: Partial<User>) => void;
   switchBranch: (branchId: string) => void;
   refreshBranches: () => void;
   refreshSettings: () => void;
@@ -195,6 +196,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     api.setToken(null);
   };
 
+  const updateUser = (updatedFields: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return null;
+      const updated = { ...prev, ...updatedFields };
+      sessionStorage.setItem('gos_user', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const switchBranch = (branchId: string) => {
     setCurrentBranchId(branchId);
     localStorage.setItem('selected_branch', branchId);
@@ -302,6 +312,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleDarkMode,
         login,
         logout,
+        updateUser,
         switchBranch,
         refreshBranches,
         refreshSettings,

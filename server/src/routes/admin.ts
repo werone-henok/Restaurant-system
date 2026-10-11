@@ -12,7 +12,7 @@ export const adminRouter = Router();
 // 1. Get All Users (with branch name)
 adminRouter.get('/users', authenticate, authorizeRole(['admin', 'owner']), (_req, res) => {
   const users = db.prepare(`
-    SELECT u.id, u.full_name, u.username, u.role, u.branch_id, u.phone, u.employee_id, u.status, u.created_at, b.name as branch_name
+    SELECT u.id, u.full_name, u.username, u.role, u.branch_id, u.phone, u.employee_id, u.profile_photo, u.status, u.created_at, b.name as branch_name
     FROM users u
     LEFT JOIN branches b ON u.branch_id = b.id
     ORDER BY u.created_at DESC
@@ -22,7 +22,7 @@ adminRouter.get('/users', authenticate, authorizeRole(['admin', 'owner']), (_req
 
 // Create new staff member directly (Admin & Owner)
 adminRouter.post('/users', authenticate, authorizeRole(['admin', 'owner']), validate(createStaffSchema), (req: AuthenticatedRequest, res) => {
-  const { full_name, username, password, phone, employee_id, role, branch_id, pin } = req.body;
+  const { full_name, username, password, phone, employee_id, role, branch_id, pin, profile_photo } = req.body;
 
   const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
   if (existing) {
@@ -34,9 +34,9 @@ adminRouter.post('/users', authenticate, authorizeRole(['admin', 'owner']), vali
   const pin_hash = pin ? hashSecretSync(pin) : null;
 
   db.prepare(`
-    INSERT INTO users (id, full_name, username, password_hash, pin_hash, phone, employee_id, role, branch_id, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE')
-  `).run(id, full_name, username, password_hash, pin_hash, phone || null, employee_id || null, role, branch_id);
+    INSERT INTO users (id, full_name, username, password_hash, pin_hash, phone, employee_id, role, branch_id, profile_photo, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE')
+  `).run(id, full_name, username, password_hash, pin_hash, phone || null, employee_id || null, role, branch_id, profile_photo || null);
 
   logAudit({
     branchId: branch_id,
@@ -48,6 +48,28 @@ adminRouter.post('/users', authenticate, authorizeRole(['admin', 'owner']), vali
   });
 
   res.status(201).json({ id, message: 'Staff member created successfully' });
+});
+
+// Update Staff Member Profile Photo (Admin & Owner)
+adminRouter.patch('/users/:id/photo', authenticate, authorizeRole(['admin', 'owner']), (req: AuthenticatedRequest, res) => {
+  const { profile_photo } = req.body;
+  const targetId = req.params.id;
+
+  db.prepare(`
+    UPDATE users
+    SET profile_photo = ?,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(profile_photo || null, targetId);
+
+  logAudit({
+    userId: req.user!.id,
+    action: 'STAFF_PHOTO_UPDATED',
+    entityType: 'USER',
+    entityId: targetId
+  });
+
+  res.json({ success: true, message: 'Staff photo updated successfully', profile_photo });
 });
 
 // 2. Approve or Reject User Registration
