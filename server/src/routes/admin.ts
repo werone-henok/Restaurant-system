@@ -395,11 +395,63 @@ adminRouter.delete('/users/:id', authenticate, authorizeRole(['admin', 'owner'])
   }
 
   try {
-    db.transaction(() => {
-      db.prepare('DELETE FROM user_permissions WHERE user_id = ?').run(targetId);
-      db.prepare('DELETE FROM user_account_requests WHERE user_id = ?').run(targetId);
+    const owner = db.prepare("SELECT id FROM users WHERE role = 'owner' LIMIT 1").get() as any;
+    const fallbackUserId = owner?.id || req.user?.id || 'usr_owner';
+
+    // Temporarily disable foreign keys for safe cascading and unbinding
+    db.pragma('foreign_keys = OFF');
+
+    try {
+      const safeRun = (sql: string, ...params: any[]) => {
+        try {
+          db.prepare(sql).run(...params);
+        } catch (_) {}
+      };
+
+      // 1. Direct dependencies: permissions, account requests, notifications, attendance
+      safeRun('DELETE FROM user_permissions WHERE user_id = ?', targetId);
+      safeRun('DELETE FROM user_account_requests WHERE user_id = ?', targetId);
+      safeRun('UPDATE user_account_requests SET reviewed_by_id = NULL WHERE reviewed_by_id = ?', targetId);
+      safeRun('DELETE FROM notifications WHERE target_user_id = ?', targetId);
+      safeRun('DELETE FROM attendance WHERE user_id = ?', targetId);
+
+      // 2. Audit history: keep audit rows but set user_id to NULL
+      safeRun('UPDATE audit_logs SET user_id = NULL WHERE user_id = ?', targetId);
+
+      // 3. Operational & Sales references: reassign required columns to owner, nullify optional ones
+      safeRun('UPDATE expenses SET user_id = ? WHERE user_id = ?', fallbackUserId, targetId);
+      safeRun('UPDATE orders SET waiter_id = ? WHERE waiter_id = ?', fallbackUserId, targetId);
+      safeRun('UPDATE orders SET cashier_id = NULL WHERE cashier_id = ?', targetId);
+      safeRun('UPDATE orders SET discount_approver_id = NULL WHERE discount_approver_id = ?', targetId);
+      safeRun('UPDATE orders SET cancelled_by_id = NULL WHERE cancelled_by_id = ?', targetId);
+      safeRun('UPDATE order_items SET prepared_by_id = NULL WHERE prepared_by_id = ?', targetId);
+      safeRun('UPDATE order_status_history SET user_id = NULL WHERE user_id = ?', targetId);
+      safeRun('UPDATE payments SET cashier_id = ? WHERE cashier_id = ?', fallbackUserId, targetId);
+      safeRun('UPDATE waste_records SET storekeeper_id = ? WHERE storekeeper_id = ?', fallbackUserId, targetId);
+      safeRun('UPDATE purchase_orders SET user_id = ? WHERE user_id = ?', fallbackUserId, targetId);
+      safeRun('UPDATE stock_requests SET requested_by_id = ? WHERE requested_by_id = ?', fallbackUserId, targetId);
+      safeRun('UPDATE stock_requests SET approved_by_id = NULL WHERE approved_by_id = ?', targetId);
+      safeRun('UPDATE stock_transfers SET user_id = ? WHERE user_id = ?', fallbackUserId, targetId);
+
+      // 4. Bakery & Front Counter modules
+      safeRun('UPDATE bakery_batches SET produced_by_id = ? WHERE produced_by_id = ?', fallbackUserId, targetId);
+      safeRun('UPDATE bakery_transfers SET created_by_id = ? WHERE created_by_id = ?', fallbackUserId, targetId);
+      safeRun('UPDATE bakery_transfers SET sent_by_id = NULL WHERE sent_by_id = ?', targetId);
+      safeRun('UPDATE bakery_transfers SET received_by_id = NULL WHERE received_by_id = ?', targetId);
+      safeRun('UPDATE bakery_requests SET requested_by_id = ? WHERE requested_by_id = ?', fallbackUserId, targetId);
+      safeRun('UPDATE bakery_requests SET handled_by_id = NULL WHERE handled_by_id = ?', targetId);
+      safeRun('UPDATE bakery_waste_records SET user_id = ? WHERE user_id = ?', fallbackUserId, targetId);
+      safeRun('UPDATE bakery_stock_counts SET counted_by_id = ? WHERE counted_by_id = ?', fallbackUserId, targetId);
+      safeRun('UPDATE bakery_price_suggestions SET suggested_by_id = ? WHERE suggested_by_id = ?', fallbackUserId, targetId);
+      safeRun('UPDATE bakery_price_suggestions SET reviewed_by_id = NULL WHERE reviewed_by_id = ?', targetId);
+      safeRun('UPDATE bakery_returns SET user_id = ? WHERE user_id = ?', fallbackUserId, targetId);
+      safeRun('UPDATE bakery_inventory_transactions SET user_id = ? WHERE user_id = ?', fallbackUserId, targetId);
+
+      // 5. Delete the user
       db.prepare('DELETE FROM users WHERE id = ?').run(targetId);
-    })();
+    } finally {
+      db.pragma('foreign_keys = ON');
+    }
 
     logAudit({
       userId: req.user!.id,

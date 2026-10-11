@@ -275,15 +275,15 @@ export function seedDatabase() {
     db.prepare(`
       INSERT INTO expenses (id, branch_id, user_id, category, amount, expense_date, description)
       VALUES 
-        ('exp_01', 'branch_addis', 'usr_admin', 'Electricity', 3500.0, date('now', '-2 days'), 'Monthly commercial kitchen electric utility bill'),
-        ('exp_02', 'branch_addis', 'usr_admin', 'Water', 1200.0, date('now', '-3 days'), 'Water utility replenishment'),
-        ('exp_03', 'branch_addis', 'usr_admin', 'Cleaning', 850.0, date('now', '-1 day'), 'Commercial food-grade kitchen sanitizers')
+        ('exp_01', 'branch_addis', 'usr_owner', 'Electricity', 3500.0, date('now', '-2 days'), 'Monthly commercial kitchen electric utility bill'),
+        ('exp_02', 'branch_addis', 'usr_owner', 'Water', 1200.0, date('now', '-3 days'), 'Water utility replenishment'),
+        ('exp_03', 'branch_addis', 'usr_owner', 'Cleaning', 850.0, date('now', '-1 day'), 'Commercial food-grade kitchen sanitizers')
     `).run();
 
     // 11. Initial Audit Log
     db.prepare(`
       INSERT INTO audit_logs (id, branch_id, user_id, action, entity_type, entity_id, details)
-      VALUES ('aud_init', 'branch_addis', 'usr_admin', 'SYSTEM_INITIALIZED', 'SYSTEM', 'root', 'Initial MVR setup with multi-branch, menus, recipes, and test users completed.')
+      VALUES ('aud_init', 'branch_addis', 'usr_owner', 'SYSTEM_INITIALIZED', 'SYSTEM', 'root', 'Initial MVR setup with multi-branch, menus, recipes, and test users completed.')
     `).run();
   });
 
