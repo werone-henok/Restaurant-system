@@ -262,6 +262,12 @@ export const BakeryView: React.FC = () => {
     }
   }, [activeTab, loadHistory, canViewHistory]);
 
+  useEffect(() => {
+    if (canViewHistory('bakery')) {
+      loadHistory();
+    }
+  }, [canViewHistory, loadHistory]);
+
   // 1-Tap: Start Baking a Request
   const handleStartBakingRequest = async (request: BakeRequest) => {
     tactileFeedback('success');

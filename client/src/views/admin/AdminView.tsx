@@ -55,6 +55,7 @@ export const AdminView: React.FC = () => {
 
   // Staff Creation & Photo Upload State
   const [showStaffModal, setShowStaffModal] = useState(false);
+  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
   const [staffName, setStaffName] = useState('');
   const [staffUsername, setStaffUsername] = useState('');
   const [staffPassword, setStaffPassword] = useState('password123');
@@ -360,34 +361,70 @@ export const AdminView: React.FC = () => {
     }
   }, [settings]);
 
-  // 1. Create Staff
+  // 1. Create or Edit Staff
+  const openEditStaffModal = (u: any) => {
+    setEditingStaffId(u.id);
+    setStaffName(u.full_name || '');
+    setStaffUsername(u.username || '');
+    setStaffPassword('');
+    setStaffRole(u.role || 'waiter');
+    setStaffBranch(u.branch_id || (currentBranchId === 'ALL' ? branches[0]?.id : currentBranchId));
+    setStaffPhone(u.phone || '');
+    setStaffEmpId(u.employee_id || '');
+    setStaffPhoto(u.profile_photo || '');
+    setShowStaffModal(true);
+  };
+
   const handleCreateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.request('/admin/users', {
-        method: 'POST',
-        body: JSON.stringify({
+      if (editingStaffId) {
+        // Edit existing staff member
+        const payload: any = {
           full_name: staffName,
           username: staffUsername,
-          password: staffPassword,
           role: staffRole,
           branch_id: staffBranch,
-          phone: staffPhone || undefined,
-          employee_id: staffEmpId || undefined,
-          profile_photo: staffPhoto.trim() || undefined
-        })
-      });
+          phone: staffPhone || null,
+          employee_id: staffEmpId || null,
+          profile_photo: staffPhoto.trim() || null
+        };
+        if (staffPassword && staffPassword.trim().length >= 6) {
+          payload.password = staffPassword.trim();
+        }
+        await api.request(`/admin/users/${editingStaffId}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+        gToast.success(language === 'am' ? 'የሠራተኛው መረጃ በተሳካ ሁኔታ ተሻሽሏል!' : 'Staff member updated successfully!');
+      } else {
+        // Create new staff member
+        await api.request('/admin/users', {
+          method: 'POST',
+          body: JSON.stringify({
+            full_name: staffName,
+            username: staffUsername,
+            password: staffPassword,
+            role: staffRole,
+            branch_id: staffBranch,
+            phone: staffPhone || undefined,
+            employee_id: staffEmpId || undefined,
+            profile_photo: staffPhoto.trim() || undefined
+          })
+        });
+        gToast.success(language === 'am' ? 'ሠራተኛው በተሳካ ሁኔታ ተመዝግቧል!' : 'Staff member created and activated successfully!');
+      }
       setShowStaffModal(false);
+      setEditingStaffId(null);
       setStaffName('');
       setStaffUsername('');
       setStaffPhone('');
       setStaffEmpId('');
       setStaffPhoto('');
       loadData();
-      gToast.success('Staff member created and activated successfully!');
     } catch (err: any) {
-      gToast.error(err.message || 'Failed to create staff member');
+      gToast.error(err.message || (editingStaffId ? 'Failed to update staff member' : 'Failed to create staff member'));
     } finally {
       setLoading(false);
     }
@@ -967,14 +1004,21 @@ export const AdminView: React.FC = () => {
             </span>
             <button
               onClick={() => {
+                setEditingStaffId(null);
+                setStaffName('');
+                setStaffUsername('');
+                setStaffPassword('password123');
+                setStaffRole('waiter');
                 setStaffBranch(currentBranchId === 'ALL' ? branches[0]?.id : currentBranchId);
+                setStaffPhone('');
+                setStaffEmpId('');
                 setStaffPhoto('');
                 setShowStaffModal(true);
               }}
               className="btn btn-primary"
               style={{ padding: '6px 12px', fontSize: 12 }}
             >
-              <Plus size={14} /> Add New Staff
+              <Plus size={14} /> {language === 'am' ? 'አዲስ ሠራተኛ መዝግብ' : 'Add New Staff'}
             </button>
           </div>
 
@@ -1140,6 +1184,29 @@ export const AdminView: React.FC = () => {
                     <Key size={11} color="var(--primary)" />
                     {language === 'am' ? 'የይለፍ ቃል' : 'Password'}
                   </button>
+                  {/* Edit Staff Button */}
+                  {(user?.role === 'superadmin' || (u.role !== 'owner' && u.role !== 'superadmin') || u.id === user?.id) && (
+                    <button
+                      onClick={() => openEditStaffModal(u)}
+                      style={{
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: 6,
+                        padding: '4px 8px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: '#1d4ed8',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        cursor: 'pointer'
+                      }}
+                      title={language === 'am' ? 'የሠራተኛ መረጃ አሻሽል' : 'Edit Staff Details'}
+                    >
+                      <Edit2 size={11} color="#2563eb" />
+                      {language === 'am' ? 'አስተካክል' : 'Edit'}
+                    </button>
+                  )}
                   {/* Actions: superadmin can manage anyone except self; admin/owner cannot manage superadmin or owner */}
                   {u.id !== user?.id && (user?.role === 'superadmin' || (u.role !== 'owner' && u.role !== 'superadmin')) && (
                     <>
@@ -2548,10 +2615,14 @@ export const AdminView: React.FC = () => {
                 </div>
                 <div>
                   <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
-                    {language === 'am' ? 'አዲስ ሠራተኛ መዝግብ' : 'Create New Staff Member'}
+                    {editingStaffId 
+                      ? (language === 'am' ? 'የሠራተኛ መረጃ አሻሽል' : 'Edit Staff Member') 
+                      : (language === 'am' ? 'አዲስ ሠራተኛ መዝግብ' : 'Create New Staff Member')}
                   </h3>
                   <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    {language === 'am' ? 'የሠራተኛውን ሚና፣ ቅርንጫፍና መረጃ ያስገቡ' : 'Assign role, branch and account info'}
+                    {editingStaffId
+                      ? (language === 'am' ? 'የሠራተኛውን ስም፣ ሚና፣ ቅርንጫፍና መረጃ ያሻሽሉ' : 'Update staff details, role and branch')
+                      : (language === 'am' ? 'የሠራተኛውን ሚና፣ ቅርንጫፍና መረጃ ያስገቡ' : 'Assign role, branch and account info')}
                   </span>
                 </div>
               </div>
@@ -2591,8 +2662,19 @@ export const AdminView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Password</label>
-                  <input type="password" required value={staffPassword} onChange={e => setStaffPassword(e.target.value)} style={{ width: '100%' }} />
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                    {editingStaffId
+                      ? (language === 'am' ? 'አዲስ የይለፍ ቃል (ለውጥ ካልተፈለገ ባዶ ይተዉት)' : 'New Password (Optional, leave blank to keep)')
+                      : (language === 'am' ? 'የይለፍ ቃል' : 'Password')}
+                  </label>
+                  <input
+                    type="password"
+                    required={!editingStaffId}
+                    placeholder={editingStaffId ? (language === 'am' ? 'ባዶ ይተዉት (ያለውን ለማቆየት)' : 'Leave empty to keep current password') : 'password123'}
+                    value={staffPassword}
+                    onChange={e => setStaffPassword(e.target.value)}
+                    style={{ width: '100%' }}
+                  />
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -2662,8 +2744,10 @@ export const AdminView: React.FC = () => {
                   {loading ? (
                     <>
                       <RefreshCw size={16} className="animate-spin" />
-                      {language === 'am' ? 'በመፍጠር ላይ...' : 'Creating...'}
+                      {language === 'am' ? 'በማስቀመጥ ላይ...' : 'Saving...'}
                     </>
+                  ) : editingStaffId ? (
+                    language === 'am' ? 'ለውጦችን መዝግብ' : 'Save Staff Changes'
                   ) : (
                     language === 'am' ? 'ሠራተኛ መዝግብና አንቃ' : 'Create & Activate Staff'
                   )}

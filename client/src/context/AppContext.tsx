@@ -155,6 +155,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (token) {
       refreshBranches();
       refreshSettings();
+
+      const unsub = api.onEvent((event) => {
+        if (event.type === 'SETTINGS_UPDATED') {
+          refreshSettings();
+        }
+      });
+      return () => unsub();
     }
   }, [token]);
 

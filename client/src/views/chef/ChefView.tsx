@@ -97,8 +97,16 @@ export const ChefView: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'history' && !canViewHistory('chef')) {
       setActiveTab('queue');
+    } else if (activeTab === 'history' && canViewHistory('chef')) {
+      loadPrepHistory();
     }
-  }, [activeTab, canViewHistory]);
+  }, [activeTab, canViewHistory, loadPrepHistory]);
+
+  useEffect(() => {
+    if (canViewHistory('chef')) {
+      loadPrepHistory();
+    }
+  }, [canViewHistory, loadPrepHistory]);
 
   // Keep the ref current
   useEffect(() => {

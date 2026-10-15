@@ -105,8 +105,16 @@ export const WaiterView: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'history' && !canViewHistory('waiter')) {
       setActiveTab('create');
+    } else if (activeTab === 'history' && canViewHistory('waiter')) {
+      loadHistory();
     }
-  }, [activeTab, canViewHistory]);
+  }, [activeTab, canViewHistory, loadHistory]);
+
+  useEffect(() => {
+    if (canViewHistory('waiter')) {
+      loadHistory();
+    }
+  }, [canViewHistory, loadHistory]);
 
   useEffect(() => {
     loadData();

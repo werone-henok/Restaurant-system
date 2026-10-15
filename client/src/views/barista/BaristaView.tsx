@@ -44,8 +44,16 @@ export const BaristaView: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'history' && !canViewHistory('barista')) {
       setActiveTab('queue');
+    } else if (activeTab === 'history' && canViewHistory('barista')) {
+      loadBaristaHistory();
     }
-  }, [activeTab, canViewHistory]);
+  }, [activeTab, canViewHistory, loadBaristaHistory]);
+
+  useEffect(() => {
+    if (canViewHistory('barista')) {
+      loadBaristaHistory();
+    }
+  }, [canViewHistory, loadBaristaHistory]);
 
   useEffect(() => {
     loadCallbackRef.current = refreshAll;

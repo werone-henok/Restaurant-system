@@ -18,7 +18,6 @@ export function seedDatabase() {
   // Check if already seeded
   const branchCount = db.prepare('SELECT COUNT(*) as count FROM branches').get() as { count: number };
   if (branchCount.count > 0) {
-    seedBakeryData();
     return;
   }
 
@@ -296,27 +295,7 @@ export function seedDatabase() {
 }
 
 export function seedBakeryData() {
-  const defaultPasswordHash = hashSecretSync('password123');
-  const defaultPinHash = hashSecretSync('1234');
-
-  // 1. Ensure Bakery and Front Cake Counter users exist
-  const bakeryUsers = [
-    { id: 'usr_bakery', name: 'Bethlehem Tadesse (Bakery)', username: 'bakery', role: 'bakery', branch_id: 'branch_addis' },
-    { id: 'usr_front_counter', name: 'Hana Girma (Cake Counter)', username: 'front_counter', role: 'front_counter', branch_id: 'branch_addis' }
-  ];
-
-  const insertUser = db.prepare(`
-    INSERT OR IGNORE INTO users (id, full_name, username, password_hash, pin_hash, phone, role, branch_id, status)
-    VALUES (?, ?, ?, ?, ?, '+251911334455', ?, ?, 'ACTIVE')
-  `);
-
-  for (const u of bakeryUsers) {
-    insertUser.run(u.id, u.name, u.username, defaultPasswordHash, defaultPinHash, u.role, u.branch_id);
-    // Also update role if user already exists
-    db.prepare("UPDATE users SET role = ?, status = 'ACTIVE' WHERE username = ?").run(u.role, u.username);
-  }
-
-  // 2. Only seed demo bakery products, batches, and variations if SEED_DEMO_DATA=true
+  // 1. Only seed demo bakery products, batches, and variations if SEED_DEMO_DATA=true
   if (process.env.SEED_DEMO_DATA !== 'true') {
     return;
   }

@@ -67,8 +67,16 @@ export const CashierView: React.FC = () => {
   useEffect(() => {
     if (filterTab === 'HISTORY' && !canViewHistory('cashier')) {
       setFilterTab('ALL');
+    } else if (filterTab === 'HISTORY' && canViewHistory('cashier')) {
+      loadApprovalHistory();
     }
   }, [filterTab, canViewHistory]);
+
+  useEffect(() => {
+    if (canViewHistory('cashier')) {
+      loadApprovalHistory();
+    }
+  }, [canViewHistory]);
 
   useEffect(() => {
     loadCallbackRef.current = loadOrders;

@@ -306,6 +306,12 @@ export const FrontCounterView: React.FC = () => {
     }
   }, [activeTab, loadHistory, canViewHistory]);
 
+  useEffect(() => {
+    if (canViewHistory('front_counter')) {
+      loadHistory();
+    }
+  }, [canViewHistory, loadHistory]);
+
   // 1-Tap Receive Delivery
   const handleConfirmTransfer = async (transfer: Transfer) => {
     tactileFeedback('success');

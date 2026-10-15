@@ -8,6 +8,7 @@ import { hashSecretSync } from '../utils/security.js';
 import { validate } from '../middleware/validate.js';
 import { createStaffSchema, updateUserStatusSchema } from '../schemas/api.schemas.js';
 import { getSyncStatus, syncDatabaseToCloud } from '../services/cloudSyncService.js';
+import { broadcastEvent } from '../services/websocket.js';
 
 export const adminRouter = Router();
 
@@ -50,6 +51,90 @@ adminRouter.post('/users', authenticate, authorizeRole(['admin', 'owner']), vali
   });
 
   res.status(201).json({ id, message: 'Staff member created successfully' });
+});
+
+// Update Staff Member Details (Admin, Owner, Superadmin)
+adminRouter.put('/users/:id', authenticate, authorizeRole(['admin', 'owner', 'superadmin']), (req: AuthenticatedRequest, res) => {
+  const targetId = req.params.id;
+  const { full_name, username, phone, employee_id, role, branch_id, pin, password, profile_photo } = req.body;
+
+  const targetUser = db.prepare('SELECT id, username, role FROM users WHERE id = ?').get(targetId) as any;
+  if (!targetUser) {
+    return res.status(404).json({ error: 'Staff member not found' });
+  }
+
+  // Security: only superadmin can modify a superadmin
+  if (targetUser.role === 'superadmin' && req.user?.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Only a Super Administrator can modify another Super Administrator account.' });
+  }
+
+  // Security: only superadmin or owner can modify an owner
+  if (targetUser.role === 'owner' && !['superadmin', 'owner'].includes(req.user?.role || '')) {
+    return res.status(403).json({ error: 'You do not have permission to modify an Owner account.' });
+  }
+
+  // Security: role elevation
+  if (role && role !== targetUser.role) {
+    if (role === 'superadmin' && req.user?.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Only a Super Administrator can assign the Super Administrator role.' });
+    }
+    if (role === 'owner' && req.user?.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Only a Super Administrator can assign the Owner role.' });
+    }
+  }
+
+  // Unique username check
+  if (username && username !== targetUser.username) {
+    const existing = db.prepare('SELECT id FROM users WHERE username = ? AND id != ?').get(username, targetId);
+    if (existing) {
+      return res.status(400).json({ error: 'Username is already taken by another user' });
+    }
+  }
+
+  const updates: string[] = [];
+  const params: any[] = [];
+
+  if (full_name !== undefined) { updates.push('full_name = ?'); params.push(full_name); }
+  if (username !== undefined) { updates.push('username = ?'); params.push(username); }
+  if (phone !== undefined) { updates.push('phone = ?'); params.push(phone || null); }
+  if (employee_id !== undefined) { updates.push('employee_id = ?'); params.push(employee_id || null); }
+  if (role !== undefined) { updates.push('role = ?'); params.push(role); }
+  if (branch_id !== undefined) { updates.push('branch_id = ?'); params.push(branch_id); }
+  if (profile_photo !== undefined) { updates.push('profile_photo = ?'); params.push(profile_photo || null); }
+
+  if (password && typeof password === 'string' && password.trim().length >= 6) {
+    updates.push('password_hash = ?');
+    params.push(hashSecretSync(password.trim()));
+  }
+
+  if (pin && typeof pin === 'string' && pin.trim().length >= 4) {
+    updates.push('pin_hash = ?');
+    params.push(hashSecretSync(pin.trim()));
+  }
+
+  if (updates.length > 0) {
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    params.push(targetId);
+    db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+  }
+
+  logAudit({
+    branchId: branch_id || undefined,
+    userId: req.user!.id,
+    action: 'STAFF_UPDATED',
+    entityType: 'USER',
+    entityId: targetId,
+    details: { full_name, username, role, branch_id }
+  });
+
+  const updatedUser = db.prepare(`
+    SELECT u.id, u.full_name, u.username, u.role, u.branch_id, u.phone, u.employee_id, u.profile_photo, u.status, u.created_at, b.name as branch_name
+    FROM users u
+    LEFT JOIN branches b ON u.branch_id = b.id
+    WHERE u.id = ?
+  `).get(targetId);
+
+  res.json({ success: true, message: 'Staff member updated successfully', user: updatedUser });
 });
 
 // Update Staff Member Profile Photo (Admin & Owner)
@@ -280,6 +365,11 @@ adminRouter.put('/settings', authenticate, authorizeRole(['admin', 'owner', 'sup
     action: 'SETTINGS_UPDATED',
     entityType: 'SETTINGS',
     details: req.body
+  });
+
+  broadcastEvent({
+    type: 'SETTINGS_UPDATED',
+    payload: updatedSettings
   });
 
   res.json({ message: 'Settings updated successfully', settings: updatedSettings });
