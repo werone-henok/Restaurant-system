@@ -1,6 +1,6 @@
 {
   "name": "restaurant-system",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "GourmetOS Restaurant Platform",
   "main": "server/dist/server.js",
   "scripts": {
@@ -10,6 +10,7 @@
     "test": "node server/test_scenario.js",
     "license:generate": "node server/scripts/generate-license.js",
     "db:clean": "node server/scripts/clean-demo-data.js",
+    "db:seed-menu": "node server/scripts/seed-official-menu.js",
     "dev:server": "cd server && npm run dev",
     "dev:client": "cd client && npm run dev"
   },
