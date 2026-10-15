@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
-import { Plus, Minus, Send, CheckCircle2, Clock, UtensilsCrossed, AlertCircle, ShoppingBag, Check, RefreshCw, Search, History, Eye, Volume2 } from 'lucide-react';
+import { Plus, Minus, Send, CheckCircle2, Clock, UtensilsCrossed, AlertCircle, ShoppingBag, Check, RefreshCw, Search, History, Eye, Volume2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Layers, Grid, List, X, Sparkles, Filter } from 'lucide-react';
 import { OrderProgressStepper } from '../../components/OrderProgressStepper';
 import { UniversalStatusBadge } from '../../components/UniversalStatusBadge';
 import { OrderHistoryModal } from '../../components/OrderHistoryModal';
@@ -59,6 +59,16 @@ export const WaiterView: React.FC = () => {
   const [selectedTable, setSelectedTable] = useState<string>('');
   const [selectedSectionFilter, setSelectedSectionFilter] = useState<string>('ALL');
   const [orderType, setOrderType] = useState<'DINE_IN' | 'TAKEAWAY' | 'DELIVERY'>('DINE_IN');
+
+  // Search-First UI, Carousel & Card Stacks States
+  const [tableSearch, setTableSearch] = useState('');
+  const [isTablePickerOpen, setIsTablePickerOpen] = useState(true);
+  const [menuSearch, setMenuSearch] = useState('');
+  const [menuRoutingFilter, setMenuRoutingFilter] = useState<'ALL' | 'KITCHEN' | 'BAR' | 'FRONT_COUNTER'>('ALL');
+  const [menuAvailableOnly, setMenuAvailableOnly] = useState(false);
+  const [menuViewMode, setMenuViewMode] = useState<'grid' | 'stack'>('grid');
+  const categoryScrollRef = useRef<HTMLDivElement | null>(null);
+  const tableSectionScrollRef = useRef<HTMLDivElement | null>(null);
   const [cart, setCart] = useState<{ [id: string]: { item: any; quantity: number; notes: string } }>({});
   const [specialNotes, setSpecialNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -324,374 +334,905 @@ export const WaiterView: React.FC = () => {
     }
   };
 
-  const filteredMenuItems = selectedCategory === 'all'
-    ? menuItems
-    : menuItems.filter(m => m.category_id === selectedCategory);
+  const filteredMenuItems = menuItems.filter(m => {
+    // 1. Search Query filter (Search-First priority across all categories)
+    if (menuSearch.trim()) {
+      const q = menuSearch.toLowerCase().trim();
+      const matchName = m.name?.toLowerCase().includes(q);
+      const matchAm = m.name_amharic?.includes(q);
+      const matchDesc = m.description?.toLowerCase().includes(q);
+      const matchCat = m.category_name?.toLowerCase().includes(q);
+      if (!matchName && !matchAm && !matchDesc && !matchCat) return false;
+    } else if (selectedCategory !== 'all') {
+      // If not searching, apply selected category
+      if (m.category_id !== selectedCategory) return false;
+    }
+
+    // 2. Routing Destination filter
+    if (menuRoutingFilter !== 'ALL') {
+      if (menuRoutingFilter === 'FRONT_COUNTER') {
+        const isBakery = m.category_id === 'cat_bakery' || m.routing_destination === 'FRONT_COUNTER' || Boolean(m.bakery_variation_id);
+        if (!isBakery) return false;
+      } else if (m.routing_destination !== menuRoutingFilter) {
+        return false;
+      }
+    }
+
+    // 3. Available Only filter
+    if (menuAvailableOnly) {
+      const isItemDisabled = m.is_available === 0 || m.is_available === false;
+      const stock = m.bakery_counter_stock ?? m.counter_stock;
+      const isOutOfStock = stock !== undefined && stock !== null && stock <= 0;
+      const isBakeryPaused = m.bakery_variation_available === 0 || m.bakery_variation_available === false;
+      const hasStock = stock !== undefined && stock !== null && stock > 0;
+      if (isItemDisabled || isOutOfStock || (isBakeryPaused && !hasStock)) return false;
+    }
+
+    return true;
+  });
 
   const readyOrders = myOrders.filter(o => o.status === 'READY' || (o.status === 'PARTIALLY_READY' && o.items?.some((it: any) => it.status === 'READY')));
   const activeOrders = myOrders.filter(o => ['PENDING_CASHIER', 'CONFIRMED', 'PREPARING', 'PARTIALLY_READY', 'DELIVERED'].includes(o.status));
 
-  const renderTablePicker = () => (
-    <div style={{
-      background: 'var(--bg-card, #ffffff)',
-      border: '1px solid var(--border, #e2e8f0)',
-      borderRadius: 16,
-      padding: 14,
-      marginBottom: 14,
-      boxShadow: 'var(--shadow-sm)',
-      width: '100%',
-      maxWidth: '100%',
-      boxSizing: 'border-box',
-      overflow: 'hidden'
-    }}>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12, width: '100%', boxSizing: 'border-box' }}>
-        {(['DINE_IN', 'TAKEAWAY', 'DELIVERY'] as const).map(type => {
-          const isSelected = orderType === type;
-          return (
-            <button
-              key={type}
-              type="button"
-              onClick={() => setOrderType(type)}
-              style={{
-                flex: 1,
-                padding: '9px 2px',
-                borderRadius: 10,
-                fontSize: 12,
-                fontWeight: 800,
-                border: isSelected ? '2px solid #ea580c' : '1px solid var(--border, #e2e8f0)',
-                background: isSelected ? '#fff7ed' : 'var(--bg-subtle, #f8fafc)',
-                color: isSelected ? '#ea580c' : 'var(--text-main, #334155)',
-                cursor: 'pointer',
-                textAlign: 'center',
-                boxSizing: 'border-box',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              {type === 'DINE_IN' ? t('dine_in') : type === 'TAKEAWAY' ? t('takeaway') : t('delivery')}
-            </button>
-          );
-        })}
-      </div>
+  const renderTablePicker = () => {
+    const OFFICIAL_SECTION_ORDER = [
+      'Restaurant 1',
+      'TERAZ (Terrace)',
+      'Restaurant-02',
+      'Restaurant Coffee Area',
+      'Garden - Left Side',
+      'Berenda (Veranda)'
+    ];
 
-      {orderType === 'DINE_IN' && (() => {
-        const OFFICIAL_SECTION_ORDER = [
-          'Restaurant 1',
-          'TERAZ (Terrace)',
-          'Restaurant-02',
-          'Restaurant Coffee Area',
-          'Garden - Left Side',
-          'Berenda (Veranda)'
-        ];
-        const tableSections = Array.from(new Set(tables.map(tb => tb.section || 'General').filter(Boolean)))
-          .sort((a, b) => {
-            const idxA = OFFICIAL_SECTION_ORDER.indexOf(a);
-            const idxB = OFFICIAL_SECTION_ORDER.indexOf(b);
-            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-            if (idxA !== -1) return -1;
-            if (idxB !== -1) return 1;
-            return a.localeCompare(b);
-          });
-        const displayedTables = selectedSectionFilter === 'ALL'
-          ? tables
-          : tables.filter(tb => (tb.section || 'General') === selectedSectionFilter);
+    const tableSections = Array.from(new Set(tables.map(tb => tb.section || 'General').filter(Boolean)))
+      .sort((a, b) => {
+        const idxA = OFFICIAL_SECTION_ORDER.indexOf(a);
+        const idxB = OFFICIAL_SECTION_ORDER.indexOf(b);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return a.localeCompare(b);
+      });
 
-        const renderTableBtn = (tbl: any) => {
-          const isSelected = selectedTable === tbl.id;
-          const isOccupied = tbl.status === 'OCCUPIED';
-          return (
-            <button
-              key={tbl.id}
-              type="button"
-              onClick={() => setSelectedTable(tbl.id)}
-              style={{
-                padding: '8px 4px',
-                borderRadius: 12,
-                textAlign: 'center',
-                border: isSelected ? '2.5px solid #ea580c' : '1px solid var(--border, #e2e8f0)',
-                background: isSelected ? '#fff7ed' : isOccupied ? '#fef2f2' : 'var(--bg-card, #ffffff)',
-                color: isSelected ? '#ea580c' : 'var(--text-main, #0f172a)',
-                boxShadow: isSelected ? '0 0 0 2px rgba(234, 88, 12, 0.25)' : 'var(--shadow-sm)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 2,
-                cursor: 'pointer',
-                boxSizing: 'border-box',
-                minWidth: 0,
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <span style={{ fontSize: 13, fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
-                {tbl.table_number}
-              </span>
-              {tbl.name && tbl.name !== tbl.table_number && (
-                <span style={{ fontSize: 9, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '96%', lineHeight: 1.1 }}>
-                  {tbl.name}
-                </span>
-              )}
-              <span style={{
-                fontSize: 8.5,
-                fontWeight: 800,
-                padding: '2px 4px',
-                borderRadius: 4,
-                background: isOccupied ? '#ef4444' : '#10b981',
-                color: '#ffffff',
-                whiteSpace: 'nowrap',
-                marginTop: 1
-              }}>
-                {isOccupied ? (language === 'am' ? 'የተያዘ' : 'Occupied') : (language === 'am' ? 'ነፃ' : 'Available')}
-              </span>
-            </button>
-          );
-        };
+    const activeTableObj = tables.find(tb => tb.id === selectedTable);
 
-        return (
-          <div style={{ width: '100%', boxSizing: 'border-box' }}>
-            {/* Header: Title + Selected Table + Quick Section Dropdown */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main, #0f172a)', display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
-                  📍 {t('select_table')} {selectedTable && <span style={{ color: '#ea580c', fontWeight: 900 }}>({tables.find(tb => tb.id === selectedTable)?.table_number || ''})</span>}
-                </label>
-                {selectedTable && (
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    {tables.find(tb => tb.id === selectedTable)?.section} • {tables.find(tb => tb.id === selectedTable)?.name}
-                  </span>
+    // Collapsed Active Table Card: When table is selected, collapse into a sleek banner to maximize screen space for menu
+    if (orderType === 'DINE_IN' && selectedTable && !isTablePickerOpen && activeTableObj) {
+      return (
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #fff7ed, #ffedd5)',
+            border: '1.5px solid #ea580c',
+            borderRadius: 14,
+            padding: '10px 14px',
+            marginBottom: 14,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            boxShadow: '0 2px 8px rgba(234, 88, 12, 0.12)',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <div
+            onClick={() => setIsTablePickerOpen(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1 }}
+          >
+            <div style={{
+              background: '#ea580c',
+              color: '#ffffff',
+              minWidth: 40,
+              height: 40,
+              borderRadius: 10,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 900,
+              fontSize: 16,
+              boxShadow: '0 2px 6px rgba(234, 88, 12, 0.3)'
+            }}>
+              {activeTableObj.table_number}
+            </div>
+            <div>
+              <div style={{ fontSize: 13.5, fontWeight: 900, color: '#9a3412', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>📍 {activeTableObj.table_number}</span>
+                {activeTableObj.name && activeTableObj.name !== activeTableObj.table_number && (
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: '#c2410c' }}>({activeTableObj.name})</span>
                 )}
+                <span style={{
+                  fontSize: 9,
+                  fontWeight: 800,
+                  color: '#15803d',
+                  background: '#dcfce7',
+                  padding: '2px 6px',
+                  borderRadius: 4
+                }}>
+                  {language === 'am' ? 'ተመርጧል' : 'Active'}
+                </span>
               </div>
+              <div style={{ fontSize: 11, color: '#7c2d12', fontWeight: 600, marginTop: 1 }}>
+                🏷️ {activeTableObj.section || 'Dining Area'} • {activeTableObj.capacity ? `${activeTableObj.capacity} ${language === 'am' ? 'ወንበር' : 'seats'}` : ''}
+              </div>
+            </div>
+          </div>
 
-              {/* PC & Mobile Dropdown Quick Selector (No scrolling required) */}
-              {tableSections.length > 1 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
-                    {language === 'am' ? 'ክፍል:' : 'Section:'}
-                  </span>
-                  <select
-                    value={selectedSectionFilter}
-                    onChange={(e) => setSelectedSectionFilter(e.target.value)}
-                    style={{
-                      padding: '3px 8px',
-                      fontSize: 11.5,
-                      fontWeight: 700,
-                      borderRadius: 10,
-                      border: '1px solid var(--border)',
-                      background: 'var(--bg-card)',
-                      color: 'var(--text-main)',
-                      cursor: 'pointer',
-                      height: 30
-                    }}
-                  >
-                    <option value="ALL">
-                      {language === 'am' ? '✨ ሁሉም ክፍሎች' : '✨ All Sections'} ({tables.length})
-                    </option>
-                    {tableSections.map(sec => (
-                      <option key={sec} value={sec}>
-                        {sec} ({tables.filter(tb => (tb.section || 'General') === sec).length})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button
+              type="button"
+              onClick={() => setIsTablePickerOpen(true)}
+              style={{
+                background: '#ffffff',
+                border: '1px solid #fdba74',
+                color: '#ea580c',
+                borderRadius: 8,
+                padding: '6px 11px',
+                fontSize: 11.5,
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                cursor: 'pointer',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+              }}
+              title="Change table"
+            >
+              <RefreshCw size={13} />
+              <span>{language === 'am' ? 'ቀይር' : 'Change'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTable('')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#9a3412',
+                cursor: 'pointer',
+                padding: 4,
+                borderRadius: 6
+              }}
+              title="Deselect table"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // Filter tables based on Search-First UI query
+    const isSearching = Boolean(tableSearch.trim());
+    const searchedTables = tables.filter(tb => {
+      if (!isSearching) return true;
+      const q = tableSearch.toLowerCase().trim();
+      const matchNum = tb.table_number?.toLowerCase().includes(q);
+      const matchName = tb.name?.toLowerCase().includes(q);
+      const matchSec = tb.section?.toLowerCase().includes(q);
+      return matchNum || matchName || matchSec;
+    });
+
+    const displayedTables = isSearching
+      ? searchedTables
+      : selectedSectionFilter === 'ALL'
+        ? tables
+        : tables.filter(tb => (tb.section || 'General') === selectedSectionFilter);
+
+    const renderTableBtn = (tbl: any) => {
+      const isSelected = selectedTable === tbl.id;
+      const isOccupied = tbl.status === 'OCCUPIED';
+      return (
+        <button
+          key={tbl.id}
+          type="button"
+          onClick={() => {
+            setSelectedTable(tbl.id);
+            setIsTablePickerOpen(false);
+            tactileFeedback('pop');
+            gToast.success(language === 'am' ? `ጠረጴዛ ${tbl.table_number} ተመርጧል` : `Table ${tbl.table_number} selected`);
+          }}
+          style={{
+            padding: '8px 4px',
+            borderRadius: 12,
+            textAlign: 'center',
+            border: isSelected ? '2.5px solid #ea580c' : '1px solid var(--border, #e2e8f0)',
+            background: isSelected ? '#fff7ed' : isOccupied ? '#fef2f2' : 'var(--bg-card, #ffffff)',
+            color: isSelected ? '#ea580c' : 'var(--text-main, #0f172a)',
+            boxShadow: isSelected ? '0 0 0 2px rgba(234, 88, 12, 0.25)' : 'var(--shadow-sm)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2,
+            cursor: 'pointer',
+            boxSizing: 'border-box',
+            minWidth: 0,
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+            {tbl.table_number}
+          </span>
+          {tbl.name && tbl.name !== tbl.table_number && (
+            <span style={{ fontSize: 9, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '96%', lineHeight: 1.1 }}>
+              {tbl.name}
+            </span>
+          )}
+          <span style={{
+            fontSize: 8.5,
+            fontWeight: 800,
+            padding: '2px 4px',
+            borderRadius: 4,
+            background: isOccupied ? '#ef4444' : '#10b981',
+            color: '#ffffff',
+            whiteSpace: 'nowrap',
+            marginTop: 1
+          }}>
+            {isOccupied ? (language === 'am' ? 'የተያዘ' : 'Occupied') : (language === 'am' ? 'ነፃ' : 'Available')}
+          </span>
+        </button>
+      );
+    };
+
+    return (
+      <div style={{
+        background: 'var(--bg-card, #ffffff)',
+        border: '1px solid var(--border, #e2e8f0)',
+        borderRadius: 16,
+        padding: 14,
+        marginBottom: 14,
+        boxShadow: 'var(--shadow-sm)',
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+        overflow: 'hidden'
+      }}>
+        {/* Order Type Buttons + Collapse Toggle */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 8 }}>
+          <div style={{ display: 'flex', gap: 6, flex: 1, boxSizing: 'border-box' }}>
+            {(['DINE_IN', 'TAKEAWAY', 'DELIVERY'] as const).map(type => {
+              const isSelected = orderType === type;
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setOrderType(type)}
+                  style={{
+                    flex: 1,
+                    padding: '8px 2px',
+                    borderRadius: 10,
+                    fontSize: 12,
+                    fontWeight: 800,
+                    border: isSelected ? '2px solid #ea580c' : '1px solid var(--border, #e2e8f0)',
+                    background: isSelected ? '#fff7ed' : 'var(--bg-subtle, #f8fafc)',
+                    color: isSelected ? '#ea580c' : 'var(--text-main, #334155)',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    boxSizing: 'border-box',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {type === 'DINE_IN' ? t('dine_in') : type === 'TAKEAWAY' ? t('takeaway') : t('delivery')}
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedTable && (
+            <button
+              type="button"
+              onClick={() => setIsTablePickerOpen(false)}
+              style={{
+                background: 'var(--bg-subtle, #f1f5f9)',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '6px 10px',
+                fontSize: 11,
+                fontWeight: 700,
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+              title="Collapse table selector"
+            >
+              <ChevronUp size={14} />
+              <span>{language === 'am' ? 'ሰብስብ' : 'Collapse'}</span>
+            </button>
+          )}
+        </div>
+
+        {orderType === 'DINE_IN' && (
+          <div style={{ width: '100%', boxSizing: 'border-box' }}>
+            {/* Search-First Input for Tables */}
+            <div style={{ position: 'relative', marginBottom: 10 }}>
+              <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <input
+                type="text"
+                value={tableSearch}
+                onChange={e => setTableSearch(e.target.value)}
+                placeholder={language === 'am' ? '🔍 ጠረጴዛ ፈልግ (ለምሳሌ 08, Bar, T-01, Garden)...' : '🔍 Search table #, name or section (e.g. 08, Bar, T-01, Garden)...'}
+                style={{
+                  width: '100%',
+                  padding: '8px 30px 8px 32px',
+                  borderRadius: 10,
+                  border: '1.5px solid var(--border, #e2e8f0)',
+                  fontSize: 12.5,
+                  background: 'var(--bg-subtle, #f8fafc)',
+                  color: 'var(--text-main)',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+              {tableSearch && (
+                <button
+                  type="button"
+                  onClick={() => setTableSearch('')}
+                  style={{
+                    position: 'absolute',
+                    right: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)',
+                    padding: 2
+                  }}
+                >
+                  <X size={14} />
+                </button>
               )}
             </div>
 
-            {/* Section Filter Pills - Wrapping cleanly on PC, zero scrollbar */}
-            {tableSections.length > 1 && (
-              <div
-                className="no-scrollbar"
-                onWheel={(e) => {
-                  if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) {
-                    e.currentTarget.scrollLeft += e.deltaY;
-                  }
-                }}
-                style={{
-                  display: 'flex',
-                  gap: 6,
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                  marginBottom: 10
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setSelectedSectionFilter('ALL')}
-                  style={{
-                    padding: '5px 12px',
-                    borderRadius: 16,
-                    fontSize: 11.5,
-                    fontWeight: selectedSectionFilter === 'ALL' ? 800 : 700,
-                    border: selectedSectionFilter === 'ALL' ? 'none' : '1px solid var(--border)',
-                    background: selectedSectionFilter === 'ALL' ? '#ea580c' : 'var(--bg-card, #ffffff)',
-                    color: selectedSectionFilter === 'ALL' ? '#ffffff' : 'var(--text-main)',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.15s ease',
-                    boxShadow: selectedSectionFilter === 'ALL' ? '0 2px 6px rgba(234, 88, 12, 0.3)' : 'none'
-                  }}
-                >
-                  {language === 'am' ? 'ሁሉም ክፍሎች' : 'All Sections'} ({tables.length})
-                </button>
-                {tableSections.map(sec => {
-                  const count = tables.filter(tb => (tb.section || 'General') === sec).length;
-                  const isSelected = selectedSectionFilter === sec;
-                  return (
-                    <button
-                      key={sec}
-                      type="button"
-                      onClick={() => setSelectedSectionFilter(sec)}
-                      style={{
-                        padding: '5px 12px',
-                        borderRadius: 16,
-                        fontSize: 11.5,
-                        fontWeight: isSelected ? 800 : 700,
-                        border: isSelected ? 'none' : '1px solid var(--border)',
-                        background: isSelected ? '#ea580c' : 'var(--bg-card, #ffffff)',
-                        color: isSelected ? '#ffffff' : 'var(--text-main)',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        transition: 'all 0.15s ease',
-                        boxShadow: isSelected ? '0 2px 6px rgba(234, 88, 12, 0.3)' : 'none'
-                      }}
-                    >
-                      <span>{sec}</span>
-                      <span style={{
-                        fontSize: 9.5,
-                        fontWeight: 800,
-                        padding: '1px 6px',
-                        borderRadius: 10,
-                        background: isSelected ? 'rgba(255,255,255,0.28)' : 'var(--bg-subtle, #f1f5f9)',
-                        color: isSelected ? '#ffffff' : 'var(--text-muted)'
-                      }}>
-                        {count}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Tables Display: Grouped by section when ALL, or filtered grid */}
-            {selectedSectionFilter === 'ALL' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {tableSections.map(sec => {
-                  const secTables = tables.filter(tb => (tb.section || 'General') === sec);
-                  if (secTables.length === 0) return null;
-                  return (
-                    <div
-                      key={sec}
-                      style={{
-                        background: 'var(--bg-subtle, #f8fafc)',
-                        borderRadius: 12,
-                        padding: '8px 10px',
-                        border: '1px solid var(--border, #e2e8f0)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                        <span style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                          🏷️ {sec}
-                        </span>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', background: 'var(--bg-card)', padding: '1px 6px', borderRadius: 8, border: '1px solid var(--border)' }}>
-                          {secTables.length} {language === 'am' ? 'ጠረጴዛዎች' : 'tables'}
-                        </span>
-                      </div>
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))',
-                        gap: 6
-                      }}>
-                        {secTables.map(tbl => renderTableBtn(tbl))}
-                      </div>
-                    </div>
-                  );
-                })}
+            {/* If searching: Display search results directly */}
+            {isSearching ? (
+              <div>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>
+                  {language === 'am' ? `የተገኙ ጠረጴዛዎች (${searchedTables.length}):` : `Matching Tables (${searchedTables.length}):`}
+                </div>
+                {searchedTables.length === 0 ? (
+                  <div style={{ padding: '20px 10px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+                    {language === 'am' ? 'ምንም ጠረጴዛ አልተገኘም' : 'No tables match your search'}
+                  </div>
+                ) : (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))',
+                    gap: 6
+                  }}>
+                    {searchedTables.map(tbl => renderTableBtn(tbl))}
+                  </div>
+                )}
               </div>
             ) : (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))',
-                gap: 6,
-                width: '100%',
-                maxWidth: '100%',
-                boxSizing: 'border-box'
-              }}>
-                {displayedTables.map(tbl => renderTableBtn(tbl))}
+              /* If not searching: Section Carousel Slider */
+              <div>
+                {tableSections.length > 1 && (
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+                    {/* Carousel Left Arrow */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (tableSectionScrollRef.current) {
+                          tableSectionScrollRef.current.scrollBy({ left: -160, behavior: 'smooth' });
+                        }
+                      }}
+                      style={{
+                        flexShrink: 0,
+                        width: 24,
+                        height: 30,
+                        borderRadius: 6,
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg-card, #ffffff)',
+                        color: 'var(--text-main)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 4,
+                        boxShadow: 'var(--shadow-sm)'
+                      }}
+                      title="Previous sections"
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+
+                    {/* Scrollable / Slidable Sections Ribbon */}
+                    <div
+                      ref={tableSectionScrollRef}
+                      className="no-scrollbar"
+                      style={{
+                        display: 'flex',
+                        gap: 6,
+                        overflowX: 'auto',
+                        scrollBehavior: 'smooth',
+                        flex: 1,
+                        padding: '2px 0'
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSectionFilter('ALL')}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: 16,
+                          fontSize: 11.5,
+                          fontWeight: selectedSectionFilter === 'ALL' ? 800 : 700,
+                          border: selectedSectionFilter === 'ALL' ? 'none' : '1px solid var(--border)',
+                          background: selectedSectionFilter === 'ALL' ? '#ea580c' : 'var(--bg-card, #ffffff)',
+                          color: selectedSectionFilter === 'ALL' ? '#ffffff' : 'var(--text-main)',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.15s ease',
+                          boxShadow: selectedSectionFilter === 'ALL' ? '0 2px 6px rgba(234, 88, 12, 0.3)' : 'none'
+                        }}
+                      >
+                        {language === 'am' ? 'ሁሉም ክፍሎች' : 'All Sections'} ({tables.length})
+                      </button>
+
+                      {tableSections.map(sec => {
+                        const count = tables.filter(tb => (tb.section || 'General') === sec).length;
+                        const isSelected = selectedSectionFilter === sec;
+                        return (
+                          <button
+                            key={sec}
+                            type="button"
+                            onClick={() => setSelectedSectionFilter(sec)}
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: 16,
+                              fontSize: 11.5,
+                              fontWeight: isSelected ? 800 : 700,
+                              border: isSelected ? 'none' : '1px solid var(--border)',
+                              background: isSelected ? '#ea580c' : 'var(--bg-card, #ffffff)',
+                              color: isSelected ? '#ffffff' : 'var(--text-main)',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              transition: 'all 0.15s ease',
+                              boxShadow: isSelected ? '0 2px 6px rgba(234, 88, 12, 0.3)' : 'none'
+                            }}
+                          >
+                            <span>{sec}</span>
+                            <span style={{
+                              fontSize: 9.5,
+                              fontWeight: 800,
+                              padding: '1px 6px',
+                              borderRadius: 10,
+                              background: isSelected ? 'rgba(255,255,255,0.28)' : 'var(--bg-subtle, #f1f5f9)',
+                              color: isSelected ? '#ffffff' : 'var(--text-muted)'
+                            }}>
+                              {count}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Carousel Right Arrow */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (tableSectionScrollRef.current) {
+                          tableSectionScrollRef.current.scrollBy({ left: 160, behavior: 'smooth' });
+                        }
+                      }}
+                      style={{
+                        flexShrink: 0,
+                        width: 24,
+                        height: 30,
+                        borderRadius: 6,
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg-card, #ffffff)',
+                        color: 'var(--text-main)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginLeft: 4,
+                        boxShadow: 'var(--shadow-sm)'
+                      }}
+                      title="Next sections"
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Tables Grid: Section Card Grouping when ALL, or Selected Section Grid */}
+                {selectedSectionFilter === 'ALL' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {tableSections.map(sec => {
+                      const secTables = tables.filter(tb => (tb.section || 'General') === sec);
+                      if (secTables.length === 0) return null;
+                      return (
+                        <div
+                          key={sec}
+                          style={{
+                            background: 'var(--bg-subtle, #f8fafc)',
+                            borderRadius: 12,
+                            padding: '8px 10px',
+                            border: '1px solid var(--border, #e2e8f0)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                            <span style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                              🏷️ {sec}
+                            </span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', background: 'var(--bg-card)', padding: '1px 6px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                              {secTables.length} {language === 'am' ? 'ጠረጴዛዎች' : 'tables'}
+                            </span>
+                          </div>
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))',
+                            gap: 6
+                          }}>
+                            {secTables.map(tbl => renderTableBtn(tbl))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))',
+                    gap: 6,
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box'
+                  }}>
+                    {displayedTables.map(tbl => renderTableBtn(tbl))}
+                  </div>
+                )}
               </div>
             )}
           </div>
-        );
-      })()}
-    </div>
-  );
+        )}
+      </div>
+    );
+  };
 
-  const renderCategories = () => (
-    <div
-      className="no-scrollbar"
-      onWheel={(e) => {
-        if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) {
-          e.currentTarget.scrollLeft += e.deltaY;
-        }
-      }}
-      style={{
-        display: 'flex',
-        gap: 8,
-        flexWrap: isWide ? 'wrap' : 'nowrap',
-        overflowX: isWide ? 'visible' : 'auto',
-        paddingBottom: isWide ? 4 : 8,
-        marginBottom: 12
-      }}
-    >
-      <button
-        onClick={() => setSelectedCategory('all')}
-        style={{
-          padding: '8px 16px',
-          borderRadius: 20,
-          fontSize: 13,
-          fontWeight: 800,
-          whiteSpace: 'nowrap',
-          background: selectedCategory === 'all' ? '#1e293b' : 'var(--bg-subtle, #f1f5f9)',
-          color: selectedCategory === 'all' ? '#ffffff' : 'var(--text-main, #334155)',
-          border: selectedCategory === 'all' ? '1px solid #1e293b' : '1px solid var(--border, #e2e8f0)',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          cursor: 'pointer',
-          transition: 'all 0.15s ease'
-        }}
-      >
-        <span>🍽️</span> {language === 'am' ? 'ሁሉም' : 'All Items'}
-      </button>
-      {categories.map(c => {
-        const isSelected = selectedCategory === c.id;
-        return (
+  const renderCategories = () => {
+    return (
+      <div style={{ marginBottom: 14 }}>
+        {/* Search-First Menu Header: Live Search Input + Routing Chips + Available Only + View Mode */}
+        <div style={{
+          display: 'flex',
+          gap: 8,
+          marginBottom: 10,
+          flexWrap: 'wrap',
+          alignItems: 'center'
+        }}>
+          {/* Instant Search-First Food Input */}
+          <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+            <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+            <input
+              type="text"
+              value={menuSearch}
+              onChange={e => setMenuSearch(e.target.value)}
+              placeholder={language === 'am' ? '🔍 ምግቦችን ፈልግ (ለምሳሌ ዱለት፣ ፍርፍር፣ በርገር፣ ፒዛ፣ ቡና)...' : '🔍 Search menu (e.g. Dulet, Firfir, Burger, Pizza, Coffee)...'}
+              style={{
+                width: '100%',
+                padding: '9px 32px 9px 36px',
+                borderRadius: 12,
+                border: '1.5px solid var(--border, #cbd5e1)',
+                fontSize: 13,
+                background: 'var(--bg-card, #ffffff)',
+                color: 'var(--text-main)',
+                outline: 'none',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                boxSizing: 'border-box'
+              }}
+            />
+            {menuSearch && (
+              <button
+                type="button"
+                onClick={() => setMenuSearch('')}
+                style={{
+                  position: 'absolute',
+                  right: 10,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#64748b',
+                  padding: 2
+                }}
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+
+          {/* Quick Filter Chips: Routing Destinations + Available Only + Layout Mode */}
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Routing Destination Filter Pills */}
+            <div style={{ display: 'flex', background: 'var(--bg-subtle, #f1f5f9)', padding: 2, borderRadius: 10, border: '1px solid var(--border)' }}>
+              {[
+                { id: 'ALL', label: language === 'am' ? 'ሁሉም' : 'All' },
+                { id: 'KITCHEN', label: language === 'am' ? '🔥 ማብሰያ' : '🔥 Kitchen' },
+                { id: 'BAR', label: language === 'am' ? '☕ መጠጥ' : '☕ Bar' },
+                { id: 'FRONT_COUNTER', label: language === 'am' ? '🥐 ዳቦ/ኬክ' : '🥐 Bakery' }
+              ].map(rf => (
+                <button
+                  key={rf.id}
+                  type="button"
+                  onClick={() => setMenuRoutingFilter(rf.id as any)}
+                  style={{
+                    padding: '5px 8px',
+                    borderRadius: 8,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: menuRoutingFilter === rf.id ? 'var(--bg-card, #ffffff)' : 'transparent',
+                    color: menuRoutingFilter === rf.id ? '#ea580c' : 'var(--text-muted)',
+                    boxShadow: menuRoutingFilter === rf.id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {rf.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Available Only toggle */}
+            <button
+              type="button"
+              onClick={() => setMenuAvailableOnly(!menuAvailableOnly)}
+              style={{
+                padding: '5px 10px',
+                borderRadius: 10,
+                fontSize: 11.5,
+                fontWeight: 800,
+                cursor: 'pointer',
+                border: menuAvailableOnly ? '1.5px solid #16a34a' : '1px solid var(--border)',
+                background: menuAvailableOnly ? '#f0fdf4' : 'var(--bg-card, #ffffff)',
+                color: menuAvailableOnly ? '#15803d' : 'var(--text-muted)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+              title="Show only available items"
+            >
+              <span>{menuAvailableOnly ? '✅' : '✨'}</span>
+              <span>{language === 'am' ? 'ዝግጁ ብቻ' : 'Available'}</span>
+            </button>
+
+            {/* View Mode Switcher: Cards Grid vs Compact Stack List */}
+            <div style={{ display: 'inline-flex', background: 'var(--bg-subtle, #f1f5f9)', padding: 2, borderRadius: 10, border: '1px solid var(--border)' }}>
+              <button
+                type="button"
+                onClick={() => setMenuViewMode('grid')}
+                style={{
+                  padding: '5px 8px',
+                  borderRadius: 8,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: menuViewMode === 'grid' ? 'var(--bg-card, #ffffff)' : 'transparent',
+                  color: menuViewMode === 'grid' ? '#ea580c' : 'var(--text-muted)',
+                  boxShadow: menuViewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+                title={language === 'am' ? 'የካርድ እይታ' : 'Card Grid View'}
+              >
+                <Grid size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setMenuViewMode('stack')}
+                style={{
+                  padding: '5px 8px',
+                  borderRadius: 8,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: menuViewMode === 'stack' ? 'var(--bg-card, #ffffff)' : 'transparent',
+                  color: menuViewMode === 'stack' ? '#ea580c' : 'var(--text-muted)',
+                  boxShadow: menuViewMode === 'stack' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+                title={language === 'am' ? 'የዝርዝር እይታ (Card Stack)' : 'Compact Stack / List View'}
+              >
+                <List size={15} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Category Carousel Slider Ribbon with Left/Right Buttons */}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          {/* Carousel Left Arrow */}
           <button
-            key={c.id}
-            onClick={() => setSelectedCategory(c.id)}
+            type="button"
+            onClick={() => {
+              if (categoryScrollRef.current) {
+                categoryScrollRef.current.scrollBy({ left: -200, behavior: 'smooth' });
+              }
+            }}
             style={{
-              padding: '8px 16px',
-              borderRadius: 20,
-              fontSize: 13,
-              fontWeight: 800,
-              whiteSpace: 'nowrap',
-              background: isSelected ? '#1e293b' : 'var(--bg-subtle, #f1f5f9)',
-              color: isSelected ? '#ffffff' : 'var(--text-main, #334155)',
-              border: isSelected ? '1px solid #1e293b' : '1px solid var(--border, #e2e8f0)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
+              flexShrink: 0,
+              width: 28,
+              height: 36,
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              background: 'var(--bg-card, #ffffff)',
+              color: 'var(--text-main)',
               cursor: 'pointer',
-              transition: 'all 0.15s ease'
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 6,
+              boxShadow: 'var(--shadow-sm)'
+            }}
+            title="Previous categories"
+          >
+            <ChevronLeft size={16} />
+          </button>
+
+          {/* Carousel Scrollable Container */}
+          <div
+            ref={categoryScrollRef}
+            className="no-scrollbar"
+            onWheel={(e) => {
+              if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) {
+                e.currentTarget.scrollLeft += e.deltaY;
+              }
+            }}
+            style={{
+              display: 'flex',
+              gap: 8,
+              overflowX: 'auto',
+              scrollBehavior: 'smooth',
+              flex: 1,
+              padding: '2px 0'
             }}
           >
-            <span>{CATEGORY_EMOJIS[c.id] || '🍴'}</span>
-            <span>{language === 'am' ? (c.name_amharic || CATEGORY_NAMES_AM[c.id] || c.name) : c.name}</span>
+            <button
+              onClick={() => { setSelectedCategory('all'); setMenuSearch(''); }}
+              style={{
+                padding: '8px 14px',
+                borderRadius: 20,
+                fontSize: 12.5,
+                fontWeight: 800,
+                whiteSpace: 'nowrap',
+                background: selectedCategory === 'all' && !menuSearch ? '#1e293b' : 'var(--bg-subtle, #f1f5f9)',
+                color: selectedCategory === 'all' && !menuSearch ? '#ffffff' : 'var(--text-main, #334155)',
+                border: selectedCategory === 'all' && !menuSearch ? '1px solid #1e293b' : '1px solid var(--border, #e2e8f0)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span>🍽️</span>
+              <span>{language === 'am' ? 'ሁሉም' : 'All Items'}</span>
+              <span style={{
+                fontSize: 10,
+                fontWeight: 700,
+                background: selectedCategory === 'all' && !menuSearch ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.06)',
+                padding: '1px 6px',
+                borderRadius: 10
+              }}>
+                {menuItems.length}
+              </span>
+            </button>
+
+            {categories.map(c => {
+              const isSelected = selectedCategory === c.id && !menuSearch;
+              const catItemCount = menuItems.filter(m => m.category_id === c.id).length;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => { setSelectedCategory(c.id); setMenuSearch(''); }}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: 20,
+                    fontSize: 12.5,
+                    fontWeight: 800,
+                    whiteSpace: 'nowrap',
+                    background: isSelected ? '#1e293b' : 'var(--bg-subtle, #f1f5f9)',
+                    color: isSelected ? '#ffffff' : 'var(--text-main, #334155)',
+                    border: isSelected ? '1px solid #1e293b' : '1px solid var(--border, #e2e8f0)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <span>{CATEGORY_EMOJIS[c.id] || '🍴'}</span>
+                  <span>{language === 'am' ? (c.name_amharic || CATEGORY_NAMES_AM[c.id] || c.name) : c.name}</span>
+                  {catItemCount > 0 && (
+                    <span style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      background: isSelected ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.06)',
+                      padding: '1px 6px',
+                      borderRadius: 10
+                    }}>
+                      {catItemCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Carousel Right Arrow */}
+          <button
+            type="button"
+            onClick={() => {
+              if (categoryScrollRef.current) {
+                categoryScrollRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+              }
+            }}
+            style={{
+              flexShrink: 0,
+              width: 28,
+              height: 36,
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              background: 'var(--bg-card, #ffffff)',
+              color: 'var(--text-main)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginLeft: 6,
+              boxShadow: 'var(--shadow-sm)'
+            }}
+            title="Next categories"
+          >
+            <ChevronRight size={16} />
           </button>
-        );
-      })}
-    </div>
-  );
+        </div>
+
+        {/* Search Active Notification Indicator */}
+        {menuSearch && (
+          <div style={{
+            marginTop: 8,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: '#fff7ed',
+            border: '1px solid #fed7aa',
+            borderRadius: 8,
+            padding: '6px 12px',
+            fontSize: 12
+          }}>
+            <span style={{ color: '#c2410c', fontWeight: 700 }}>
+              🔍 {language === 'am' ? `"${menuSearch}" ፍለጋ ውጤቶች (${filteredMenuItems.length})` : `Showing ${filteredMenuItems.length} results for "${menuSearch}"`}
+            </span>
+            <button
+              type="button"
+              onClick={() => setMenuSearch('')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#ea580c',
+                cursor: 'pointer',
+                fontWeight: 800,
+                fontSize: 11.5,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 3
+              }}
+            >
+              <X size={13} />
+              <span>{language === 'am' ? 'አጽዳ' : 'Clear search'}</span>
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Format variation label for display (supporting Amharic localization)
   const formatVariationTitle = (title: string) => {
@@ -796,6 +1337,329 @@ export const WaiterView: React.FC = () => {
 
   const renderMenuItems = () => {
     const groupedList = groupMenuItems(filteredMenuItems);
+
+    if (groupedList.length === 0) {
+      return (
+        <div style={{
+          padding: '36px 16px',
+          textAlign: 'center',
+          background: 'var(--bg-card, #ffffff)',
+          border: '1.5px dashed var(--border, #cbd5e1)',
+          borderRadius: 16,
+          marginBottom: 20
+        }}>
+          <div style={{ fontSize: 36, marginBottom: 8 }}>🔍</div>
+          <h4 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px', color: 'var(--text-main, #0f172a)' }}>
+            {language === 'am' ? 'ምንም ምግብ አልተገኘም' : 'No menu items found'}
+          </h4>
+          <p style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', margin: '0 0 14px' }}>
+            {language === 'am' ? 'የፍለጋ ቃሉን ወይም ማጣሪያዎችን ይቀይሩ' : 'Try searching for something else or reset your active filters'}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setMenuSearch('');
+              setSelectedCategory('all');
+              setMenuRoutingFilter('ALL');
+              setMenuAvailableOnly(false);
+            }}
+            style={{
+              background: '#ea580c',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: 8,
+              padding: '7px 16px',
+              fontSize: 12,
+              fontWeight: 800,
+              cursor: 'pointer'
+            }}
+          >
+            {language === 'am' ? 'ሁሉንም ማጣሪያዎች አጽዳ' : 'Reset All Filters'}
+          </button>
+        </div>
+      );
+    }
+
+    if (menuViewMode === 'stack') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+          {groupedList.map(group => {
+            if (group.isGroup && group.variations.length > 1) {
+              const totalInCart = group.variations.reduce((sum, v) => sum + (cart[v.id]?.quantity || 0), 0);
+              const allVariationsUnavailable = group.variations.every(v => {
+                const isItemDisabled = v.is_available === 0 || v.is_available === false;
+                const stock = v.bakery_counter_stock ?? v.counter_stock;
+                const isOutOfStock = stock !== undefined && stock !== null && stock <= 0;
+                const isBakeryPaused = v.bakery_variation_available === 0 || v.bakery_variation_available === false;
+                const hasStock = stock !== undefined && stock !== null && stock > 0;
+                return isItemDisabled || isOutOfStock || (isBakeryPaused && !hasStock);
+              });
+
+              return (
+                <div
+                  key={group.id}
+                  style={{
+                    background: allVariationsUnavailable && totalInCart === 0 ? 'var(--bg-subtle, #fef2f2)' : 'var(--bg-card, #ffffff)',
+                    border: allVariationsUnavailable && totalInCart === 0
+                      ? '1.5px dashed #f87171'
+                      : totalInCart > 0
+                        ? '1.5px solid #ea580c'
+                        : '1px solid var(--border, #e2e8f0)',
+                    borderRadius: 12,
+                    padding: 10,
+                    boxShadow: totalInCart > 0 ? '0 2px 8px rgba(234, 88, 12, 0.15)' : 'var(--shadow-sm)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: '#ea580c', position: 'relative' }}>
+                      {group.photoUrl ? (
+                        <img
+                          src={resolveImageUrl(group.photoUrl)}
+                          alt={group.productName}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : null}
+                      <div style={{ position: 'absolute', inset: 0, display: group.photoUrl ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800 }}>
+                        {group.productName.charAt(0)}
+                      </div>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <h4 style={{ fontSize: 13.5, fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                          {group.productNameAmharic || group.productName}
+                        </h4>
+                        <span style={{ fontSize: 9, fontWeight: 800, background: '#fef3c7', color: '#b45309', padding: '1px 5px', borderRadius: 4 }}>
+                          {group.routingDestination}
+                        </span>
+                        {totalInCart > 0 && (
+                          <span style={{ fontSize: 9.5, fontWeight: 800, background: '#ea580c', color: '#fff', padding: '1px 6px', borderRadius: 8 }}>
+                            🛒 {totalInCart}
+                          </span>
+                        )}
+                      </div>
+                      {group.productNameAmharic && (
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{group.productName}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 6, borderLeft: '2px solid #fdba74' }}>
+                    {group.variations.map(v => {
+                      const qty = cart[v.id]?.quantity || 0;
+                      const stock = v.bakery_counter_stock ?? v.counter_stock;
+                      const hasStock = stock !== undefined && stock !== null && stock > 0;
+                      const isOutOfStock = stock !== undefined && stock !== null && stock <= 0;
+                      const isItemDisabled = v.is_available === 0;
+                      const isBakeryPaused = v.bakery_variation_available === 0;
+                      const isUnavailable = isItemDisabled || isOutOfStock || (isBakeryPaused && !hasStock);
+                      const title = formatVariationTitle(v.variationTitle);
+
+                      return (
+                        <div
+                          key={v.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '4px 8px',
+                            borderRadius: 6,
+                            background: qty > 0 ? '#fff7ed' : isUnavailable ? '#fff1f2' : 'var(--bg-subtle, #f8fafc)',
+                            border: qty > 0 ? '1px solid #ea580c' : '1px solid var(--border)'
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+                            <span style={{ fontSize: 11.5, fontWeight: 700, color: isUnavailable ? '#991b1b' : 'var(--text-main)' }}>
+                              {title}
+                            </span>
+                            <span style={{ fontSize: 11, fontWeight: 800, color: '#ea580c', marginLeft: 8 }}>
+                              {v.price} {t('currency')}
+                            </span>
+                            {!isUnavailable && stock !== undefined && stock !== null && (
+                              <span style={{ fontSize: 9.5, color: stock <= 2 ? '#dc2626' : '#16a34a', marginLeft: 6 }}>
+                                ({stock} {language === 'am' ? 'ቀሪ' : 'left'})
+                              </span>
+                            )}
+                          </div>
+
+                          {isUnavailable ? (
+                            <span style={{ fontSize: 9.5, fontWeight: 800, color: '#ef4444', background: '#fee2e2', padding: '2px 5px', borderRadius: 4 }}>
+                              {language === 'am' ? 'አልቋል' : 'Unavailable'}
+                            </span>
+                          ) : qty > 0 ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#fff', border: '1px solid #ea580c', borderRadius: 12, padding: '1px 4px' }}>
+                              <button
+                                type="button"
+                                onClick={() => { tactileFeedback('click'); removeFromCart(v.id); }}
+                                style={{ background: 'none', border: 'none', color: '#ea580c', cursor: 'pointer', padding: 1 }}
+                              >
+                                <Minus size={12} strokeWidth={3} />
+                              </button>
+                              <span style={{ fontSize: 11.5, fontWeight: 800, color: '#ea580c', minWidth: 14, textAlign: 'center' }}>{qty}</span>
+                              <button
+                                type="button"
+                                onClick={() => { tactileFeedback('pop'); addToCart(v); }}
+                                style={{ background: 'none', border: 'none', color: '#ea580c', cursor: 'pointer', padding: 1 }}
+                              >
+                                <Plus size={12} strokeWidth={3} />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => { tactileFeedback('pop'); addToCart(v); }}
+                              style={{
+                                background: '#ea580c',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: 6,
+                                padding: '3px 8px',
+                                fontSize: 10.5,
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 2
+                              }}
+                            >
+                              <Plus size={12} strokeWidth={3} />
+                              <span>{language === 'am' ? 'ጨምር' : 'Add'}</span>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            }
+
+            // Single item in Stack View
+            const m = group.variations[0] || group.baseItem;
+            const inCart = cart[m.id]?.quantity || 0;
+            const isItemDisabled = m.is_available === 0 || m.is_available === false;
+            const stock = m.bakery_counter_stock ?? m.counter_stock;
+            const hasStock = stock !== undefined && stock !== null && stock > 0;
+            const isOutOfStock = stock !== undefined && stock !== null && stock <= 0;
+            const isBakeryPaused = m.bakery_variation_available === 0 || m.bakery_variation_available === false;
+            const isUnavailable = isItemDisabled || isOutOfStock || (isBakeryPaused && !hasStock);
+
+            return (
+              <div
+                key={m.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '8px 12px',
+                  borderRadius: 12,
+                  background: isUnavailable ? 'var(--bg-subtle, #fef2f2)' : inCart > 0 ? '#fff7ed' : 'var(--bg-card, #ffffff)',
+                  border: isUnavailable ? '1px dashed #f87171' : inCart > 0 ? '1.5px solid #ea580c' : '1px solid var(--border, #e2e8f0)',
+                  boxShadow: inCart > 0 ? '0 2px 6px rgba(234, 88, 12, 0.15)' : 'var(--shadow-sm)',
+                  opacity: isUnavailable ? 0.78 : 1,
+                  gap: 10
+                }}
+              >
+                <div style={{ width: 44, height: 44, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: isUnavailable ? '#94a3b8' : '#ea580c', position: 'relative' }}>
+                  {m.photo_url ? (
+                    <img
+                      src={resolveImageUrl(m.photo_url)}
+                      alt={m.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', filter: isUnavailable ? 'grayscale(0.6)' : 'none' }}
+                      onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                    />
+                  ) : null}
+                  <div style={{ position: 'absolute', inset: 0, display: m.photo_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 18 }}>
+                    {m.name.charAt(0)}
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <h4 style={{ fontSize: 13.5, fontWeight: 800, margin: 0, color: isUnavailable ? '#991b1b' : 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {m.name_amharic || m.name}
+                    </h4>
+                    <span style={{ fontSize: 9, fontWeight: 800, background: m.routing_destination === 'KITCHEN' ? '#fef3c7' : '#e0f2fe', color: m.routing_destination === 'KITCHEN' ? '#b45309' : '#0284c7', padding: '1px 5px', borderRadius: 4, flexShrink: 0 }}>
+                      {m.routing_destination}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
+                    {m.name_amharic && (
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {m.name}
+                      </span>
+                    )}
+                    {!isUnavailable && stock !== undefined && stock !== null && (
+                      <span style={{ fontSize: 9.5, fontWeight: 700, color: stock <= 2 ? '#dc2626' : '#16a34a' }}>
+                        • {stock} {language === 'am' ? 'ቀሪ' : 'left'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 900, color: isUnavailable ? '#94a3b8' : 'var(--text-main)', textDecoration: isUnavailable ? 'line-through' : 'none' }}>
+                      {m.price} <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>{t('currency')}</span>
+                    </div>
+                  </div>
+
+                  {isUnavailable ? (
+                    <span style={{ fontSize: 10, fontWeight: 800, color: '#dc2626', background: '#fee2e2', border: '1px solid #fca5a5', padding: '3px 7px', borderRadius: 6 }}>
+                      ✕ {language === 'am' ? 'አልቋል' : 'Unavailable'}
+                    </span>
+                  ) : inCart > 0 ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#fff', border: '1.5px solid #ea580c', borderRadius: 16, padding: '2px 6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => { tactileFeedback('click'); removeFromCart(m.id); }}
+                        style={{ color: '#ea580c', background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}
+                      >
+                        <Minus size={13} strokeWidth={3} />
+                      </button>
+                      <span style={{ fontSize: 12.5, fontWeight: 900, color: '#ea580c', minWidth: 16, textAlign: 'center' }}>
+                        {inCart}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => { tactileFeedback('pop'); addToCart(m); }}
+                        style={{ color: '#ea580c', background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}
+                      >
+                        <Plus size={13} strokeWidth={3} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => { tactileFeedback('pop'); addToCart(m); }}
+                      style={{
+                        background: 'linear-gradient(135deg, #ff9e01, #ea580c)',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: 8,
+                        padding: '6px 12px',
+                        fontSize: 11.5,
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 3,
+                        boxShadow: '0 2px 5px rgba(234, 88, 12, 0.25)'
+                      }}
+                    >
+                      <Plus size={14} strokeWidth={3} />
+                      <span>{language === 'am' ? 'ጨምር' : 'Add'}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
 
     return (
       <div className="waiter-menu-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14, marginBottom: 20 }}>
