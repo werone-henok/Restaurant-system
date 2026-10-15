@@ -78,23 +78,37 @@ menuRouter.delete('/categories/:id', authenticate, authorizeRole(['admin', 'owne
     if (!existing)
         return res.status(404).json({ error: 'Category not found' });
     // Check if any active menu items exist in this category
-    const itemCount = db.prepare('SELECT COUNT(*) as count FROM menu_items WHERE category_id = ? AND deleted_at IS NULL').get(req.params.id);
-    if (itemCount?.count > 0) {
+    const itemCountRow = db.prepare('SELECT COUNT(*) as count FROM menu_items WHERE category_id = ? AND deleted_at IS NULL').get(req.params.id);
+    const count = itemCountRow?.count || 0;
+    const force = req.query.cascade === 'true' || req.query.force === 'true';
+    const reassignTo = req.query.reassignTo?.trim();
+    if (count > 0 && !force && !reassignTo) {
         return res.status(400).json({
-            error: `Cannot delete category containing ${itemCount.count} active menu items. Please reassign or delete the items first.`
+            error: `Cannot delete category containing ${count} active menu items. Please confirm deletion of items or reassign them first.`,
+            itemCount: count,
+            requiresConfirmation: true
         });
     }
-    db.prepare('DELETE FROM menu_categories WHERE id = ?').run(req.params.id);
+    const tx = db.transaction(() => {
+        if (reassignTo) {
+            db.prepare('UPDATE menu_items SET category_id = ? WHERE category_id = ?').run(reassignTo, req.params.id);
+        }
+        else if (force) {
+            db.prepare('DELETE FROM menu_items WHERE category_id = ?').run(req.params.id);
+        }
+        db.prepare('DELETE FROM menu_categories WHERE id = ?').run(req.params.id);
+    });
+    tx();
     logAudit({
         branchId: req.user.branch_id,
         userId: req.user.id,
         action: 'MENU_CATEGORY_DELETED',
         entityType: 'MENU_CATEGORY',
         entityId: req.params.id,
-        details: { name: existing.name }
+        details: { name: existing.name, deletedItems: force ? count : 0, reassignedTo: reassignTo || null }
     });
     requestDebouncedSync();
-    res.json({ message: 'Category deleted successfully' });
+    res.json({ success: true, message: `Category "${existing.name}" deleted successfully` });
 });
 // Search menu items (by English or Amharic name)
 menuRouter.get('/items/search', authenticate, (req, res) => {

@@ -32,6 +32,8 @@ export const AdminView: React.FC = () => {
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<any | null>(null);
+  const [showCategoryManagerModal, setShowCategoryManagerModal] = useState(false);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('ALL');
   const [showMenuModal, setShowMenuModal] = useState(false);
   const [editingMenuItemId, setEditingMenuItemId] = useState<string | null>(null);
@@ -2185,7 +2187,18 @@ export const AdminView: React.FC = () => {
                 <Sparkles size={14} color="#f59e0b" /> {isSeedingMenu ? (language === 'am' ? 'በመጫን ላይ...' : 'Seeding...') : (language === 'am' ? 'ኦፊሴላዊ ምናሌ ጫን' : 'Restore Official Menu')}
               </button>
               <button
-                onClick={() => setShowCategoryModal(true)}
+                onClick={() => setShowCategoryManagerModal(true)}
+                className="btn btn-secondary"
+                style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+                title={language === 'am' ? 'ሁሉንም ምድቦች አስተዳድር፣ አስተካክል ወይም ሰርዝ' : 'Manage, edit or delete all menu categories'}
+              >
+                <Tag size={14} color="var(--primary)" /> {language === 'am' ? 'ምድቦችን አስተዳድር' : 'Manage Categories'}
+              </button>
+              <button
+                onClick={() => {
+                  setEditingCategory(null);
+                  setShowCategoryModal(true);
+                }}
                 className="btn btn-secondary"
                 style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
               >
@@ -2233,36 +2246,70 @@ export const AdminView: React.FC = () => {
               const count = menuItems.filter(m => m.category_id === cat.id).length;
               const isSelected = selectedCategoryFilter === cat.id;
               return (
-                <button
+                <div
                   key={cat.id}
-                  onClick={() => setSelectedCategoryFilter(cat.id)}
                   style={{
-                    padding: '6px 14px',
-                    borderRadius: 20,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    border: isSelected ? 'none' : '1px solid var(--border)',
-                    background: isSelected ? 'var(--primary)' : 'var(--bg-card)',
-                    color: isSelected ? '#ffffff' : 'var(--text-main)',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 6
+                    borderRadius: 20,
+                    border: isSelected ? 'none' : '1px solid var(--border)',
+                    background: isSelected ? 'var(--primary)' : 'var(--bg-card)',
+                    overflow: 'hidden',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                    boxShadow: isSelected ? '0 2px 6px rgba(0,0,0,0.12)' : 'none'
                   }}
                 >
-                  <span>{cat.icon || '🍽️'}</span>
-                  <span>{language === 'am' && cat.name_amharic ? cat.name_amharic : cat.name}</span>
-                  <span style={{
-                    fontSize: 10,
-                    padding: '1px 6px',
-                    borderRadius: 10,
-                    background: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--bg-subtle)',
-                    color: isSelected ? '#ffffff' : 'var(--text-muted)'
-                  }}>
-                    {count}
-                  </span>
-                </button>
+                  <button
+                    onClick={() => setSelectedCategoryFilter(cat.id)}
+                    style={{
+                      padding: '6px 8px 6px 12px',
+                      fontSize: 12,
+                      fontWeight: isSelected ? 800 : 700,
+                      background: 'transparent',
+                      color: isSelected ? '#ffffff' : 'var(--text-main)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}
+                  >
+                    <span>{cat.icon || '🍽️'}</span>
+                    <span>{language === 'am' && cat.name_amharic ? cat.name_amharic : cat.name}</span>
+                    <span style={{
+                      fontSize: 10,
+                      padding: '1px 6px',
+                      borderRadius: 10,
+                      background: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--bg-subtle)',
+                      color: isSelected ? '#ffffff' : 'var(--text-muted)'
+                    }}>
+                      {count}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingCategory(cat);
+                      setShowCategoryModal(true);
+                    }}
+                    title={language === 'am' ? `"${cat.name_amharic || cat.name}" ምድብ አስተካክል / ሰርዝ` : `Edit / Delete "${cat.name}" category`}
+                    style={{
+                      padding: '6px 8px 6px 4px',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: isSelected ? '#ffffff' : 'var(--text-muted)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: 0.85
+                    }}
+                  >
+                    <Edit2 size={12} />
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -3680,6 +3727,259 @@ export const AdminView: React.FC = () => {
         </div>
         </ModalPortal>
       )}
+
+      {/* Category Manager Modal */}
+      {showCategoryManagerModal && (
+        <ModalPortal>
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 12,
+            boxSizing: 'border-box',
+            zIndex: 100000
+          }}>
+            <div
+              className="animate-fade-in"
+              style={{
+                background: 'var(--bg-card)',
+                borderRadius: 20,
+                width: '100%',
+                maxWidth: 620,
+                maxHeight: 'min(90vh, calc(100dvh - 24px))',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                boxShadow: 'var(--shadow-floating, 0 20px 40px rgba(0,0,0,0.3))',
+                border: '1px solid var(--border)'
+              }}
+            >
+              {/* Header */}
+              <div style={{
+                padding: '14px 18px',
+                borderBottom: '1px solid var(--border)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'var(--bg-card)',
+                flexShrink: 0
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: 'var(--primary-light)',
+                    color: 'var(--primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Tag size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                      {language === 'am' ? 'የምግብ ምድቦች አስተዳዳሪ' : 'Menu Categories Manager'}
+                    </h3>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      {language === 'am' ? `${categories.length} ምድቦች ተመዝግበዋል (ስም፣ ምልክት፣ ቅደም ተከተል ይቀይሩ ወይም ይሰርዙ)` : `${categories.length} categories registered`}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    onClick={() => {
+                      setEditingCategory(null);
+                      setShowCategoryModal(true);
+                    }}
+                    className="btn btn-primary"
+                    style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 800 }}
+                  >
+                    <Plus size={14} /> {language === 'am' ? 'አዲስ ምድብ' : '+ New Category'}
+                  </button>
+                  <button
+                    onClick={() => setShowCategoryManagerModal(false)}
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: '50%',
+                      background: 'var(--bg-subtle, #f1f5f9)',
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--text-main)',
+                      cursor: 'pointer',
+                      padding: 0
+                    }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: '16px 18px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {categories.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '30px 20px', color: 'var(--text-muted)' }}>
+                    {language === 'am' ? 'ምንም ምድብ አልተገኘም' : 'No categories found'}
+                  </div>
+                ) : (
+                  categories.map((cat, idx) => {
+                    const count = menuItems.filter(m => m.category_id === cat.id).length;
+                    return (
+                      <div
+                        key={cat.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 14px',
+                          borderRadius: 12,
+                          background: 'var(--bg-subtle)',
+                          border: '1px solid var(--border)',
+                          gap: 12
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span style={{
+                            fontSize: 11,
+                            fontWeight: 800,
+                            color: 'var(--text-muted)',
+                            width: 24,
+                            textAlign: 'center'
+                          }}>
+                            #{cat.sort_order ?? (idx + 1)}
+                          </span>
+                          <span style={{ fontSize: 24, lineHeight: 1 }}>{cat.icon || '🍽️'}</span>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-main)' }}>
+                              {cat.name}
+                            </div>
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                              {cat.name_amharic ? cat.name_amharic : <span style={{ fontStyle: 'italic', opacity: 0.6 }}>{language === 'am' ? 'የአማርኛ ስም የለም' : 'No Amharic translation'}</span>}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: '3px 8px',
+                            borderRadius: 12,
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--border)',
+                            color: 'var(--text-muted)'
+                          }}>
+                            {count} {language === 'am' ? 'ምግቦች' : 'items'}
+                          </span>
+
+                          <button
+                            onClick={() => {
+                              setEditingCategory(cat);
+                              setShowCategoryModal(true);
+                            }}
+                            className="btn btn-secondary"
+                            style={{ padding: '6px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 700 }}
+                            title={language === 'am' ? 'አስተካክል' : 'Edit'}
+                          >
+                            <Edit2 size={13} />
+                            <span>{language === 'am' ? 'አስተካክል' : 'Edit'}</span>
+                          </button>
+
+                          <button
+                            onClick={async () => {
+                              const catDisplayName = language === 'am' ? (cat.name_amharic || cat.name) : cat.name;
+                              let confirmMsg = language === 'am'
+                                ? `እርግጠኛ ነዎት "${catDisplayName}" የተባለውን ምድብ መሰረዝ ይፈልጋሉ?`
+                                : `Are you sure you want to delete category "${catDisplayName}"?`;
+                              let cascade = false;
+                              if (count > 0) {
+                                confirmMsg = language === 'am'
+                                  ? `⚠️ ማስጠንቀቂያ፡ "${catDisplayName}" ምድብ ውስጥ ${count} ምግቦች ይገኛሉ!\n\nምድቡንና በውስጡ ያሉትን ${count} ምግቦች በሙሉ መሰረዝ ይፈልጋሉ? ይህ እርምጃ ሊመለስ አይችልም።`
+                                  : `⚠️ Warning: Category "${catDisplayName}" contains ${count} items!\n\nDo you want to permanently delete this category AND all its ${count} items?`;
+                                cascade = true;
+                              }
+                              if (!window.confirm(confirmMsg)) return;
+
+                              try {
+                                await api.request(`/menu/categories/${cat.id}${cascade ? '?cascade=true' : ''}`, { method: 'DELETE' });
+                                gToast.success(language === 'am' ? `ምድብ "${catDisplayName}" ተሰርዟል!` : `Category "${catDisplayName}" deleted!`);
+                                if (selectedCategoryFilter === cat.id) setSelectedCategoryFilter('ALL');
+                                await loadData();
+                              } catch (err: any) {
+                                gToast.error(err.message || 'Failed to delete category');
+                              }
+                            }}
+                            style={{
+                              padding: '6px 10px',
+                              fontSize: 12,
+                              borderRadius: 8,
+                              border: '1px solid #fee2e2',
+                              background: '#fef2f2',
+                              color: '#dc2626',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}
+                            title={language === 'am' ? 'ሰርዝ' : 'Delete'}
+                          >
+                            <Trash2 size={13} />
+                            <span>{language === 'am' ? 'ሰርዝ' : 'Delete'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Footer */}
+              <div style={{
+                padding: '12px 18px',
+                borderTop: '1px solid var(--border)',
+                background: 'var(--bg-card)',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                flexShrink: 0
+              }}>
+                <button
+                  onClick={() => setShowCategoryManagerModal(false)}
+                  className="btn btn-secondary"
+                  style={{ height: 40, padding: '0 18px', fontWeight: 700 }}
+                >
+                  {language === 'am' ? 'ዝጋ' : 'Close'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
+
+      {/* Category Create & Edit Modal */}
+      <CreateCategoryModal
+        isOpen={showCategoryModal}
+        onClose={() => {
+          setShowCategoryModal(false);
+          setEditingCategory(null);
+        }}
+        category={editingCategory}
+        itemCount={menuItems.filter(m => m.category_id === editingCategory?.id).length}
+        onCategorySaved={async () => {
+          await loadData();
+        }}
+        onCategoryDeleted={async (catId) => {
+          if (selectedCategoryFilter === catId) setSelectedCategoryFilter('ALL');
+          await loadData();
+        }}
+      />
 
       {/* AI Assistant Modal for Admin */}
       <AiAssistantModal
