@@ -6,7 +6,7 @@ import { ImageUploadCompressor } from '../../components/ImageUploadCompressor';
 import { DetailedReportsDashboard } from '../../components/DetailedReportsDashboard';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import { compressImageFile } from '../../utils/imageCompressor';
-import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, AlertTriangle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils, BarChart3, FolderPlus, Tag, Clock, Sparkles, Globe, Key, Lock, ShieldCheck, ShieldAlert, UserCheck, UserX, Camera, RefreshCw, X } from 'lucide-react';
+import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, AlertTriangle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils, BarChart3, FolderPlus, Tag, Clock, Sparkles, Globe, Key, Lock, ShieldCheck, ShieldAlert, UserCheck, UserX, Camera, RefreshCw, X, History, Eye, EyeOff } from 'lucide-react';
 import { CreateCategoryModal } from '../../components/CreateCategoryModal';
 import { TIMEZONE_OPTIONS, getDeviceTimezone } from '../../utils/timezone';
 import { gToast } from '../../utils/toast';
@@ -85,6 +85,31 @@ export const AdminView: React.FC = () => {
   const [adminTzMode, setAdminTzMode] = useState<'AUTO' | 'MANUAL'>(settings?.timezone_mode || 'AUTO');
   const [adminSysTz, setAdminSysTz] = useState<string>(settings?.system_timezone || 'Africa/Addis_Ababa');
 
+  // Staff Order History Visibility State
+  const ALL_STAFF_ROLES = [
+    { id: 'waiter', label: 'Waiter / አገልጋይ', icon: '🍽️' },
+    { id: 'cashier', label: 'Cashier / ሂሳብ ተቀባይ', icon: '💵' },
+    { id: 'chef', label: 'Kitchen Chef / ማብሰያ', icon: '🔥' },
+    { id: 'barista', label: 'Barista / መጠጥ', icon: '☕' },
+    { id: 'bakery', label: 'Bakery / ኬክ ማብሰያ', icon: '🍰' },
+    { id: 'front_counter', label: 'Cake Counter / ኬክ ካውንተር', icon: '🧁' },
+    { id: 'storekeeper', label: 'Storekeeper / ስቶክ', icon: '📦' }
+  ];
+
+  const [staffHistoryVisible, setStaffHistoryVisible] = useState<boolean>(settings?.staff_history_visible !== 0);
+  const [staffHistoryRoles, setStaffHistoryRoles] = useState<string[]>(() => {
+    if (settings?.staff_history_roles) {
+      try {
+        const parsed = typeof settings.staff_history_roles === 'string'
+          ? JSON.parse(settings.staff_history_roles)
+          : settings.staff_history_roles;
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+    }
+    return ['waiter', 'cashier', 'chef', 'barista', 'bakery', 'front_counter', 'storekeeper'];
+  });
+  const [isUpdatingHistoryConfig, setIsUpdatingHistoryConfig] = useState(false);
+
   useEffect(() => {
     if (settings) {
       if (settings.restaurant_name) setAppName(settings.restaurant_name);
@@ -94,6 +119,17 @@ export const AdminView: React.FC = () => {
       if (settings.secondary_color) setSecondaryColor(settings.secondary_color);
       if (settings.timezone_mode) setAdminTzMode(settings.timezone_mode);
       if (settings.system_timezone) setAdminSysTz(settings.system_timezone);
+      if (settings.staff_history_visible !== undefined) {
+        setStaffHistoryVisible(settings.staff_history_visible !== 0);
+      }
+      if (settings.staff_history_roles) {
+        try {
+          const parsed = typeof settings.staff_history_roles === 'string'
+            ? JSON.parse(settings.staff_history_roles)
+            : settings.staff_history_roles;
+          if (Array.isArray(parsed)) setStaffHistoryRoles(parsed);
+        } catch {}
+      }
     }
   }, [settings]);
 
@@ -506,7 +542,9 @@ export const AdminView: React.FC = () => {
           secondary_color: secondaryColor,
           timezone_mode: adminTzMode,
           system_timezone: adminSysTz,
-          timezone_offset_minutes: offsetMin
+          timezone_offset_minutes: offsetMin,
+          staff_history_visible: staffHistoryVisible ? 1 : 0,
+          staff_history_roles: staffHistoryRoles
         })
       });
       // Synchronize client context
@@ -517,11 +555,65 @@ export const AdminView: React.FC = () => {
         setTimezoneMode('auto');
       }
       refreshSettings();
-      gToast.success('Restaurant Branding & Timezone settings updated successfully!');
+      gToast.success('Restaurant Branding & Settings updated successfully!');
     } catch (err: any) {
       gToast.error(err.message || 'Failed to update branding settings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleStaffHistoryMaster = async (makeVisible: boolean) => {
+    try {
+      setIsUpdatingHistoryConfig(true);
+      tactileFeedback('click');
+      await api.request('/admin/settings', {
+        method: 'PUT',
+        body: JSON.stringify({
+          staff_history_visible: makeVisible ? 1 : 0,
+          staff_history_roles: staffHistoryRoles
+        })
+      });
+      setStaffHistoryVisible(makeVisible);
+      refreshSettings();
+      gToast.success(
+        makeVisible
+          ? (language === 'am' ? 'የሰራተኞች የትዕዛዝ ታሪክ እንዲታይ ተደርጓል' : 'Staff order history is now visible')
+          : (language === 'am' ? 'የሰራተኞች የትዕዛዝ ታሪክ ተደብቋል' : 'Staff order history has been hidden from staff screens')
+      );
+    } catch (err: any) {
+      gToast.error(err.message || 'Failed to update staff history visibility');
+    } finally {
+      setIsUpdatingHistoryConfig(false);
+    }
+  };
+
+  const handleToggleStaffRoleHistory = async (roleId: string) => {
+    try {
+      setIsUpdatingHistoryConfig(true);
+      tactileFeedback('click');
+      const updated = staffHistoryRoles.includes(roleId)
+        ? staffHistoryRoles.filter(r => r !== roleId)
+        : [...staffHistoryRoles, roleId];
+      
+      await api.request('/admin/settings', {
+        method: 'PUT',
+        body: JSON.stringify({
+          staff_history_visible: staffHistoryVisible ? 1 : 0,
+          staff_history_roles: updated
+        })
+      });
+      setStaffHistoryRoles(updated);
+      refreshSettings();
+      gToast.success(
+        updated.includes(roleId)
+          ? (language === 'am' ? `ለ ${roleId} ታሪክ እንዲታይ ተፈቅዷል` : `History enabled for ${roleId}`)
+          : (language === 'am' ? `ለ ${roleId} ታሪክ ተደብቋል` : `History hidden for ${roleId}`)
+      );
+    } catch (err: any) {
+      gToast.error(err.message || 'Failed to update role history setting');
+    } finally {
+      setIsUpdatingHistoryConfig(false);
     }
   };
 
@@ -1437,6 +1529,170 @@ export const AdminView: React.FC = () => {
             {loading ? 'Saving Settings...' : (language === 'am' ? 'ማስተካከያዎቹን መዝግብ' : 'Save Branding & Timezone Settings')}
           </button>
         </form>
+
+        {/* Staff Order History Privacy & Visibility Control Card */}
+        <div
+          style={{
+            background: '#ffffff',
+            border: '1.5px solid var(--border)',
+            borderRadius: 18,
+            padding: 22,
+            boxShadow: 'var(--shadow-sm)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 14,
+                  background: staffHistoryVisible ? 'rgba(99, 102, 241, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                  color: staffHistoryVisible ? '#4f46e5' : '#dc2626',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                {staffHistoryVisible ? <Eye size={24} /> : <EyeOff size={24} />}
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 900, margin: 0, color: 'var(--text-main)' }}>
+                    {language === 'am' ? 'የሰራተኞች የትዕዛዝ ታሪክ ማሳያ መቆጣጠሪያ' : 'Staff Order History Privacy & Visibility'}
+                  </h3>
+                  <span
+                    style={{
+                      background: '#ede9fe',
+                      color: '#6d28d9',
+                      fontSize: 10,
+                      fontWeight: 800,
+                      padding: '2px 8px',
+                      borderRadius: 6
+                    }}
+                  >
+                    {language === 'am' ? 'አድሚን፣ ሱፐር አድሚን እና ባለቤት' : 'ADMIN, SUPER ADMIN & OWNER'}
+                  </span>
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>
+                  {language === 'am'
+                    ? 'ለአስተናጋጅ፣ ሂሳብ ተቀባይ፣ ማብሰያ፣ ባሪስታ እና ኬክ ካውንተር የትዕዛዝ ታሪክ ማሳያ ወይም መደበቂያ። (አድሚን፣ ሱፐር አድሚን እና ባለቤት ሁልጊዜ ሙሉ ታሪክ ማየት ይችላሉ)'
+                    : 'Control whether staff roles can access historical order tickets and settlement records. Admin, Super Admin, and Owner always retain full unrestricted access.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Master Toggle Button */}
+            <button
+              type="button"
+              disabled={isUpdatingHistoryConfig}
+              onClick={() => handleToggleStaffHistoryMaster(!staffHistoryVisible)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 18px',
+                borderRadius: 12,
+                fontSize: 13,
+                fontWeight: 900,
+                border: 'none',
+                cursor: isUpdatingHistoryConfig ? 'not-allowed' : 'pointer',
+                background: staffHistoryVisible
+                  ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                  : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                color: '#ffffff',
+                boxShadow: staffHistoryVisible
+                  ? '0 4px 14px rgba(16, 185, 129, 0.3)'
+                  : '0 4px 14px rgba(239, 68, 68, 0.3)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              {staffHistoryVisible ? <Eye size={16} /> : <EyeOff size={16} />}
+              <span>
+                {staffHistoryVisible
+                  ? (language === 'am' ? 'ታሪክ ይታያል (Visible) • ደብቅ' : 'History is Visible • Click to Hide')
+                  : (language === 'am' ? 'ታሪክ ተደብቋል (Hidden) • አሳይ' : 'History is Hidden • Click to Show')}
+              </span>
+            </button>
+          </div>
+
+          {/* Granular Per-Role Switches */}
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {language === 'am' ? 'በየሙያ ዘርፉ የተለየ መቆጣጠሪያ (Per-Role Granular Visibility):' : 'Granular Role History Switches:'}
+            </span>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 10 }}>
+              {ALL_STAFF_ROLES.map(role => {
+                const isRoleAllowed = staffHistoryVisible && staffHistoryRoles.includes(role.id);
+                return (
+                  <div
+                    key={role.id}
+                    onClick={() => {
+                      if (!isUpdatingHistoryConfig) {
+                        handleToggleStaffRoleHistory(role.id);
+                      }
+                    }}
+                    style={{
+                      background: isRoleAllowed ? 'rgba(99, 102, 241, 0.05)' : 'var(--bg-subtle, #f8fafc)',
+                      border: isRoleAllowed ? '1.5px solid #6366f1' : '1px solid var(--border)',
+                      borderRadius: 12,
+                      padding: '10px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: isUpdatingHistoryConfig ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 18 }}>{role.icon}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: isRoleAllowed ? '#312e81' : 'var(--text-muted)' }}>
+                        {role.label}
+                      </span>
+                    </div>
+
+                    <span
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        fontSize: 10,
+                        fontWeight: 900,
+                        background: isRoleAllowed ? '#10b981' : '#94a3b8',
+                        color: '#ffffff'
+                      }}
+                    >
+                      {isRoleAllowed ? (language === 'am' ? 'የሚታይ' : 'ON') : (language === 'am' ? 'የተደበቀ' : 'OFF')}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div
+              style={{
+                marginTop: 14,
+                padding: '10px 14px',
+                borderRadius: 10,
+                background: 'rgba(99, 102, 241, 0.06)',
+                border: '1px dashed rgba(99, 102, 241, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: 11,
+                color: '#4338ca'
+              }}
+            >
+              <ShieldCheck size={16} style={{ flexShrink: 0 }} />
+              <span>
+                {language === 'am'
+                  ? '🔒 ማረጋገጫ: ታሪክ ሲደበቅ ከስክሪናቸው ሙሉ በሙሉ ከመጥፋቱ በተጨማሪ ከዳታቤዝም መረጃው እንዳይደርሳቸው በጀርባ ሰርቨር የተጠበቀ ነው (Super Admin, Admin & Owner ሁልጊዜ ሙሉ ታሪክ ማየት ይችላሉ)።'
+                  : '🔒 Security Enforced: When history is hidden, both the UI tabs and backend server APIs block staff access, ensuring complete privacy. Admin, Super Admin, and Owner always have full visibility.'}
+              </span>
+            </div>
+          </div>
+        </div>
 
         {/* Client Handover / Wipe Demo Catalog Section (SUPER ADMIN ONLY) */}
         {user?.role === 'superadmin' && (

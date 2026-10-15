@@ -9,7 +9,7 @@ import { gToast } from '../../utils/toast';
 import { formatOrderDateTime } from '../../utils/timezone';
 
 export const CashierView: React.FC = () => {
-  const { currentBranchId, branches, settings, t, language } = useApp();
+  const { currentBranchId, branches, settings, t, language, canViewHistory } = useApp();
   const [orders, setOrders] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [modifyingOrder, setModifyingOrder] = useState<any | null>(null);
@@ -59,8 +59,16 @@ export const CashierView: React.FC = () => {
         }
       })
       .catch(() => {});
-    loadApprovalHistory();
+    if (canViewHistory('cashier')) {
+      loadApprovalHistory();
+    }
   };
+
+  useEffect(() => {
+    if (filterTab === 'HISTORY' && !canViewHistory('cashier')) {
+      setFilterTab('ALL');
+    }
+  }, [filterTab, canViewHistory]);
 
   useEffect(() => {
     loadCallbackRef.current = loadOrders;
@@ -622,13 +630,15 @@ export const CashierView: React.FC = () => {
           >
             💳 {language === 'am' ? 'ክፍያ' : 'Settle'} ({readyToPayOrders.length})
           </button>
-          <button
-            onClick={() => { setFilterTab('HISTORY'); loadApprovalHistory(); }}
-            className={`btn ${filterTab === 'HISTORY' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ height: 40, padding: '0 14px', fontSize: 12, fontWeight: 700, borderRadius: 10 }}
-          >
-            📜 {language === 'am' ? 'የማረጋገጫ ታሪክ' : 'Approval History'} ({approvalHistory.length})
-          </button>
+          {canViewHistory('cashier') && (
+            <button
+              onClick={() => { setFilterTab('HISTORY'); loadApprovalHistory(); }}
+              className={`btn ${filterTab === 'HISTORY' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ height: 40, padding: '0 14px', fontSize: 12, fontWeight: 700, borderRadius: 10 }}
+            >
+              📜 {language === 'am' ? 'የማረጋገጫ ታሪክ' : 'Approval History'} ({approvalHistory.length})
+            </button>
+          )}
         </div>
       </div>
 
@@ -768,7 +778,7 @@ export const CashierView: React.FC = () => {
           )}
 
           {/* Approval History Section */}
-          {filterTab === 'HISTORY' && (
+          {filterTab === 'HISTORY' && canViewHistory('cashier') && (
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>

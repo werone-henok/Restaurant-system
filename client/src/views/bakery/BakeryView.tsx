@@ -117,7 +117,7 @@ const PRESET_CAKE_PHOTOS = [
 ];
 
 export const BakeryView: React.FC = () => {
-  const { user } = useApp();
+  const { user, canViewHistory } = useApp();
   const [activeTab, setActiveTab] = useState<'requests' | 'ready' | 'bake_new' | 'history'>('requests');
 
   // Operational states
@@ -254,9 +254,13 @@ export const BakeryView: React.FC = () => {
 
   useEffect(() => {
     if (activeTab === 'history') {
-      loadHistory();
+      if (canViewHistory('bakery')) {
+        loadHistory();
+      } else {
+        setActiveTab('requests');
+      }
     }
-  }, [activeTab, loadHistory]);
+  }, [activeTab, loadHistory, canViewHistory]);
 
   // 1-Tap: Start Baking a Request
   const handleStartBakingRequest = async (request: BakeRequest) => {
@@ -590,7 +594,7 @@ export const BakeryView: React.FC = () => {
       </div>
 
       {/* 4 Large Picture-Driven Action Tabs - Optimized for Tablets */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: canViewHistory('bakery') ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
         {/* Tab 1: Counter Requests / Needs Baking */}
         <button
           onClick={() => {
@@ -726,32 +730,34 @@ export const BakeryView: React.FC = () => {
         </button>
 
         {/* Tab 4: History */}
-        <button
-          onClick={() => {
-            tactileFeedback('click');
-            setActiveTab('history');
-          }}
-          style={{
-            background: activeTab === 'history' ? 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)' : 'var(--bg-card)',
-            color: activeTab === 'history' ? '#ffffff' : 'var(--text-main)',
-            border: activeTab === 'history' ? 'none' : '2px solid var(--border)',
-            borderRadius: 18,
-            padding: '14px 8px',
-            minHeight: 82,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 5,
-            boxShadow: activeTab === 'history' ? '0 8px 20px rgba(79, 70, 229, 0.35)' : 'none',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <span style={{ fontSize: 26 }}>📜</span>
-          <span style={{ fontSize: 14, fontWeight: 900 }}>ታሪክ</span>
-          <span style={{ fontSize: 11, opacity: 0.88 }}>History Log</span>
-        </button>
+        {canViewHistory('bakery') && (
+          <button
+            onClick={() => {
+              tactileFeedback('click');
+              setActiveTab('history');
+            }}
+            style={{
+              background: activeTab === 'history' ? 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)' : 'var(--bg-card)',
+              color: activeTab === 'history' ? '#ffffff' : 'var(--text-main)',
+              border: activeTab === 'history' ? 'none' : '2px solid var(--border)',
+              borderRadius: 18,
+              padding: '14px 8px',
+              minHeight: 82,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 5,
+              boxShadow: activeTab === 'history' ? '0 8px 20px rgba(79, 70, 229, 0.35)' : 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span style={{ fontSize: 26 }}>📜</span>
+            <span style={{ fontSize: 14, fontWeight: 900 }}>ታሪክ</span>
+            <span style={{ fontSize: 11, opacity: 0.88 }}>History Log</span>
+          </button>
+        )}
       </div>
 
       {/* ========================================================================= */}
@@ -1399,7 +1405,7 @@ export const BakeryView: React.FC = () => {
       {/* ========================================================================= */}
       {/* 4. HISTORY TAB (PAST BAKE BATCHES, TRANSFERS & WASTE LOGS) */}
       {/* ========================================================================= */}
-      {activeTab === 'history' && (
+      {activeTab === 'history' && canViewHistory('bakery') && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Sub-tabs for History */}
           <div style={{ display: 'flex', gap: 10, borderBottom: '2px solid var(--border)', paddingBottom: 10 }}>

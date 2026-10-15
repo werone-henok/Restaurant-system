@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
 import { translations, type Language } from '../i18n/translations';
 
@@ -40,6 +40,8 @@ export interface RestaurantSettings {
   timezone_mode?: 'AUTO' | 'MANUAL';
   system_timezone?: string;
   timezone_offset_minutes?: number;
+  staff_history_visible?: number;
+  staff_history_roles?: string;
 }
 
 interface AppContextType {
@@ -59,6 +61,7 @@ interface AppContextType {
   switchBranch: (branchId: string) => void;
   refreshBranches: () => void;
   refreshSettings: () => void;
+  canViewHistory: (role?: string) => boolean;
   setLanguage: (lang: Language) => void;
   t: (key: string) => string;
 
@@ -297,6 +300,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  /**
+   * Evaluates if a given role (or currently logged-in user) is permitted to view order history.
+   * Admin, Super Admin, and Owner are ALWAYS permitted.
+   * Staff roles (waiter, cashier, chef, barista, bakery, front_counter, storekeeper) obey system settings.
+   */
+  const canViewHistory = useCallback((roleToCheck?: string): boolean => {
+    const role = roleToCheck || user?.role;
+    if (!role) return false;
+    // Superadmin, Owner, and Admin ALWAYS have full unrestricted access to history
+    if (['superadmin', 'owner', 'admin'].includes(role)) {
+      return true;
+    }
+    // If master setting disabled staff history
+    if (settings?.staff_history_visible === 0) {
+      return false;
+    }
+    // Check granular allowed roles list
+    if (settings?.staff_history_roles) {
+      try {
+        const allowedRoles: string[] = typeof settings.staff_history_roles === 'string'
+          ? JSON.parse(settings.staff_history_roles)
+          : settings.staff_history_roles;
+        return allowedRoles.includes(role);
+      } catch (_) {
+        return settings?.staff_history_visible !== 0;
+      }
+    }
+    return settings?.staff_history_visible !== 0;
+  }, [user?.role, settings?.staff_history_visible, settings?.staff_history_roles]);
+
   return (
     <AppContext.Provider
       value={{
@@ -316,6 +349,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         switchBranch,
         refreshBranches,
         refreshSettings,
+        canViewHistory,
         setLanguage,
         t,
         timezoneMode,

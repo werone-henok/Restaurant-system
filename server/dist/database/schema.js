@@ -364,6 +364,8 @@ export function initDatabase() {
       timezone_mode TEXT DEFAULT 'AUTO',
       system_timezone TEXT DEFAULT 'Africa/Addis_Ababa',
       timezone_offset_minutes INTEGER DEFAULT 180,
+      staff_history_visible INTEGER DEFAULT 1,
+      staff_history_roles TEXT DEFAULT '["waiter","cashier","chef","barista","bakery","front_counter","storekeeper"]',
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -632,6 +634,9 @@ export function runMigrations() {
         "ALTER TABLE restaurant_settings ADD COLUMN timezone_mode TEXT DEFAULT 'AUTO'",
         "ALTER TABLE restaurant_settings ADD COLUMN system_timezone TEXT DEFAULT 'Africa/Addis_Ababa'",
         "ALTER TABLE restaurant_settings ADD COLUMN timezone_offset_minutes INTEGER DEFAULT 180",
+        // Staff History Visibility control (admin/owner/superadmin control)
+        "ALTER TABLE restaurant_settings ADD COLUMN staff_history_visible INTEGER DEFAULT 1",
+        "ALTER TABLE restaurant_settings ADD COLUMN staff_history_roles TEXT DEFAULT '[\"waiter\",\"cashier\",\"chef\",\"barista\",\"bakery\",\"front_counter\",\"storekeeper\"]'",
         // Account brute-force lockout protection
         "ALTER TABLE users ADD COLUMN login_attempts INTEGER DEFAULT 0",
         "ALTER TABLE users ADD COLUMN login_locked_until DATETIME",

@@ -189,27 +189,34 @@ adminRouter.get('/settings', authenticate, (_req, res) => {
   res.json(settings || {});
 });
 
-adminRouter.put('/settings', authenticate, authorizeRole(['admin', 'owner']), (req: AuthenticatedRequest, res) => {
+adminRouter.put('/settings', authenticate, authorizeRole(['admin', 'owner', 'superadmin']), (req: AuthenticatedRequest, res) => {
   const { 
-    restaurant_name, slogan, primary_color, secondary_color, 
+    restaurant_name, slogan, logo_url, primary_color, secondary_color, 
     vat_enabled, vat_percentage, tax_number, 
     receipt_footer, receipt_footer_amharic, default_currency,
-    timezone_mode, system_timezone, timezone_offset_minutes 
+    timezone_mode, system_timezone, timezone_offset_minutes,
+    staff_history_visible, staff_history_roles
   } = req.body;
 
   const existing = db.prepare('SELECT id FROM restaurant_settings LIMIT 1').get() as { id: string } | undefined;
+  const rolesJson = Array.isArray(staff_history_roles) 
+    ? JSON.stringify(staff_history_roles) 
+    : (typeof staff_history_roles === 'string' ? staff_history_roles : null);
+
   if (!existing) {
     db.prepare(`
       INSERT INTO restaurant_settings (
-        id, restaurant_name, slogan, primary_color, secondary_color, 
+        id, restaurant_name, slogan, logo_url, primary_color, secondary_color, 
         vat_enabled, vat_percentage, tax_number, receipt_footer, receipt_footer_amharic, 
-        default_currency, timezone_mode, system_timezone, timezone_offset_minutes
+        default_currency, timezone_mode, system_timezone, timezone_offset_minutes,
+        staff_history_visible, staff_history_roles
       ) VALUES (
-        'settings_default', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        'settings_default', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
     `).run(
       restaurant_name || 'Yo Burger & Restaurant',
       slogan || 'Delicious Burgers & Seamless Hospitality',
+      logo_url || '/logo.png',
       primary_color || '#ff9e01',
       secondary_color || '#940500',
       vat_enabled ?? 1,
@@ -220,13 +227,16 @@ adminRouter.put('/settings', authenticate, authorizeRole(['admin', 'owner']), (r
       default_currency || 'ETB',
       timezone_mode || 'AUTO',
       system_timezone || 'Africa/Addis_Ababa',
-      timezone_offset_minutes ?? 180
+      timezone_offset_minutes ?? 180,
+      staff_history_visible !== undefined ? (staff_history_visible ? 1 : 0) : 1,
+      rolesJson || '["waiter","cashier","chef","barista","bakery","front_counter","storekeeper"]'
     );
   } else {
     db.prepare(`
       UPDATE restaurant_settings
       SET restaurant_name = COALESCE(?, restaurant_name),
           slogan = COALESCE(?, slogan),
+          logo_url = COALESCE(?, logo_url),
           primary_color = COALESCE(?, primary_color),
           secondary_color = COALESCE(?, secondary_color),
           vat_enabled = COALESCE(?, vat_enabled),
@@ -238,11 +248,14 @@ adminRouter.put('/settings', authenticate, authorizeRole(['admin', 'owner']), (r
           timezone_mode = COALESCE(?, timezone_mode),
           system_timezone = COALESCE(?, system_timezone),
           timezone_offset_minutes = COALESCE(?, timezone_offset_minutes),
+          staff_history_visible = COALESCE(?, staff_history_visible),
+          staff_history_roles = COALESCE(?, staff_history_roles),
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(
       restaurant_name ?? null,
       slogan ?? null,
+      logo_url ?? null,
       primary_color ?? null,
       secondary_color ?? null,
       vat_enabled !== undefined ? vat_enabled : null,
@@ -254,6 +267,8 @@ adminRouter.put('/settings', authenticate, authorizeRole(['admin', 'owner']), (r
       timezone_mode ?? null,
       system_timezone ?? null,
       timezone_offset_minutes !== undefined ? timezone_offset_minutes : null,
+      staff_history_visible !== undefined ? (staff_history_visible ? 1 : 0) : null,
+      rolesJson ?? null,
       existing.id
     );
   }

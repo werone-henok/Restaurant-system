@@ -165,7 +165,7 @@ const PRESET_CAKE_PHOTOS = [
 ];
 
 export const FrontCounterView: React.FC = () => {
-  const { user } = useApp();
+  const { user, canViewHistory } = useApp();
   const [activeTab, setActiveTab] = useState<'showcase' | 'requests' | 'transfers' | 'orders' | 'history'>('showcase');
 
   // Data states
@@ -298,9 +298,13 @@ export const FrontCounterView: React.FC = () => {
 
   useEffect(() => {
     if (activeTab === 'history') {
-      loadHistory();
+      if (canViewHistory('front_counter')) {
+        loadHistory();
+      } else {
+        setActiveTab('showcase');
+      }
     }
-  }, [activeTab, loadHistory]);
+  }, [activeTab, loadHistory, canViewHistory]);
 
   // 1-Tap Receive Delivery
   const handleConfirmTransfer = async (transfer: Transfer) => {
@@ -807,32 +811,34 @@ export const FrontCounterView: React.FC = () => {
         </button>
 
         {/* Tab 5: History Log */}
-        <button
-          onClick={() => {
-            tactileFeedback('click');
-            setActiveTab('history');
-          }}
-          style={{
-            background: activeTab === 'history' ? 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)' : 'var(--bg-card)',
-            color: activeTab === 'history' ? '#ffffff' : 'var(--text-main)',
-            border: activeTab === 'history' ? 'none' : '2px solid var(--border)',
-            borderRadius: 18,
-            padding: '14px 8px',
-            minHeight: 82,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 5,
-            boxShadow: activeTab === 'history' ? '0 8px 20px rgba(79, 70, 229, 0.35)' : 'none',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <span style={{ fontSize: 26 }}>📜</span>
-          <span style={{ fontSize: 14, fontWeight: 900 }}>ታሪክ</span>
-          <span style={{ fontSize: 11, opacity: 0.88 }}>History Log</span>
-        </button>
+        {canViewHistory('front_counter') && (
+          <button
+            onClick={() => {
+              tactileFeedback('click');
+              setActiveTab('history');
+            }}
+            style={{
+              background: activeTab === 'history' ? 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)' : 'var(--bg-card)',
+              color: activeTab === 'history' ? '#ffffff' : 'var(--text-main)',
+              border: activeTab === 'history' ? 'none' : '2px solid var(--border)',
+              borderRadius: 18,
+              padding: '14px 8px',
+              minHeight: 82,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 5,
+              boxShadow: activeTab === 'history' ? '0 8px 20px rgba(79, 70, 229, 0.35)' : 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span style={{ fontSize: 26 }}>📜</span>
+            <span style={{ fontSize: 14, fontWeight: 900 }}>ታሪክ</span>
+            <span style={{ fontSize: 11, opacity: 0.88 }}>History Log</span>
+          </button>
+        )}
       </div>
 
       {/* ========================================================================= */}
@@ -1802,7 +1808,7 @@ export const FrontCounterView: React.FC = () => {
       {/* ========================================================================= */}
       {/* 5. HISTORY TAB (REQUESTS, RECEIVED TRANSFERS & SALES ARCHIVE)             */}
       {/* ========================================================================= */}
-      {activeTab === 'history' && (
+      {activeTab === 'history' && canViewHistory('front_counter') && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', gap: 10, borderBottom: '2px solid var(--border)', paddingBottom: 10, flexWrap: 'wrap' }}>
             <button

@@ -336,12 +336,21 @@ export function initLicenseService() {
   console.log(`[License] Host Hardware Machine ID: ${machineId}`);
 
   try {
+    const isCloudEnv = Boolean(
+      process.env.RENDER ||
+      process.env.CONTAINER ||
+      process.env.DYNO ||
+      process.env.VERCEL ||
+      process.env.FLY_APP_NAME ||
+      process.env.RAILWAY_ENVIRONMENT
+    );
+
     const existing = db.prepare('SELECT * FROM system_license WHERE id = ?').get('current_license') as any;
     if (!existing) {
-      console.log(`[License] Generating initial authorized license for host machine ${machineId}...`);
+      console.log(`[License] Generating initial authorized license for ${isCloudEnv ? 'Cloud Deployment (*)' : 'host machine ' + machineId}...`);
       const defaultPayload: LicensePayload = {
         client: 'Yo Burger & Restaurant (Authorized Host)',
-        machineId: machineId,
+        machineId: isCloudEnv ? '*' : machineId,
         plan: 'LIFETIME',
         maxBranches: 10,
         issuedAt: new Date().toISOString(),
@@ -351,9 +360,25 @@ export function initLicenseService() {
 
       const token = generateLicenseToken(defaultPayload, CONFIG.LICENSE_SECRET);
       activateLicense(token);
-      console.log(`[License] ✓ System activated with hardware-locked license.`);
+      console.log(`[License] ✓ System activated with ${isCloudEnv ? 'cloud-authorized' : 'hardware-locked'} license.`);
     } else {
-      const status = getActiveLicenseStatus();
+      let status = getActiveLicenseStatus();
+      if (isCloudEnv && (!status.valid && status.status === 'MACHINE_MISMATCH' || existing.machine_id !== '*')) {
+        console.log(`[License] Cloud container environment detected. Ensuring wildcard license for ephemeral container...`);
+        const cloudPayload: LicensePayload = {
+          client: existing.restaurant_name || 'Yo Burger & Restaurant (Cloud Deployment)',
+          machineId: '*',
+          plan: (existing.plan as any) || 'LIFETIME',
+          maxBranches: existing.max_branches || 10,
+          issuedAt: new Date().toISOString(),
+          expiresAt: 'NEVER',
+          nonce: crypto.randomBytes(8).toString('hex')
+        };
+        const token = generateLicenseToken(cloudPayload, CONFIG.LICENSE_SECRET);
+        activateLicense(token);
+        status = getActiveLicenseStatus();
+      }
+
       if (status.valid) {
         console.log(`[License] ✓ System license active: ${status.licenseDetails?.client} (${status.licenseDetails?.plan})`);
       } else {

@@ -1614,9 +1614,33 @@ bakeryRouter.patch('/cake-queue/:itemId/status', authenticate, (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+function isStaffHistoryAllowed(role) {
+    if (['superadmin', 'owner', 'admin'].includes(role))
+        return true;
+    try {
+        const settings = db.prepare('SELECT staff_history_visible, staff_history_roles FROM restaurant_settings LIMIT 1').get();
+        if (!settings)
+            return true;
+        if (settings.staff_history_visible === 0)
+            return false;
+        if (settings.staff_history_roles) {
+            const allowedRoles = typeof settings.staff_history_roles === 'string'
+                ? JSON.parse(settings.staff_history_roles)
+                : settings.staff_history_roles;
+            return allowedRoles.includes(role);
+        }
+        return true;
+    }
+    catch {
+        return true;
+    }
+}
 // Production & Transfer History for Bakery Kitchen
 bakeryRouter.get('/history', authenticate, authorizeRole(['bakery', 'admin', 'owner']), (req, res) => {
     try {
+        if (!isStaffHistoryAllowed(req.user.role)) {
+            return res.json({ batches: [], transfers: [], waste: [] });
+        }
         const branchId = getBranch(req);
         const batches = db.prepare(`
       SELECT b.*, p.name as product_name, p.name_amharic as product_name_amharic,
@@ -1661,6 +1685,9 @@ bakeryRouter.get('/history', authenticate, authorizeRole(['bakery', 'admin', 'ow
 // Sales & Transfers History for Front Counter
 bakeryRouter.get('/counter-history', authenticate, authorizeRole(['front_counter', 'cashier', 'admin', 'owner']), (req, res) => {
     try {
+        if (!isStaffHistoryAllowed(req.user.role)) {
+            return res.json({ sales: [], transfersReceived: [] });
+        }
         const branchId = getBranch(req);
         const sales = db.prepare(`
       SELECT o.*, t.payment_method, u.full_name as staff_name

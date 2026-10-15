@@ -32,7 +32,7 @@ const CATEGORY_NAMES_AM: Record<string, string> = {
 };
 
 export const WaiterView: React.FC = () => {
-  const { currentBranchId, t, user, language } = useApp();
+  const { currentBranchId, t, user, language, canViewHistory } = useApp();
   const [activeTab, setActiveTab] = useState<'create' | 'active' | 'ready' | 'history'>('create');
   const [tables, setTables] = useState<any[]>([]);
   const [menuItems, setMenuItems] = useState<any[]>([]);
@@ -97,8 +97,16 @@ export const WaiterView: React.FC = () => {
     api.request<any[]>('/menu/categories').then(setCategories).catch(() => {});
     api.request<any[]>('/menu/items').then(setMenuItems).catch(() => {});
     api.request<any[]>(`/orders?branchId=${currentBranchId}&myOrders=true`).then(setMyOrders).catch(() => {});
-    loadHistory();
+    if (canViewHistory('waiter')) {
+      loadHistory();
+    }
   };
+
+  useEffect(() => {
+    if (activeTab === 'history' && !canViewHistory('waiter')) {
+      setActiveTab('create');
+    }
+  }, [activeTab, canViewHistory]);
 
   useEffect(() => {
     loadData();
@@ -1223,30 +1231,32 @@ export const WaiterView: React.FC = () => {
         >
           {language === 'am' ? 'ንቁ' : 'Active'} ({activeOrders.length})
         </button>
-        <button
-          type="button"
-          onClick={() => { setActiveTab('history'); loadHistory(); }}
-          style={{
-            flex: 1,
-            padding: '10px 6px',
-            fontSize: 13,
-            fontWeight: 800,
-            borderRadius: 8,
-            background: activeTab === 'history' ? '#4f46e5' : 'transparent',
-            color: activeTab === 'history' ? '#ffffff' : 'var(--text-muted)',
-            boxShadow: activeTab === 'history' ? '0 2px 6px rgba(0,0,0,0.15)' : 'none',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 4,
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <History size={14} />
-          {language === 'am' ? 'ታሪክ' : 'History'}
-        </button>
+        {canViewHistory('waiter') && (
+          <button
+            type="button"
+            onClick={() => { setActiveTab('history'); loadHistory(); }}
+            style={{
+              flex: 1,
+              padding: '10px 6px',
+              fontSize: 13,
+              fontWeight: 800,
+              borderRadius: 8,
+              background: activeTab === 'history' ? '#4f46e5' : 'transparent',
+              color: activeTab === 'history' ? '#ffffff' : 'var(--text-muted)',
+              boxShadow: activeTab === 'history' ? '0 2px 6px rgba(0,0,0,0.15)' : 'none',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <History size={14} />
+            {language === 'am' ? 'ታሪክ' : 'History'}
+          </button>
+        )}
       </div>
 
       {successBanner && (
@@ -1394,7 +1404,7 @@ export const WaiterView: React.FC = () => {
       )}
 
       {/* Order History Tab */}
-      {activeTab === 'history' && (
+      {activeTab === 'history' && canViewHistory('waiter') && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Search bar */}
           <div style={{ position: 'relative' }}>

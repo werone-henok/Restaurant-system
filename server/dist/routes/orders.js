@@ -735,9 +735,33 @@ orderRouter.put('/:id', authenticate, authorizeRole(['waiter', 'cashier', 'chef'
     }
 });
 // ── 10. Role-Restricted History Views ─────────────────────────────────
+export function isStaffHistoryAllowed(role) {
+    if (['superadmin', 'owner', 'admin'].includes(role))
+        return true;
+    try {
+        const settings = db.prepare('SELECT staff_history_visible, staff_history_roles FROM restaurant_settings LIMIT 1').get();
+        if (!settings)
+            return true;
+        if (settings.staff_history_visible === 0)
+            return false;
+        if (settings.staff_history_roles) {
+            const allowedRoles = typeof settings.staff_history_roles === 'string'
+                ? JSON.parse(settings.staff_history_roles)
+                : settings.staff_history_roles;
+            return allowedRoles.includes(role);
+        }
+        return true;
+    }
+    catch {
+        return true;
+    }
+}
 // 9A. Waiter Order History (Only orders created by logged-in waiter)
 orderRouter.get('/history/waiter', authenticate, authorizeRole(['waiter', 'admin', 'owner']), (req, res) => {
     try {
+        if (!isStaffHistoryAllowed(req.user.role)) {
+            return res.json([]);
+        }
         const targetBranch = getTargetBranch(req);
         let query = `
       SELECT o.*, t.table_number, t.name as table_name, u.full_name as waiter_name, c.full_name as cashier_name
@@ -779,6 +803,9 @@ orderRouter.get('/history/waiter', authenticate, authorizeRole(['waiter', 'admin
 // 9B. Cashier Approval History (Only orders approved/released by logged-in cashier)
 orderRouter.get('/history/cashier', authenticate, authorizeRole(['cashier', 'admin', 'owner']), (req, res) => {
     try {
+        if (!isStaffHistoryAllowed(req.user.role)) {
+            return res.json([]);
+        }
         const targetBranch = getTargetBranch(req);
         let query = `
       SELECT o.*, t.table_number, t.name as table_name, u.full_name as waiter_name, c.full_name as cashier_name,
@@ -828,6 +855,9 @@ orderRouter.get('/history/cashier', authenticate, authorizeRole(['cashier', 'adm
 // 9C. Chef Preparation History (Food items prepared/completed by logged-in chef)
 orderRouter.get('/history/chef', authenticate, authorizeRole(['chef', 'admin', 'owner']), (req, res) => {
     try {
+        if (!isStaffHistoryAllowed(req.user.role)) {
+            return res.json([]);
+        }
         const targetBranch = getTargetBranch(req);
         let query = `
       SELECT DISTINCT o.*, t.table_number, t.name as table_name, u.full_name as waiter_name,
@@ -881,6 +911,9 @@ orderRouter.get('/history/chef', authenticate, authorizeRole(['chef', 'admin', '
 // 9D. Barista Preparation History (Beverage items prepared/completed by logged-in barista)
 orderRouter.get('/history/barista', authenticate, authorizeRole(['barista', 'admin', 'owner']), (req, res) => {
     try {
+        if (!isStaffHistoryAllowed(req.user.role)) {
+            return res.json([]);
+        }
         const targetBranch = getTargetBranch(req);
         let query = `
       SELECT DISTINCT o.*, t.table_number, t.name as table_name, u.full_name as waiter_name,

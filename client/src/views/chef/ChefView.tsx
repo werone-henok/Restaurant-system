@@ -15,7 +15,7 @@ import { SoundSettingsModal } from '../../components/SoundSettingsModal';
 import { triggerNotificationSound } from '../../utils/soundNotifier';
 
 export const ChefView: React.FC = () => {
-  const { currentBranchId, t, language } = useApp();
+  const { currentBranchId, t, language, canViewHistory } = useApp();
   const [activeTab, setActiveTab] = useState<'queue' | 'history' | 'catalog'>('queue');
   const [kitchenOrders, setKitchenOrders] = useState<any[]>([]);
   const [modifyingOrder, setModifyingOrder] = useState<any | null>(null);
@@ -86,11 +86,19 @@ export const ChefView: React.FC = () => {
 
   const refreshAll = useCallback(() => {
     loadKitchenQueue();
-    loadPrepHistory();
+    if (canViewHistory('chef')) {
+      loadPrepHistory();
+    }
     if (activeTab === 'catalog') {
       loadCatalog();
     }
-  }, [loadKitchenQueue, loadPrepHistory, loadCatalog, activeTab]);
+  }, [loadKitchenQueue, loadPrepHistory, loadCatalog, activeTab, canViewHistory]);
+
+  useEffect(() => {
+    if (activeTab === 'history' && !canViewHistory('chef')) {
+      setActiveTab('queue');
+    }
+  }, [activeTab, canViewHistory]);
 
   // Keep the ref current
   useEffect(() => {
@@ -318,20 +326,22 @@ export const ChefView: React.FC = () => {
           <Flame size={15} />
           {language === 'am' ? 'ንቁ የማብሰያ ትዕዛዞች' : 'Active Kitchen Queue'} ({kitchenOrders.length})
         </button>
-        <button
-          type="button"
-          onClick={() => { setActiveTab('history'); loadPrepHistory(); }}
-          style={{
-            flex: 1, padding: '9px 0', fontSize: 13, fontWeight: 700, borderRadius: 8,
-            background: activeTab === 'history' ? '#ffffff' : 'transparent',
-            color: activeTab === 'history' ? '#ea580c' : 'var(--text-muted)',
-            boxShadow: activeTab === 'history' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-            border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
-          }}
-        >
-          <History size={15} />
-          {language === 'am' ? 'የማብሰያ ታሪክ' : 'Preparation History'} ({prepHistory.length})
-        </button>
+        {canViewHistory('chef') && (
+          <button
+            type="button"
+            onClick={() => { setActiveTab('history'); loadPrepHistory(); }}
+            style={{
+              flex: 1, padding: '9px 0', fontSize: 13, fontWeight: 700, borderRadius: 8,
+              background: activeTab === 'history' ? '#ffffff' : 'transparent',
+              color: activeTab === 'history' ? '#ea580c' : 'var(--text-muted)',
+              boxShadow: activeTab === 'history' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+            }}
+          >
+            <History size={15} />
+            {language === 'am' ? 'የማብሰያ ታሪክ' : 'Preparation History'} ({prepHistory.length})
+          </button>
+        )}
         <button
           type="button"
           onClick={() => { setActiveTab('catalog'); loadCatalog(); }}
@@ -501,7 +511,7 @@ export const ChefView: React.FC = () => {
       )}
 
       {/* ── Tab 2: Preparation History ── */}
-      {activeTab === 'history' && (
+      {activeTab === 'history' && canViewHistory('chef') && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Search bar */}
           <div style={{ position: 'relative' }}>

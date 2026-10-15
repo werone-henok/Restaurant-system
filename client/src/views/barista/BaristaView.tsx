@@ -8,7 +8,7 @@ import { gToast } from '../../utils/toast';
 import { formatOrderTime, formatOrderDateTime } from '../../utils/timezone';
 
 export const BaristaView: React.FC = () => {
-  const { currentBranchId, t, language } = useApp();
+  const { currentBranchId, t, language, canViewHistory } = useApp();
   const [activeTab, setActiveTab] = useState<'queue' | 'history'>('queue');
   const [barOrders, setBarOrders] = useState<any[]>([]);
   const [prepHistory, setPrepHistory] = useState<any[]>([]);
@@ -36,8 +36,16 @@ export const BaristaView: React.FC = () => {
 
   const refreshAll = useCallback(() => {
     loadBarQueue();
-    loadBaristaHistory();
-  }, [loadBarQueue, loadBaristaHistory]);
+    if (canViewHistory('barista')) {
+      loadBaristaHistory();
+    }
+  }, [loadBarQueue, loadBaristaHistory, canViewHistory]);
+
+  useEffect(() => {
+    if (activeTab === 'history' && !canViewHistory('barista')) {
+      setActiveTab('queue');
+    }
+  }, [activeTab, canViewHistory]);
 
   useEffect(() => {
     loadCallbackRef.current = refreshAll;
@@ -172,20 +180,22 @@ export const BaristaView: React.FC = () => {
           <Coffee size={15} />
           {language === 'am' ? 'ንቁ የመጠጥ ትዕዛዞች' : 'Active Bar Queue'} ({barOrders.length})
         </button>
-        <button
-          type="button"
-          onClick={() => { setActiveTab('history'); loadBaristaHistory(); }}
-          style={{
-            flex: 1, padding: '9px 0', fontSize: 13, fontWeight: 700, borderRadius: 8,
-            background: activeTab === 'history' ? '#ffffff' : 'transparent',
-            color: activeTab === 'history' ? '#0284c7' : 'var(--text-muted)',
-            boxShadow: activeTab === 'history' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-            border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
-          }}
-        >
-          <History size={15} />
-          {language === 'am' ? 'የመጠጥ ዝግጅት ታሪክ' : 'Preparation History'} ({prepHistory.length})
-        </button>
+        {canViewHistory('barista') && (
+          <button
+            type="button"
+            onClick={() => { setActiveTab('history'); loadBaristaHistory(); }}
+            style={{
+              flex: 1, padding: '9px 0', fontSize: 13, fontWeight: 700, borderRadius: 8,
+              background: activeTab === 'history' ? '#ffffff' : 'transparent',
+              color: activeTab === 'history' ? '#0284c7' : 'var(--text-muted)',
+              boxShadow: activeTab === 'history' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+            }}
+          >
+            <History size={15} />
+            {language === 'am' ? 'የመጠጥ ዝግጅት ታሪክ' : 'Preparation History'} ({prepHistory.length})
+          </button>
+        )}
       </div>
 
       {/* ── Tab 1: Active Bar Queue ── */}
@@ -261,7 +271,7 @@ export const BaristaView: React.FC = () => {
       )}
 
       {/* ── Tab 2: Preparation History ── */}
-      {activeTab === 'history' && (
+      {activeTab === 'history' && canViewHistory('barista') && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Search bar */}
           <div style={{ position: 'relative' }}>
