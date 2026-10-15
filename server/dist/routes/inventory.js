@@ -46,7 +46,7 @@ async function saveReceiptPhoto(dataUrlOrUrl) {
 // 1. Get Ingredients & Stock Levels for a Branch
 inventoryRouter.get('/', authenticate, (req, res) => {
     const rawBranchId = req.query.branchId;
-    const isAll = rawBranchId === 'ALL' || (!rawBranchId && (req.user?.role === 'owner' || req.user?.role === 'admin') && !req.user?.branch_id);
+    const isAll = rawBranchId === 'ALL' || (!rawBranchId && (req.user?.role === 'superadmin' || req.user?.role === 'owner' || req.user?.role === 'admin') && !req.user?.branch_id);
     const branchId = isAll ? null : (rawBranchId || req.user.branch_id);
     let stockList;
     if (branchId) {
@@ -418,7 +418,7 @@ inventoryRouter.delete('/ingredients/:id', authenticate, authorizeRole(['admin',
 inventoryRouter.get('/purchases', authenticate, (req, res) => {
     try {
         const branchId = req.query.branchId || req.user.branch_id;
-        const isOwner = req.user.role === 'owner';
+        const isOwner = req.user.role === 'owner' || req.user.role === 'superadmin';
         let query = `
       SELECT po.*, s.name as supplier_name, u.full_name as storekeeper_name
       FROM purchase_orders po

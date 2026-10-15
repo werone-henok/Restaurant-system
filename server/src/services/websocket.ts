@@ -115,14 +115,14 @@ export function broadcastEvent(event: {
   for (const [ws, client] of activeClients.entries()) {
     if (ws.readyState !== WebSocket.OPEN) continue;
 
-    // Filter by branch: Owner receives all branch updates, or matches branchId
-    const branchMatch = !event.branchId || client.role === 'owner' || client.branchId === event.branchId;
+    // Filter by branch: Superadmin & Owner receive all branch updates, or matches branchId
+    const branchMatch = !event.branchId || client.role === 'superadmin' || client.role === 'owner' || client.branchId === event.branchId;
     if (!branchMatch) continue;
 
     // Filter by role if specified
     if (event.targetRole) {
       const allowedRoles = Array.isArray(event.targetRole) ? event.targetRole : [event.targetRole];
-      if (!allowedRoles.includes(client.role) && client.role !== 'owner' && client.role !== 'admin') {
+      if (!allowedRoles.includes(client.role) && client.role !== 'superadmin' && client.role !== 'owner' && client.role !== 'admin') {
         continue;
       }
     }

@@ -55,7 +55,7 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
           />
         </div>
 
-        {user?.role === 'owner' ? (
+        {user?.role === 'owner' || user?.role === 'superadmin' ? (
           <select
             value={currentBranchId}
             onChange={(e) => switchBranch(e.target.value)}
@@ -161,8 +161,8 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
           {darkMode ? <Sun size={14} /> : <Moon size={14} />}
         </button>
 
-        {/* AI Assistant Quick Launcher for Admin & Owner */}
-        {user && (user.role === 'admin' || user.role === 'owner') && (
+        {/* AI Assistant Quick Launcher for Super Admin, Admin & Owner */}
+        {user && (user.role === 'superadmin' || user.role === 'admin' || user.role === 'owner') && (
           <button
             onClick={() => setShowAiModal(true)}
             style={{
@@ -171,13 +171,17 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
               gap: 4,
               padding: '3px 8px',
               borderRadius: 8,
-              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+              background: user.role === 'superadmin'
+                ? 'linear-gradient(135deg, #7c3aed 0%, #db2777 100%)'
+                : 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
               border: '1px solid rgba(255,255,255,0.3)',
               color: '#ffffff',
               fontSize: 11,
               fontWeight: 800,
               cursor: 'pointer',
-              boxShadow: '0 2px 6px rgba(124, 58, 237, 0.4)'
+              boxShadow: user.role === 'superadmin'
+                ? '0 2px 8px rgba(219, 39, 119, 0.4)'
+                : '0 2px 6px rgba(124, 58, 237, 0.4)'
             }}
             title={language === 'am' ? 'የስራ አስኪያጅ AI አማካሪ' : 'Executive AI Copilot'}
           >
@@ -189,12 +193,36 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
         {/* System Notifications */}
         {user && <NotificationCenter />}
 
+        {/* Super Admin Tag if logged in as superadmin */}
+        {user?.role === 'superadmin' && (
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 6,
+              background: 'linear-gradient(135deg, #fbbf24 0%, #d97706 100%)',
+              color: '#78350f',
+              fontSize: 10,
+              fontWeight: 900,
+              letterSpacing: 0.5,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 3,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              textTransform: 'uppercase'
+            }}
+            title="Super Administrator (Supreme System Control)"
+          >
+            ⚡ SUPER ADMIN
+          </span>
+        )}
+
         {/* User Role Indicator / Profile Picture */}
         {user && (
           <button
             onClick={onOpenProfile}
             title={`${user.full_name} (${user.role})`}
             className="header-profile-btn"
+            style={user.role === 'superadmin' ? { border: '2px solid #fbbf24', boxShadow: '0 0 8px rgba(251, 191, 36, 0.6)' } : undefined}
           >
             {user.profile_photo ? (
               <img
@@ -215,7 +243,7 @@ export const Header: React.FC<{ onOpenProfile?: () => void }> = ({ onOpenProfile
       />
 
       {/* AI Assistant Modal available from Header */}
-      {user && (user.role === 'admin' || user.role === 'owner') && (
+      {user && (user.role === 'superadmin' || user.role === 'admin' || user.role === 'owner') && (
         <AiAssistantModal
           isOpen={showAiModal}
           onClose={() => setShowAiModal(false)}

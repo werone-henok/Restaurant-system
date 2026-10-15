@@ -1,4 +1,5 @@
 import { dbWrapper } from './connection.js';
+import { hashSecretSync } from '../utils/security.js';
 
 export const db = dbWrapper;
 
@@ -714,6 +715,28 @@ export function runMigrations() {
     }
   } catch (e) {
     console.error('[Migration] Failed to initialize default settings:', e);
+  }
+
+  // Ensure default superadmin user exists with supreme system privileges
+  try {
+    const existingSuperAdmin = db.prepare("SELECT id, role, status FROM users WHERE username = 'superadmin'").get() as any;
+    if (!existingSuperAdmin) {
+      const defaultPasswordHash = hashSecretSync('password123');
+      const defaultPinHash = hashSecretSync('1234');
+      const firstBranch = db.prepare("SELECT id FROM branches ORDER BY created_at ASC LIMIT 1").get() as any;
+      const branchId = firstBranch?.id || 'branch_addis';
+
+      db.prepare(`
+        INSERT INTO users (id, full_name, username, password_hash, pin_hash, phone, role, branch_id, status)
+        VALUES ('usr_superadmin', 'System Super Administrator', 'superadmin', ?, ?, '+251911000000', 'superadmin', ?, 'ACTIVE')
+      `).run(defaultPasswordHash, defaultPinHash, branchId);
+      console.log('[Migration] ✓ Initialized default Super Admin account (username: superadmin, password: password123)');
+    } else if (existingSuperAdmin.role !== 'superadmin' || existingSuperAdmin.status !== 'ACTIVE') {
+      db.prepare("UPDATE users SET role = 'superadmin', status = 'ACTIVE' WHERE username = 'superadmin'").run();
+      console.log('[Migration] ✓ Upgraded existing superadmin account to role: superadmin');
+    }
+  } catch (e) {
+    console.error('[Migration] Failed to verify/create superadmin account:', e);
   }
 }
 

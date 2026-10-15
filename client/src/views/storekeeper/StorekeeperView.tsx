@@ -79,9 +79,9 @@ export const StorekeeperView: React.FC = () => {
 
   // Permissions:
   // Storekeeper: create and edit, CANNOT delete
-  // Admin & Owner: create, edit, AND delete
-  const canDelete = user?.role === 'admin' || user?.role === 'owner';
-  const canManage = user?.role === 'storekeeper' || user?.role === 'admin' || user?.role === 'owner';
+  // Super Admin, Admin & Owner: create, edit, AND delete
+  const canDelete = user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'owner';
+  const canManage = user?.role === 'superadmin' || user?.role === 'storekeeper' || user?.role === 'admin' || user?.role === 'owner';
 
   // Search & Category Filter
   const [searchQuery, setSearchQuery] = useState('');

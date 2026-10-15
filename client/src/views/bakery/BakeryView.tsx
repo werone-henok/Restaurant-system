@@ -176,8 +176,8 @@ export const BakeryView: React.FC = () => {
   const [partialMarkUnavailable, setPartialMarkUnavailable] = useState(true);
   const [isSubmittingPartial, setIsSubmittingPartial] = useState(false);
 
-  const canCreateCake = user?.role === 'bakery' || user?.role === 'admin' || user?.role === 'owner';
-  const canDeleteCake = user?.role === 'admin' || user?.role === 'owner';
+  const canCreateCake = user?.role === 'superadmin' || user?.role === 'bakery' || user?.role === 'admin' || user?.role === 'owner';
+  const canDeleteCake = user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'owner';
 
   const loadData = useCallback(async () => {
     try {

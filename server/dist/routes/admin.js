@@ -1,5 +1,7 @@
+import fs from 'fs';
 import { Router } from 'express';
 import { db } from '../database/schema.js';
+import { CONFIG } from '../config/env.js';
 import { authenticate, authorizeRole } from '../middleware/auth.js';
 import { logAudit, verifyAuditChain } from '../services/auditService.js';
 import { hashSecretSync } from '../utils/security.js';
@@ -63,6 +65,18 @@ adminRouter.patch('/users/:id/photo', authenticate, authorizeRole(['admin', 'own
 adminRouter.patch('/users/:id/status', authenticate, authorizeRole(['admin', 'owner']), validate(updateUserStatusSchema), (req, res) => {
     const { status, role, branch_id } = req.body;
     const targetId = req.params.id;
+    const targetUser = db.prepare('SELECT id, username, role FROM users WHERE id = ?').get(targetId);
+    if (!targetUser) {
+        return res.status(404).json({ error: 'Staff member not found' });
+    }
+    // Only superadmin can modify a superadmin account
+    if (targetUser.role === 'superadmin' && req.user?.role !== 'superadmin') {
+        return res.status(403).json({ error: 'Only a Super Administrator can modify another Super Administrator account.' });
+    }
+    // Only superadmin can assign or promote to superadmin
+    if (role === 'superadmin' && req.user?.role !== 'superadmin') {
+        return res.status(403).json({ error: 'Only a Super Administrator can assign the Super Administrator role.' });
+    }
     db.prepare(`
     UPDATE users
     SET status = ?,
@@ -228,7 +242,7 @@ adminRouter.post('/cloud-sync/trigger', authenticate, authorizeRole(['admin', 'o
         res.status(500).json({ success: false, error: result.message, status: getSyncStatus() });
     }
 });
-adminRouter.post('/clean-demo-data', authenticate, authorizeRole(['admin', 'owner']), async (req, res) => {
+adminRouter.post('/clean-demo-data', authenticate, authorizeRole(['superadmin']), async (req, res) => {
     const tablesToClean = [
         'order_items',
         'order_status_history',
@@ -310,7 +324,10 @@ adminRouter.delete('/users/:id', authenticate, authorizeRole(['admin', 'owner'])
     if (!targetUser) {
         return res.status(404).json({ error: 'Staff member not found' });
     }
-    if (targetUser.role === 'owner') {
+    if (targetUser.role === 'superadmin' && req.user?.role !== 'superadmin') {
+        return res.status(403).json({ error: 'Only a Super Administrator can delete a Super Administrator account' });
+    }
+    if (targetUser.role === 'owner' && req.user?.role !== 'superadmin') {
         return res.status(403).json({ error: 'Owner account cannot be deleted' });
     }
     if (req.user?.id === targetId) {
@@ -382,8 +399,8 @@ adminRouter.delete('/users/:id', authenticate, authorizeRole(['admin', 'owner'])
         res.status(500).json({ error: err.message || 'Failed to delete user' });
     }
 });
-// 9. Wipe All Sales History & Orders Data
-adminRouter.post('/wipe-sales', authenticate, authorizeRole(['admin', 'owner']), async (req, res) => {
+// 9. Wipe All Sales History & Orders Data (SUPER ADMIN ONLY)
+adminRouter.post('/wipe-sales', authenticate, authorizeRole(['superadmin']), async (req, res) => {
     const salesTables = [
         'order_items',
         'order_status_history',
@@ -422,8 +439,8 @@ adminRouter.post('/wipe-sales', authenticate, authorizeRole(['admin', 'owner']),
         res.status(500).json({ error: err.message || 'Failed to wipe sales history' });
     }
 });
-// 10. Wipe All Expenses History & Purchases Data
-adminRouter.post('/wipe-expenses', authenticate, authorizeRole(['admin', 'owner']), async (req, res) => {
+// 10. Wipe All Expenses History & Purchases Data (SUPER ADMIN ONLY)
+adminRouter.post('/wipe-expenses', authenticate, authorizeRole(['superadmin']), async (req, res) => {
     const expenseTables = [
         'expenses',
         'purchase_order_items',
@@ -458,5 +475,60 @@ adminRouter.post('/wipe-expenses', authenticate, authorizeRole(['admin', 'owner'
     }
     catch (err) {
         res.status(500).json({ error: err.message || 'Failed to wipe expenses history' });
+    }
+});
+// 11. Super Admin Live System Telemetry & Statistics
+adminRouter.get('/superadmin/system-stats', authenticate, authorizeRole(['superadmin']), (_req, res) => {
+    try {
+        const userCount = db.prepare('SELECT COUNT(*) as c FROM users WHERE deleted_at IS NULL').get()?.c || 0;
+        const orderCount = db.prepare('SELECT COUNT(*) as c FROM orders').get()?.c || 0;
+        const menuCount = db.prepare('SELECT COUNT(*) as c FROM menu_items WHERE deleted_at IS NULL').get()?.c || 0;
+        const ingredientCount = db.prepare('SELECT COUNT(*) as c FROM ingredients WHERE is_active = 1').get()?.c || 0;
+        const branchCount = db.prepare('SELECT COUNT(*) as c FROM branches WHERE is_active = 1').get()?.c || 0;
+        const auditCount = db.prepare('SELECT COUNT(*) as c FROM audit_logs').get()?.c || 0;
+        let dbSizeBytes = 0;
+        try {
+            if (fs.existsSync(CONFIG.DB_PATH)) {
+                dbSizeBytes = fs.statSync(CONFIG.DB_PATH).size;
+            }
+        }
+        catch (_) { }
+        res.json({
+            success: true,
+            stats: {
+                users: userCount,
+                orders: orderCount,
+                menuItems: menuCount,
+                ingredients: ingredientCount,
+                branches: branchCount,
+                auditLogs: auditCount,
+                dbSizeBytes,
+                dbPath: CONFIG.DB_PATH,
+                syncStatus: getSyncStatus()
+            }
+        });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message || 'Failed to retrieve superadmin system stats' });
+    }
+});
+// 12. Super Admin Instant Database Optimization & Maintenance
+adminRouter.post('/superadmin/maintenance/optimize', authenticate, authorizeRole(['superadmin']), async (req, res) => {
+    try {
+        db.exec('PRAGMA optimize;');
+        db.exec('VACUUM;');
+        db.exec('ANALYZE;');
+        await syncDatabaseToCloud('superadmin_optimize');
+        logAudit({
+            branchId: req.user?.branch_id || 'branch_addis',
+            userId: req.user.id,
+            action: 'SYSTEM_OPTIMIZED',
+            entityType: 'DATABASE',
+            details: { optimizedBy: req.user?.username }
+        });
+        res.json({ success: true, message: 'Database optimized, vacuumed, and synced to cloud successfully.' });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message || 'Failed to optimize system database' });
     }
 });

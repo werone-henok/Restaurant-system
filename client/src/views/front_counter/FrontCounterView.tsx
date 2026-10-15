@@ -214,8 +214,8 @@ export const FrontCounterView: React.FC = () => {
   const [cakeToDelete, setCakeToDelete] = useState<Product | null>(null);
   const [isDeletingCake, setIsDeletingCake] = useState(false);
 
-  const canCreateCake = user?.role === 'bakery' || user?.role === 'admin' || user?.role === 'owner';
-  const canDeleteCake = user?.role === 'admin' || user?.role === 'owner';
+  const canCreateCake = user?.role === 'superadmin' || user?.role === 'bakery' || user?.role === 'admin' || user?.role === 'owner';
+  const canDeleteCake = user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'owner';
 
   // Load all operational data
   const loadData = useCallback(async () => {

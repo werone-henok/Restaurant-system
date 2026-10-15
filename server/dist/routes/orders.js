@@ -11,12 +11,12 @@ export const orderRouter = Router();
 function getTargetBranch(req) {
     const raw = req.query.branchId;
     if (raw === 'ALL') {
-        if (req.user?.role === 'owner' || req.user?.role === 'admin') {
+        if (req.user?.role === 'superadmin' || req.user?.role === 'owner' || req.user?.role === 'admin') {
             return null;
         }
         return req.user?.branch_id || null;
     }
-    if (!raw && (req.user?.role === 'owner' || req.user?.role === 'admin') && !req.user?.branch_id) {
+    if (!raw && (req.user?.role === 'superadmin' || req.user?.role === 'owner' || req.user?.role === 'admin') && !req.user?.branch_id) {
         return null;
     }
     return raw || req.user?.branch_id || null;
@@ -544,7 +544,7 @@ orderRouter.post('/:id/cancel', authenticate, (req, res) => {
     }
     // If order was confirmed/preparing, check permission
     if (['CONFIRMED', 'PREPARING', 'READY'].includes(order.status)) {
-        if (!['admin', 'owner', 'cashier'].includes(req.user.role)) {
+        if (!['superadmin', 'admin', 'owner', 'cashier'].includes(req.user.role)) {
             return res.status(403).json({ error: 'Cancelling confirmed or in-progress order requires Cashier, Admin or Owner authorization.' });
         }
     }

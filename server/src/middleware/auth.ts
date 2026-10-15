@@ -62,7 +62,17 @@ export function authorizeRole(roles: UserRole[]) {
       return res.status(401).json({ error: 'Authentication required.' });
     }
 
-    // Owner always has omniscient access
+    // Superadmin has absolute supreme access across the entire system
+    if (req.user.role === 'superadmin') {
+      return next();
+    }
+
+    // If a route is strictly restricted to Super Admin only
+    if (roles.length === 1 && roles[0] === 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Requires Super Administrator privileges.' });
+    }
+
+    // Owner always has omniscient business access
     if (req.user.role === 'owner') {
       return next();
     }
@@ -81,7 +91,7 @@ export function requirePermission(permission: PermissionKey) {
       return res.status(401).json({ error: 'Authentication required.' });
     }
 
-    if (req.user.role === 'owner') {
+    if (req.user.role === 'superadmin' || req.user.role === 'owner') {
       return next();
     }
 
@@ -94,6 +104,7 @@ export function requirePermission(permission: PermissionKey) {
 
     // Default permission roles
     const roleDefaultPermissions: Record<string, string[]> = {
+      superadmin: [...CONFIG.PERMISSIONS],
       admin: [...CONFIG.PERMISSIONS],
       cashier: ['approve_discounts', 'modify_confirmed_orders', 'view_sales'],
       chef: ['manage_recipes', 'manage_inventory'],

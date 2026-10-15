@@ -7,7 +7,7 @@ export const tableRouter = Router();
 // Get tables for a branch
 tableRouter.get('/', authenticate, (req, res) => {
     const rawBranchId = req.query.branchId;
-    const isAll = rawBranchId === 'ALL' || (!rawBranchId && (req.user?.role === 'owner' || req.user?.role === 'admin') && !req.user?.branch_id);
+    const isAll = rawBranchId === 'ALL' || (!rawBranchId && (req.user?.role === 'superadmin' || req.user?.role === 'owner' || req.user?.role === 'admin') && !req.user?.branch_id);
     const branchId = isAll ? null : (rawBranchId || req.user.branch_id);
     if (branchId) {
         const tables = db.prepare('SELECT * FROM restaurant_tables WHERE branch_id = ? AND is_active = 1 ORDER BY table_number ASC').all(branchId);

@@ -58,7 +58,7 @@ export const AdminView: React.FC = () => {
   const [staffName, setStaffName] = useState('');
   const [staffUsername, setStaffUsername] = useState('');
   const [staffPassword, setStaffPassword] = useState('password123');
-  const [staffRole, setStaffRole] = useState<'waiter' | 'cashier' | 'chef' | 'barista' | 'storekeeper' | 'bakery' | 'front_counter' | 'admin'>('waiter');
+  const [staffRole, setStaffRole] = useState<'superadmin' | 'waiter' | 'cashier' | 'chef' | 'barista' | 'storekeeper' | 'bakery' | 'front_counter' | 'admin'>('waiter');
   const [staffBranch, setStaffBranch] = useState(currentBranchId);
   const [staffPhone, setStaffPhone] = useState('');
   const [staffEmpId, setStaffEmpId] = useState('');
@@ -116,10 +116,38 @@ export const AdminView: React.FC = () => {
   const [showCleanModal, setShowCleanModal] = useState(false);
   const [cleanConfirmText, setCleanConfirmText] = useState('');
 
+  // Super Admin Master Control & Telemetry State
+  const [superAdminStats, setSuperAdminStats] = useState<any | null>(null);
+  const [isOptimizingDb, setIsOptimizingDb] = useState(false);
+
   // Expense form
   const [expenseCategory, setExpenseCategory] = useState('Electricity');
   const [expenseAmount, setExpenseAmount] = useState<number>(500);
   const [expenseDescription, setExpenseDescription] = useState('');
+
+  const loadSuperAdminStats = () => {
+    if (user?.role === 'superadmin') {
+      api.request<any>('/admin/superadmin/system-stats')
+        .then(res => {
+          if (res?.success) setSuperAdminStats(res.stats);
+        })
+        .catch(() => {});
+    }
+  };
+
+  const handleOptimizeDatabase = async () => {
+    try {
+      setIsOptimizingDb(true);
+      tactileFeedback('click');
+      await api.request('/admin/superadmin/maintenance/optimize', { method: 'POST' });
+      gToast.success(language === 'am' ? 'ዳታቤዝ በተሳካ ሁኔታ ተስተካክሎ ተጠርጓል!' : 'Database optimized and vacuumed successfully!');
+      loadSuperAdminStats();
+    } catch (err: any) {
+      gToast.error(err.message || 'Failed to optimize database');
+    } finally {
+      setIsOptimizingDb(false);
+    }
+  };
 
   const loadData = () => {
     api.request<any[]>('/admin/users').then(setUsers).catch(() => {});
@@ -129,6 +157,7 @@ export const AdminView: React.FC = () => {
     api.request<any[]>('/menu/items?all=true').then(setMenuItems).catch(() => {});
     api.request<any[]>('/menu/categories').then(setCategories).catch(() => {});
     api.request<any[]>('/auth/admin/account-requests').then(setAccountRequests).catch(() => {});
+    loadSuperAdminStats();
     refreshBranches();
   };
 
@@ -497,6 +526,10 @@ export const AdminView: React.FC = () => {
   };
 
   const handleCleanDemoData = async () => {
+    if (user?.role !== 'superadmin') {
+      gToast.error(language === 'am' ? 'ይህንን እርምጃ ሱፐር አድሚን ብቻ ነው ማከናወን የሚችለው' : 'Access denied. Only Super Admin can perform clean slate wipes.');
+      return;
+    }
     if (cleanConfirmText !== 'CLEAN' && cleanConfirmText !== 'አጥፋ') {
       gToast.error(language === 'am' ? 'እባክዎ ለማረጋገጥ CLEAN ወይም አጥፋ ብለው ይጻፉ' : 'Please type CLEAN to confirm');
       return;
@@ -548,6 +581,10 @@ export const AdminView: React.FC = () => {
   };
 
   const handleWipeSales = async () => {
+    if (user?.role !== 'superadmin') {
+      gToast.error(language === 'am' ? 'ይህንን እርምጃ ሱፐር አድሚን ብቻ ነው ማከናወን የሚችለው' : 'Access denied. Only Super Admin can perform clean slate wipes.');
+      return;
+    }
     const confirmMsg = language === 'am'
       ? 'ማስጠንቀቂያ! የሽያጭ ታሪክ፣ የትዕዛዞች፣ የደረሰኞች እና የክፍያ መረጃዎችን በሙሉ መሰረዝ ይፈልጋሉ? ይህ እርምጃ ሊመለስ አይችልም።'
       : 'WARNING! Permanently wipe all sales history, orders, payments, and receipts? This action cannot be undone.';
@@ -567,6 +604,10 @@ export const AdminView: React.FC = () => {
   };
 
   const handleWipeExpenses = async () => {
+    if (user?.role !== 'superadmin') {
+      gToast.error(language === 'am' ? 'ይህንን እርምጃ ሱፐር አድሚን ብቻ ነው ማከናወን የሚችለው' : 'Access denied. Only Super Admin can perform clean slate wipes.');
+      return;
+    }
     const confirmMsg = language === 'am'
       ? 'ማስጠንቀቂያ! የወጪ እና የግዢ መረጃዎችን በሙሉ መሰረዝ ይፈልጋሉ? ይህ እርምጃ ሊመለስ አይችልም።'
       : 'WARNING! Permanently wipe all operational expenses, purchases, and waste records? This action cannot be undone.';
@@ -961,7 +1002,22 @@ export const AdminView: React.FC = () => {
                   <div>
                     <strong style={{ fontSize: 13, color: 'var(--text-main)' }}>{u.full_name}</strong>
                     <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)' }}>
-                      @{u.username} • <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{u.role.toUpperCase()}</span> • {u.branch_name || u.branch_id}
+                      @{u.username} • {u.role === 'superadmin' ? (
+                        <span style={{
+                          background: 'linear-gradient(135deg, #7c3aed 0%, #d97706 100%)',
+                          color: '#ffffff',
+                          padding: '2px 7px',
+                          borderRadius: 6,
+                          fontSize: 10,
+                          fontWeight: 900,
+                          letterSpacing: 0.5,
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                        }}>
+                          ⚡ SUPER ADMIN
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{u.role.toUpperCase()}</span>
+                      )} • {u.branch_name || u.branch_id}
                     </span>
                   </div>
                 </div>
@@ -992,7 +1048,8 @@ export const AdminView: React.FC = () => {
                     <Key size={11} color="var(--primary)" />
                     {language === 'am' ? 'የይለፍ ቃል' : 'Password'}
                   </button>
-                  {u.role !== 'owner' && (
+                  {/* Actions: superadmin can manage anyone except self; admin/owner cannot manage superadmin or owner */}
+                  {u.id !== user?.id && (user?.role === 'superadmin' || (u.role !== 'owner' && u.role !== 'superadmin')) && (
                     <>
                       <button
                         onClick={() => handleUserStatus(u.id, u.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE')}
@@ -1381,112 +1438,278 @@ export const AdminView: React.FC = () => {
           </button>
         </form>
 
-        {/* Client Handover / Wipe Demo Catalog Section */}
-        <div style={{
-          background: '#ffffff',
-          border: '1px solid #fee2e2',
-          borderRadius: 16,
-          padding: 20,
-          boxShadow: 'var(--shadow-sm)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 44,
-                height: 44,
-                borderRadius: 12,
-                background: '#fef2f2',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <Trash2 size={22} color="#dc2626" />
-              </div>
-              <div>
-                <h4 style={{ fontSize: 15, fontWeight: 800, color: '#991b1b', margin: 0 }}>
-                  {language === 'am' ? 'የደንበኛ ርክክብ / የሙከራ መረጃዎችን ማጽጃ' : 'Client Handover / Clean Slate Mode'}
-                </h4>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '3px 0 0 0', lineHeight: 1.4 }}>
-                  {language === 'am'
-                    ? 'የሙከራ ምግቦችን፣ ጠረጴዛዎችን፣ ኬኮችን፣ ስቶክ እና የሽያጭ ታሪክን ያጸዳል (የሰራተኞች መግቢያ፣ ቅርንጫፎች እና ላይሰንስ ሳይነኩ ይቀጥላሉ)'
-                    : 'Wipes all sample menu items, tables, cakes, stock, and orders for production delivery. Preserves staff accounts, branches, and licensing.'}
-                </p>
-              </div>
+        {/* Client Handover / Wipe Demo Catalog Section (SUPER ADMIN ONLY) */}
+        {user?.role === 'superadmin' && (
+          <div style={{
+            background: 'linear-gradient(180deg, #ffffff 0%, #fef8f8 100%)',
+            border: '2px solid #ef4444',
+            borderRadius: 18,
+            padding: 24,
+            boxShadow: '0 8px 30px rgba(239, 68, 68, 0.08)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            {/* Super Admin Master Authority Ribbon */}
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 12px',
+              borderRadius: 20,
+              background: 'linear-gradient(135deg, #7c3aed 0%, #db2777 50%, #ea580c 100%)',
+              color: '#ffffff',
+              fontSize: 11,
+              fontWeight: 900,
+              letterSpacing: 0.8,
+              textTransform: 'uppercase',
+              marginBottom: 16,
+              boxShadow: '0 2px 8px rgba(124, 58, 237, 0.3)'
+            }}>
+              <Sparkles size={13} color="#fef08a" />
+              <span>Super Admin Exclusive Master Control</span>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={handleWipeSales}
-                style={{
-                  padding: '10px 16px',
-                  borderRadius: 10,
-                  background: '#f97316',
-                  color: '#ffffff',
-                  fontWeight: 800,
-                  fontSize: 12,
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  boxShadow: '0 2px 4px rgba(249, 115, 22, 0.2)'
-                }}
-              >
-                <Trash2 size={14} />
-                {language === 'am' ? 'የሽያጭ ታሪክ አጽዳ' : 'Wipe Sales History'}
-              </button>
+            {/* Live Telemetry / System Health Mini Cards */}
+            {superAdminStats && (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))',
+                gap: 10,
+                marginBottom: 20
+              }}>
+                <div style={{
+                  background: '#ffffff',
+                  borderRadius: 12,
+                  padding: '10px 12px',
+                  border: '1px solid #e2e8f0',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+                    {language === 'am' ? 'ሰራተኞች' : 'Active Staff'}
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: '#1e293b', marginTop: 2 }}>
+                    {superAdminStats.users}
+                  </div>
+                </div>
 
-              <button
-                type="button"
-                onClick={handleWipeExpenses}
-                style={{
-                  padding: '10px 16px',
-                  borderRadius: 10,
-                  background: '#ea580c',
-                  color: '#ffffff',
-                  fontWeight: 800,
-                  fontSize: 12,
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  boxShadow: '0 2px 4px rgba(234, 88, 12, 0.2)'
-                }}
-              >
-                <Trash2 size={14} />
-                {language === 'am' ? 'የወጪ መረጃዎችን አጽዳ' : 'Wipe Expenses History'}
-              </button>
+                <div style={{
+                  background: '#ffffff',
+                  borderRadius: 12,
+                  padding: '10px 12px',
+                  border: '1px solid #e2e8f0',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+                    {language === 'am' ? 'ጠቅላላ ትዕዛዞች' : 'Total Orders'}
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: '#0284c7', marginTop: 2 }}>
+                    {superAdminStats.orders}
+                  </div>
+                </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setCleanConfirmText('');
-                  setShowCleanModal(true);
-                }}
-                style={{
-                  padding: '10px 16px',
-                  borderRadius: 10,
-                  background: '#dc2626',
-                  color: '#ffffff',
-                  fontWeight: 800,
-                  fontSize: 12,
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
+                <div style={{
+                  background: '#ffffff',
+                  borderRadius: 12,
+                  padding: '10px 12px',
+                  border: '1px solid #e2e8f0',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+                    {language === 'am' ? 'የምግብ ዝርዝር' : 'Menu Items'}
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: '#16a34a', marginTop: 2 }}>
+                    {superAdminStats.menuItems}
+                  </div>
+                </div>
+
+                <div style={{
+                  background: '#ffffff',
+                  borderRadius: 12,
+                  padding: '10px 12px',
+                  border: '1px solid #e2e8f0',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+                    {language === 'am' ? 'ስቶክ / ግብዓቶች' : 'Stock Items'}
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: '#d97706', marginTop: 2 }}>
+                    {superAdminStats.ingredients}
+                  </div>
+                </div>
+
+                <div style={{
+                  background: '#ffffff',
+                  borderRadius: 12,
+                  padding: '10px 12px',
+                  border: '1px solid #e2e8f0',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+                    {language === 'am' ? 'የዳታቤዝ መጠን' : 'DB Size'}
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 900, color: '#475569', marginTop: 4 }}>
+                    {superAdminStats.dbSizeBytes ? (superAdminStats.dbSizeBytes / 1024).toFixed(1) + ' KB' : 'Active'}
+                  </div>
+                </div>
+
+                <div style={{
+                  background: '#ffffff',
+                  borderRadius: 12,
+                  padding: '8px 10px',
+                  border: '1px solid #e2e8f0',
+                  display: 'flex',
                   alignItems: 'center',
-                  gap: 6,
-                  boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)'
-                }}
-              >
-                <Trash2 size={14} />
-                {language === 'am' ? 'የሙከራ ካታሎግ አጽዳ' : 'Wipe Demo Items & Catalog'}
-              </button>
+                  justifyContent: 'center'
+                }}>
+                  <button
+                    type="button"
+                    onClick={handleOptimizeDatabase}
+                    disabled={isOptimizingDb}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      border: 'none',
+                      background: '#f8fafc',
+                      borderRadius: 8,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 4,
+                      color: '#334155',
+                      fontSize: 10,
+                      fontWeight: 800
+                    }}
+                    title="VACUUM, optimize and flush SQLite tables"
+                  >
+                    <RefreshCw size={13} className={isOptimizingDb ? 'animate-spin' : ''} color="#6366f1" />
+                    <span>{isOptimizingDb ? 'Optimizing...' : (language === 'am' ? 'ዳታቤዝ አጽዳ/VACUUM' : 'Optimize DB')}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Client Handover / Wipe Demo Catalog Section */}
+            <div style={{
+              background: '#ffffff',
+              border: '1px solid #fecaca',
+              borderRadius: 14,
+              padding: 18,
+              boxShadow: 'var(--shadow-sm)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: '#fef2f2',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <Trash2 size={22} color="#dc2626" />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <h4 style={{ fontSize: 15, fontWeight: 800, color: '#991b1b', margin: 0 }}>
+                        {language === 'am' ? 'የደንበኛ ርክክብ / የሙከራ መረጃዎችን ማጽጃ' : 'Client Handover / Clean Slate Mode'}
+                      </h4>
+                      <span style={{
+                        background: '#fee2e2',
+                        color: '#991b1b',
+                        fontSize: 10,
+                        fontWeight: 800,
+                        padding: '2px 6px',
+                        borderRadius: 4
+                      }}>
+                        SUPER ADMIN ONLY
+                      </span>
+                    </div>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '3px 0 0 0', lineHeight: 1.4 }}>
+                      {language === 'am'
+                        ? 'የሙከራ ምግቦችን፣ ጠረጴዛዎችን፣ ኬኮችን፣ ስቶክ እና የሽያጭ ታሪክን ያጸዳል (የሰራተኞች መግቢያ፣ ቅርንጫፎች እና ላይሰንስ ሳይነኩ ይቀጥላሉ)'
+                        : 'Wipes all sample menu items, tables, cakes, stock, and orders for production delivery. Preserves staff accounts, branches, and licensing.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={handleWipeSales}
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: 10,
+                      background: '#f97316',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: 12,
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      boxShadow: '0 2px 4px rgba(249, 115, 22, 0.2)'
+                    }}
+                  >
+                    <Trash2 size={14} />
+                    {language === 'am' ? 'የሽያጭ ታሪክ አጽዳ' : 'Wipe Sales History'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleWipeExpenses}
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: 10,
+                      background: '#ea580c',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: 12,
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      boxShadow: '0 2px 4px rgba(234, 88, 12, 0.2)'
+                    }}
+                  >
+                    <Trash2 size={14} />
+                    {language === 'am' ? 'የወጪ መረጃዎችን አጽዳ' : 'Wipe Expenses History'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCleanConfirmText('');
+                      setShowCleanModal(true);
+                    }}
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: 10,
+                      background: '#dc2626',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: 12,
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)'
+                    }}
+                  >
+                    <Trash2 size={14} />
+                    {language === 'am' ? 'የሙከራ ካታሎግ አጽዳ' : 'Wipe Demo Items & Catalog'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     )}
 
@@ -2120,6 +2343,9 @@ export const AdminView: React.FC = () => {
                   <div>
                     <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Assigned Role</label>
                     <select value={staffRole} onChange={e => setStaffRole(e.target.value as any)} style={{ width: '100%' }}>
+                      {user?.role === 'superadmin' && (
+                        <option value="superadmin">⚡ Super Administrator</option>
+                      )}
                       <option value="waiter">Waiter</option>
                       <option value="cashier">Cashier</option>
                       <option value="chef">Chef</option>
@@ -2958,8 +3184,8 @@ export const AdminView: React.FC = () => {
         }}
       />
 
-      {/* MODAL: CLEAN DEMO DATA CONFIRMATION (CLIENT HANDOVER) */}
-      {showCleanModal && (
+      {/* MODAL: CLEAN DEMO DATA CONFIRMATION (CLIENT HANDOVER - SUPER ADMIN ONLY) */}
+      {showCleanModal && user?.role === 'superadmin' && (
         <ModalPortal>
           <div style={{
             position: 'fixed',

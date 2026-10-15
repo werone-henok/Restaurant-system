@@ -62,6 +62,7 @@ export function seedDatabase() {
     const defaultPinHash = hashSecretSync('1234');
 
     const users = [
+      { id: 'usr_superadmin', name: 'Master Super Administrator', username: 'superadmin', role: 'superadmin', branch_id: 'branch_addis' },
       { id: 'usr_owner', name: 'Abebe Bikila (Owner)', username: 'owner', role: 'owner', branch_id: 'branch_addis' },
       { id: 'usr_admin', name: 'Sara Tesfaye (Admin)', username: 'admin', role: 'admin', branch_id: 'branch_addis' },
       { id: 'usr_cashier', name: 'Yohannes Getachew (Cashier)', username: 'cashier', role: 'cashier', branch_id: 'branch_addis' },

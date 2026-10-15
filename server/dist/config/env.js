@@ -36,7 +36,7 @@ export const CONFIG = {
     LICENSE_HEARTBEAT_URL: process.env.LICENSE_HEARTBEAT_URL || '',
     DEFAULT_CURRENCY: 'ETB',
     DEFAULT_TAX_RATE: 0.15, // 15% VAT standard Ethiopian tax
-    ROLES: ['owner', 'admin', 'cashier', 'chef', 'barista', 'waiter', 'storekeeper', 'bakery', 'front_counter'],
+    ROLES: ['superadmin', 'owner', 'admin', 'cashier', 'chef', 'barista', 'waiter', 'storekeeper', 'bakery', 'front_counter'],
     PERMISSIONS: [
         'view_sales',
         'view_expenses',

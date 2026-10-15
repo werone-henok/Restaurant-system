@@ -9,7 +9,7 @@ export const tableRouter = Router();
 // Get tables for a branch
 tableRouter.get('/', authenticate, (req: AuthenticatedRequest, res) => {
   const rawBranchId = req.query.branchId as string;
-  const isAll = rawBranchId === 'ALL' || (!rawBranchId && (req.user?.role === 'owner' || req.user?.role === 'admin') && !req.user?.branch_id);
+  const isAll = rawBranchId === 'ALL' || (!rawBranchId && (req.user?.role === 'superadmin' || req.user?.role === 'owner' || req.user?.role === 'admin') && !req.user?.branch_id);
   const branchId = isAll ? null : (rawBranchId || req.user!.branch_id);
 
   if (branchId) {

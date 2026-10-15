@@ -18,7 +18,7 @@ export const registerSchema = z.object({
   pin: z.string().length(4, 'PIN must be exactly 4 digits').regex(/^\d{4}$/, 'PIN must be 4 digits').optional(),
   phone: z.string().optional(),
   employee_id: z.string().optional(),
-  requested_role: z.enum(['owner', 'admin', 'cashier', 'chef', 'barista', 'waiter', 'storekeeper', 'bakery', 'front_counter']),
+  requested_role: z.enum(['superadmin', 'owner', 'admin', 'cashier', 'chef', 'barista', 'waiter', 'storekeeper', 'bakery', 'front_counter']),
   branch_id: z.string().min(1, 'Branch is required'),
   profile_photo: z.string().url().optional().nullable()
 });
@@ -84,14 +84,14 @@ export const createStaffSchema = z.object({
   pin: z.string().length(4).regex(/^\d{4}$/).optional(),
   phone: z.string().optional(),
   employee_id: z.string().optional(),
-  role: z.enum(['owner', 'admin', 'cashier', 'chef', 'barista', 'waiter', 'storekeeper', 'bakery', 'front_counter']),
+  role: z.enum(['superadmin', 'owner', 'admin', 'cashier', 'chef', 'barista', 'waiter', 'storekeeper', 'bakery', 'front_counter']),
   branch_id: z.string().min(1),
   profile_photo: z.string().optional().nullable()
 });
 
 export const updateUserStatusSchema = z.object({
   status: z.enum(['ACTIVE', 'PENDING_APPROVAL', 'SUSPENDED', 'DEACTIVATED']),
-  role: z.enum(['owner', 'admin', 'cashier', 'chef', 'barista', 'waiter', 'storekeeper', 'bakery', 'front_counter']).optional(),
+  role: z.enum(['superadmin', 'owner', 'admin', 'cashier', 'chef', 'barista', 'waiter', 'storekeeper', 'bakery', 'front_counter']).optional(),
   branch_id: z.string().optional()
 });
 

@@ -106,6 +106,7 @@ export const App: React.FC = () => {
 
   // Allowed tabs per role to prevent lower-permission roles from being trapped in admin/owner views
   const roleAllowedTabs: Record<string, string[]> = {
+    superadmin: ['admin', 'owner', 'cashier', 'bakery', 'front_counter', 'chef', 'barista', 'waiter', 'storekeeper'],
     owner: ['owner', 'cashier', 'chef', 'storekeeper', 'admin', 'waiter', 'barista', 'bakery', 'front_counter'],
     admin: ['admin', 'cashier', 'storekeeper', 'owner', 'waiter', 'chef', 'barista', 'bakery', 'front_counter'],
     waiter: ['waiter'],
@@ -118,14 +119,28 @@ export const App: React.FC = () => {
   };
 
   const allowedTabs = roleAllowedTabs[role] || [role];
-  const currentTab = (activeTabOverride && allowedTabs.includes(activeTabOverride)) ? activeTabOverride : role;
+  const currentTab = (activeTabOverride && allowedTabs.includes(activeTabOverride)) 
+    ? activeTabOverride 
+    : (role === 'superadmin' ? 'admin' : role);
 
   // Bottom navigation items adapt automatically based on role permissions
   // Designed with large 56px touch targets and prominent icons for illiterate/low-literacy staff
   const renderNav = () => {
     const navItems = [];
 
-    if (role === 'owner') {
+    if (role === 'superadmin') {
+      navItems.push(
+        { id: 'admin', label: 'Admin (Master)', emoji: '⚡', icon: <Shield size={24} color="#f59e0b" /> },
+        { id: 'owner', label: 'Executive', emoji: '👑', icon: <Building2 size={24} /> },
+        { id: 'cashier', label: 'Cashier', emoji: '💵', icon: <DollarSign size={24} /> },
+        { id: 'bakery', label: 'Bakery', emoji: '🍰', icon: <Cake size={24} /> },
+        { id: 'front_counter', label: 'Cake Counter', emoji: '🧁', icon: <ShoppingBag size={24} /> },
+        { id: 'chef', label: 'Kitchen', emoji: '🔥', icon: <Flame size={24} /> },
+        { id: 'barista', label: 'Bar', emoji: '☕', icon: <Coffee size={24} /> },
+        { id: 'waiter', label: 'Waiter', emoji: '🍽️', icon: <UtensilsCrossed size={24} /> },
+        { id: 'storekeeper', label: 'Inventory', emoji: '📦', icon: <Store size={24} /> }
+      );
+    } else if (role === 'owner') {
       navItems.push(
         { id: 'owner', label: 'Executive', emoji: '👑', icon: <Building2 size={24} /> },
         { id: 'cashier', label: 'Cashier', emoji: '💵', icon: <DollarSign size={24} /> },
@@ -237,7 +252,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className={`app-container ${['cashier', 'owner', 'admin', 'chef', 'storekeeper', 'waiter', 'bakery', 'front_counter'].includes(currentTab) ? 'desktop-wide' : ''}`}>
+    <div className={`app-container ${['superadmin', 'cashier', 'owner', 'admin', 'chef', 'storekeeper', 'waiter', 'bakery', 'front_counter'].includes(currentTab) ? 'desktop-wide' : ''}`}>
       <Header onOpenProfile={() => setShowProfile(true)} />
 
       {/* Top Urgent Notifications Banner */}

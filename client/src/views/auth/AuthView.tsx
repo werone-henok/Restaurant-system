@@ -395,6 +395,89 @@ export const AuthView: React.FC = () => {
             <input type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter password" style={{ width: '100%', height: 44 }} />
           </div>
 
+          {/* Quick Demo Login Chips */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: -4 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Quick Select Account:</span>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setUsername('superadmin');
+                  setPassword('password123');
+                }}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 8,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  background: username === 'superadmin' ? 'linear-gradient(135deg, #7c3aed 0%, #d97706 100%)' : '#f8fafc',
+                  color: username === 'superadmin' ? '#ffffff' : '#334155',
+                  border: '1px solid ' + (username === 'superadmin' ? '#d97706' : '#cbd5e1'),
+                  cursor: 'pointer'
+                }}
+              >
+                ⚡ Super Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setUsername('admin');
+                  setPassword('password123');
+                }}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 8,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  background: username === 'admin' ? 'var(--primary-light)' : '#f8fafc',
+                  color: username === 'admin' ? 'var(--primary)' : '#334155',
+                  border: '1px solid ' + (username === 'admin' ? 'var(--primary)' : '#cbd5e1'),
+                  cursor: 'pointer'
+                }}
+              >
+                🛡️ Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setUsername('owner');
+                  setPassword('password123');
+                }}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 8,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  background: username === 'owner' ? 'var(--primary-light)' : '#f8fafc',
+                  color: username === 'owner' ? 'var(--primary)' : '#334155',
+                  border: '1px solid ' + (username === 'owner' ? 'var(--primary)' : '#cbd5e1'),
+                  cursor: 'pointer'
+                }}
+              >
+                👑 Owner
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setUsername('cashier');
+                  setPassword('password123');
+                }}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 8,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  background: username === 'cashier' ? 'var(--primary-light)' : '#f8fafc',
+                  color: username === 'cashier' ? 'var(--primary)' : '#334155',
+                  border: '1px solid ' + (username === 'cashier' ? 'var(--primary)' : '#cbd5e1'),
+                  cursor: 'pointer'
+                }}
+              >
+                💵 Cashier
+              </button>
+            </div>
+          </div>
+
           <button type="submit" disabled={loading} className="btn btn-primary btn-block" style={{ height: 48, fontSize: 15 }}>
             {loading ? 'Authenticating...' : 'Sign In'}
           </button>

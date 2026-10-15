@@ -9,7 +9,7 @@ import { parseDbDate, formatOrderTime } from '../utils/timezone';
 interface OrderHistoryModalProps {
   order: any | null;
   onClose: () => void;
-  role?: 'waiter' | 'cashier' | 'chef' | 'barista' | 'admin' | 'owner';
+  role?: 'superadmin' | 'waiter' | 'cashier' | 'chef' | 'barista' | 'admin' | 'owner';
 }
 
 export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({ order, onClose, role }) => {
