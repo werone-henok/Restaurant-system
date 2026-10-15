@@ -537,8 +537,8 @@ export const StorekeeperView: React.FC = () => {
             )}
           </div>
 
-          {/* Category Filter Pills */}
-          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
+          {/* Category Filter Pills - Wrapped cleanly on PC */}
+          <div className="no-scrollbar" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingBottom: 4 }}>
             <button
               onClick={() => { tactileFeedback('click'); setSelectedCategory('ALL'); }}
               style={{

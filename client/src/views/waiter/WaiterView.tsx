@@ -332,35 +332,138 @@ export const WaiterView: React.FC = () => {
           ? tables
           : tables.filter(tb => (tb.section || 'General') === selectedSectionFilter);
 
+        const renderTableBtn = (tbl: any) => {
+          const isSelected = selectedTable === tbl.id;
+          const isOccupied = tbl.status === 'OCCUPIED';
+          return (
+            <button
+              key={tbl.id}
+              type="button"
+              onClick={() => setSelectedTable(tbl.id)}
+              style={{
+                padding: '8px 4px',
+                borderRadius: 12,
+                textAlign: 'center',
+                border: isSelected ? '2.5px solid #ea580c' : '1px solid var(--border, #e2e8f0)',
+                background: isSelected ? '#fff7ed' : isOccupied ? '#fef2f2' : 'var(--bg-card, #ffffff)',
+                color: isSelected ? '#ea580c' : 'var(--text-main, #0f172a)',
+                boxShadow: isSelected ? '0 0 0 2px rgba(234, 88, 12, 0.25)' : 'var(--shadow-sm)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 2,
+                cursor: 'pointer',
+                boxSizing: 'border-box',
+                minWidth: 0,
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span style={{ fontSize: 13, fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                {tbl.table_number}
+              </span>
+              {tbl.name && tbl.name !== tbl.table_number && (
+                <span style={{ fontSize: 9, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '96%', lineHeight: 1.1 }}>
+                  {tbl.name}
+                </span>
+              )}
+              <span style={{
+                fontSize: 8.5,
+                fontWeight: 800,
+                padding: '2px 4px',
+                borderRadius: 4,
+                background: isOccupied ? '#ef4444' : '#10b981',
+                color: '#ffffff',
+                whiteSpace: 'nowrap',
+                marginTop: 1
+              }}>
+                {isOccupied ? (language === 'am' ? 'የተያዘ' : 'Occupied') : (language === 'am' ? 'ነፃ' : 'Available')}
+              </span>
+            </button>
+          );
+        };
+
         return (
           <div style={{ width: '100%', boxSizing: 'border-box' }}>
+            {/* Header: Title + Selected Table + Quick Section Dropdown */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
-              <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main, #0f172a)', display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
-                📍 {t('select_table')} {selectedTable && <span style={{ color: '#ea580c', fontWeight: 900 }}>({tables.find(tb => tb.id === selectedTable)?.table_number || ''})</span>}
-              </label>
-              {selectedTable && (
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  {tables.find(tb => tb.id === selectedTable)?.section} • {tables.find(tb => tb.id === selectedTable)?.name}
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main, #0f172a)', display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+                  📍 {t('select_table')} {selectedTable && <span style={{ color: '#ea580c', fontWeight: 900 }}>({tables.find(tb => tb.id === selectedTable)?.table_number || ''})</span>}
+                </label>
+                {selectedTable && (
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {tables.find(tb => tb.id === selectedTable)?.section} • {tables.find(tb => tb.id === selectedTable)?.name}
+                  </span>
+                )}
+              </div>
+
+              {/* PC & Mobile Dropdown Quick Selector (No scrolling required) */}
+              {tableSections.length > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
+                    {language === 'am' ? 'ክፍል:' : 'Section:'}
+                  </span>
+                  <select
+                    value={selectedSectionFilter}
+                    onChange={(e) => setSelectedSectionFilter(e.target.value)}
+                    style={{
+                      padding: '3px 8px',
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      borderRadius: 10,
+                      border: '1px solid var(--border)',
+                      background: 'var(--bg-card)',
+                      color: 'var(--text-main)',
+                      cursor: 'pointer',
+                      height: 30
+                    }}
+                  >
+                    <option value="ALL">
+                      {language === 'am' ? '✨ ሁሉም ክፍሎች' : '✨ All Sections'} ({tables.length})
+                    </option>
+                    {tableSections.map(sec => (
+                      <option key={sec} value={sec}>
+                        {sec} ({tables.filter(tb => (tb.section || 'General') === sec).length})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
             </div>
 
-            {/* Section Filter Pills */}
+            {/* Section Filter Pills - Wrapping cleanly on PC, zero scrollbar */}
             {tableSections.length > 1 && (
-              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 6, marginBottom: 8 }}>
+              <div
+                className="no-scrollbar"
+                onWheel={(e) => {
+                  if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) {
+                    e.currentTarget.scrollLeft += e.deltaY;
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  gap: 6,
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  marginBottom: 10
+                }}
+              >
                 <button
                   type="button"
                   onClick={() => setSelectedSectionFilter('ALL')}
                   style={{
-                    padding: '4px 10px',
+                    padding: '5px 12px',
                     borderRadius: 16,
-                    fontSize: 11,
+                    fontSize: 11.5,
                     fontWeight: selectedSectionFilter === 'ALL' ? 800 : 700,
                     border: selectedSectionFilter === 'ALL' ? 'none' : '1px solid var(--border)',
                     background: selectedSectionFilter === 'ALL' ? '#ea580c' : 'var(--bg-card, #ffffff)',
                     color: selectedSectionFilter === 'ALL' ? '#ffffff' : 'var(--text-main)',
                     cursor: 'pointer',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.15s ease',
+                    boxShadow: selectedSectionFilter === 'ALL' ? '0 2px 6px rgba(234, 88, 12, 0.3)' : 'none'
                   }}
                 >
                   {language === 'am' ? 'ሁሉም ክፍሎች' : 'All Sections'} ({tables.length})
@@ -374,9 +477,9 @@ export const WaiterView: React.FC = () => {
                       type="button"
                       onClick={() => setSelectedSectionFilter(sec)}
                       style={{
-                        padding: '4px 10px',
+                        padding: '5px 12px',
                         borderRadius: 16,
-                        fontSize: 11,
+                        fontSize: 11.5,
                         fontWeight: isSelected ? 800 : 700,
                         border: isSelected ? 'none' : '1px solid var(--border)',
                         background: isSelected ? '#ea580c' : 'var(--bg-card, #ffffff)',
@@ -385,15 +488,18 @@ export const WaiterView: React.FC = () => {
                         whiteSpace: 'nowrap',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 4
+                        gap: 5,
+                        transition: 'all 0.15s ease',
+                        boxShadow: isSelected ? '0 2px 6px rgba(234, 88, 12, 0.3)' : 'none'
                       }}
                     >
                       <span>{sec}</span>
                       <span style={{
-                        fontSize: 9,
-                        padding: '1px 5px',
+                        fontSize: 9.5,
+                        fontWeight: 800,
+                        padding: '1px 6px',
                         borderRadius: 10,
-                        background: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--bg-subtle)',
+                        background: isSelected ? 'rgba(255,255,255,0.28)' : 'var(--bg-subtle, #f1f5f9)',
                         color: isSelected ? '#ffffff' : 'var(--text-muted)'
                       }}>
                         {count}
@@ -404,65 +510,53 @@ export const WaiterView: React.FC = () => {
               </div>
             )}
 
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))',
-              gap: 6,
-              width: '100%',
-              maxWidth: '100%',
-              boxSizing: 'border-box'
-            }}>
-              {displayedTables.map(tbl => {
-                const isSelected = selectedTable === tbl.id;
-                const isOccupied = tbl.status === 'OCCUPIED';
-                return (
-                  <button
-                    key={tbl.id}
-                    type="button"
-                    onClick={() => setSelectedTable(tbl.id)}
-                    style={{
-                      padding: '8px 4px',
-                      borderRadius: 12,
-                      textAlign: 'center',
-                      border: isSelected ? '2.5px solid #ea580c' : '1px solid var(--border, #e2e8f0)',
-                      background: isSelected ? '#fff7ed' : isOccupied ? '#fef2f2' : 'var(--bg-card, #ffffff)',
-                      color: isSelected ? '#ea580c' : 'var(--text-main, #0f172a)',
-                      boxShadow: isSelected ? '0 0 0 2px rgba(234, 88, 12, 0.25)' : 'var(--shadow-sm)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 2,
-                      cursor: 'pointer',
-                      boxSizing: 'border-box',
-                      minWidth: 0,
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    <span style={{ fontSize: 13, fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
-                      {tbl.table_number}
-                    </span>
-                    {tbl.name && tbl.name !== tbl.table_number && (
-                      <span style={{ fontSize: 9, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '96%', lineHeight: 1.1 }}>
-                        {tbl.name}
-                      </span>
-                    )}
-                    <span style={{
-                      fontSize: 8.5,
-                      fontWeight: 800,
-                      padding: '2px 4px',
-                      borderRadius: 4,
-                      background: isOccupied ? '#ef4444' : '#10b981',
-                      color: '#ffffff',
-                      whiteSpace: 'nowrap',
-                      marginTop: 1
-                    }}>
-                      {isOccupied ? (language === 'am' ? 'የተያዘ' : 'Occupied') : (language === 'am' ? 'ነፃ' : 'Available')}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            {/* Tables Display: Grouped by section when ALL, or filtered grid */}
+            {selectedSectionFilter === 'ALL' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {tableSections.map(sec => {
+                  const secTables = tables.filter(tb => (tb.section || 'General') === sec);
+                  if (secTables.length === 0) return null;
+                  return (
+                    <div
+                      key={sec}
+                      style={{
+                        background: 'var(--bg-subtle, #f8fafc)',
+                        borderRadius: 12,
+                        padding: '8px 10px',
+                        border: '1px solid var(--border, #e2e8f0)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                          🏷️ {sec}
+                        </span>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', background: 'var(--bg-card)', padding: '1px 6px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                          {secTables.length} {language === 'am' ? 'ጠረጴዛዎች' : 'tables'}
+                        </span>
+                      </div>
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))',
+                        gap: 6
+                      }}>
+                        {secTables.map(tbl => renderTableBtn(tbl))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))',
+                gap: 6,
+                width: '100%',
+                maxWidth: '100%',
+                boxSizing: 'border-box'
+              }}>
+                {displayedTables.map(tbl => renderTableBtn(tbl))}
+              </div>
+            )}
           </div>
         );
       })()}
@@ -470,7 +564,22 @@ export const WaiterView: React.FC = () => {
   );
 
   const renderCategories = () => (
-    <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 10, marginBottom: 12 }}>
+    <div
+      className="no-scrollbar"
+      onWheel={(e) => {
+        if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) {
+          e.currentTarget.scrollLeft += e.deltaY;
+        }
+      }}
+      style={{
+        display: 'flex',
+        gap: 8,
+        flexWrap: isWide ? 'wrap' : 'nowrap',
+        overflowX: isWide ? 'visible' : 'auto',
+        paddingBottom: isWide ? 4 : 8,
+        marginBottom: 12
+      }}
+    >
       <button
         onClick={() => setSelectedCategory('all')}
         style={{

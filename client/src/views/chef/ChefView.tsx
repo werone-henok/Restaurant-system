@@ -693,8 +693,8 @@ export const ChefView: React.FC = () => {
             </div>
           </div>
 
-          {/* Category Filter Pills */}
-          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 14 }}>
+          {/* Category Filter Pills - Clean wrapping on PC */}
+          <div className="no-scrollbar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
             <button
               onClick={() => setSelectedCategoryFilter('ALL')}
               style={{

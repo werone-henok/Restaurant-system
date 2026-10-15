@@ -955,7 +955,7 @@ export const AdminView: React.FC = () => {
       </div>
 
       {/* Tab Navigation */}
-      <div style={{ display: 'flex', background: 'var(--bg-subtle)', borderRadius: 10, padding: 4, marginBottom: 16, overflowX: 'auto' }}>
+      <div className="no-scrollbar" style={{ display: 'flex', background: 'var(--bg-subtle)', borderRadius: 10, padding: 4, marginBottom: 16, overflowX: 'auto', flexWrap: 'wrap' }}>
         <button
           onClick={() => setActiveTab('employees')}
           style={{ flex: 1, minWidth: 70, padding: '8px 4px', fontSize: 11, fontWeight: 700, borderRadius: 8, background: activeTab === 'employees' ? '#ffffff' : 'transparent', color: activeTab === 'employees' ? 'var(--primary)' : 'var(--text-muted)' }}
@@ -1381,9 +1381,37 @@ export const AdminView: React.FC = () => {
         return (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase' }}>
-                {language === 'am' ? 'ጠረጴዛዎች እና ክፍሎች' : 'Tables & Restaurant Sections'} ({tables.length} tables)
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase' }}>
+                  {language === 'am' ? 'ጠረጴዛዎች እና ክፍሎች' : 'Tables & Restaurant Sections'} ({tables.length} tables)
+                </span>
+                {tableSections.length > 1 && (
+                  <select
+                    value={selectedAdminSectionFilter}
+                    onChange={(e) => setSelectedAdminSectionFilter(e.target.value)}
+                    style={{
+                      padding: '4px 10px',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      borderRadius: 10,
+                      border: '1px solid var(--border)',
+                      background: 'var(--bg-card)',
+                      color: 'var(--text-main)',
+                      cursor: 'pointer',
+                      height: 32
+                    }}
+                  >
+                    <option value="ALL">
+                      {language === 'am' ? '✨ ሁሉም ክፍሎች' : '✨ All Sections'} ({tables.length})
+                    </option>
+                    {tableSections.map(sec => (
+                      <option key={sec} value={sec}>
+                        {sec} ({tables.filter(t => (t.section || 'General') === sec).length})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button
                   onClick={handleSeedOfficialTables}
@@ -1413,8 +1441,22 @@ export const AdminView: React.FC = () => {
               </div>
             </div>
 
-            {/* Section Filter Pills */}
-            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 14 }}>
+            {/* Section Filter Pills - Clean wrapping without scrollbar on PC */}
+            <div
+              className="no-scrollbar"
+              onWheel={(e) => {
+                if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) {
+                  e.currentTarget.scrollLeft += e.deltaY;
+                }
+              }}
+              style={{
+                display: 'flex',
+                gap: 8,
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                marginBottom: 14
+              }}
+            >
               <button
                 onClick={() => setSelectedAdminSectionFilter('ALL')}
                 style={{
@@ -2338,8 +2380,22 @@ export const AdminView: React.FC = () => {
             </div>
           </div>
 
-          {/* Category Filter Pills */}
-          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 14 }}>
+          {/* Category Filter Pills - Wrapped cleanly on PC */}
+          <div
+            className="no-scrollbar"
+            onWheel={(e) => {
+              if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) {
+                e.currentTarget.scrollLeft += e.deltaY;
+              }
+            }}
+            style={{
+              display: 'flex',
+              gap: 8,
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              marginBottom: 14
+            }}
+          >
             <button
               onClick={() => setSelectedCategoryFilter('ALL')}
               style={{
@@ -2545,7 +2601,7 @@ export const AdminView: React.FC = () => {
             </div>
 
             {/* Filter Pills */}
-            <div style={{ display: 'flex', gap: 6, background: 'var(--bg-subtle)', padding: 4, borderRadius: 10, overflowX: 'auto' }}>
+            <div className="no-scrollbar" style={{ display: 'flex', gap: 6, background: 'var(--bg-subtle)', padding: 4, borderRadius: 10, flexWrap: 'wrap' }}>
               {(['PENDING', 'ALL', 'APPROVED', 'REJECTED'] as const).map(flt => {
                 const count = flt === 'ALL' 
                   ? accountRequests.length 
