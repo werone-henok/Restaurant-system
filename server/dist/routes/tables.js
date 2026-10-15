@@ -4,17 +4,28 @@ import { authenticate, authorizeRole } from '../middleware/auth.js';
 import { logAudit } from '../services/auditService.js';
 import { v4 as uuidv4 } from 'uuid';
 export const tableRouter = Router();
+import { OFFICIAL_TABLES } from '../database/officialTables.js';
+const officialOrderMap = new Map(OFFICIAL_TABLES.map((t, idx) => [t.table_number, idx]));
+function sortCanonicalTables(tables) {
+    return tables.sort((a, b) => {
+        const orderA = officialOrderMap.has(a.table_number) ? officialOrderMap.get(a.table_number) : 9999;
+        const orderB = officialOrderMap.has(b.table_number) ? officialOrderMap.get(b.table_number) : 9999;
+        if (orderA !== orderB)
+            return orderA - orderB;
+        return (a.table_number || '').localeCompare(b.table_number || '', undefined, { numeric: true });
+    });
+}
 // Get tables for a branch
 tableRouter.get('/', authenticate, (req, res) => {
     const rawBranchId = req.query.branchId;
     const isAll = rawBranchId === 'ALL' || (!rawBranchId && (req.user?.role === 'superadmin' || req.user?.role === 'owner' || req.user?.role === 'admin') && !req.user?.branch_id);
     const branchId = isAll ? null : (rawBranchId || req.user.branch_id);
     if (branchId) {
-        const tables = db.prepare('SELECT * FROM restaurant_tables WHERE branch_id = ? AND is_active = 1 ORDER BY table_number ASC').all(branchId);
-        return res.json(tables);
+        const tables = db.prepare('SELECT * FROM restaurant_tables WHERE branch_id = ? AND is_active = 1').all(branchId);
+        return res.json(sortCanonicalTables(tables));
     }
-    const tables = db.prepare('SELECT * FROM restaurant_tables WHERE is_active = 1 ORDER BY table_number ASC').all();
-    res.json(tables);
+    const tables = db.prepare('SELECT * FROM restaurant_tables WHERE is_active = 1').all();
+    res.json(sortCanonicalTables(tables));
 });
 // Update table status (e.g. AVAILABLE, OCCUPIED, RESERVED)
 tableRouter.patch('/:id/status', authenticate, (req, res) => {

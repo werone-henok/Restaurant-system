@@ -311,7 +311,23 @@ export const WaiterView: React.FC = () => {
       </div>
 
       {orderType === 'DINE_IN' && (() => {
-        const tableSections = Array.from(new Set(tables.map(tb => tb.section || 'General').filter(Boolean)));
+        const OFFICIAL_SECTION_ORDER = [
+          'Restaurant 1',
+          'TERAZ (Terrace)',
+          'Restaurant-02',
+          'Restaurant Coffee Area',
+          'Garden - Left Side',
+          'Berenda (Veranda)'
+        ];
+        const tableSections = Array.from(new Set(tables.map(tb => tb.section || 'General').filter(Boolean)))
+          .sort((a, b) => {
+            const idxA = OFFICIAL_SECTION_ORDER.indexOf(a);
+            const idxB = OFFICIAL_SECTION_ORDER.indexOf(b);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+            return a.localeCompare(b);
+          });
         const displayedTables = selectedSectionFilter === 'ALL'
           ? tables
           : tables.filter(tb => (tb.section || 'General') === selectedSectionFilter);

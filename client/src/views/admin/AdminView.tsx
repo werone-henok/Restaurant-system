@@ -268,7 +268,7 @@ export const AdminView: React.FC = () => {
       tactileFeedback('click');
       await api.request('/admin/seed-official-tables', {
         method: 'POST',
-        body: JSON.stringify({ branchId: currentBranchId === 'ALL' ? branches[0]?.id : currentBranchId })
+        body: JSON.stringify({ branchId: currentBranchId })
       });
       gToast.success(language === 'am' ? 'ኦፊሴላዊ ጠረጴዛዎች (51) በተሳካ ሁኔታ ተጭነዋል!' : 'Official tables (51) restored successfully!');
       await loadData();
@@ -1357,7 +1357,23 @@ export const AdminView: React.FC = () => {
 
       {/* 3. TABLES & SECTIONS MANAGEMENT TAB */}
       {activeTab === 'tables' && (() => {
-        const tableSections = Array.from(new Set(tables.map(t => t.section || 'General').filter(Boolean)));
+        const OFFICIAL_SECTION_ORDER = [
+          'Restaurant 1',
+          'TERAZ (Terrace)',
+          'Restaurant-02',
+          'Restaurant Coffee Area',
+          'Garden - Left Side',
+          'Berenda (Veranda)'
+        ];
+        const tableSections = Array.from(new Set(tables.map(t => t.section || 'General').filter(Boolean)))
+          .sort((a, b) => {
+            const idxA = OFFICIAL_SECTION_ORDER.indexOf(a);
+            const idxB = OFFICIAL_SECTION_ORDER.indexOf(b);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+            return a.localeCompare(b);
+          });
         const displayedTables = selectedAdminSectionFilter === 'ALL'
           ? tables
           : tables.filter(t => (t.section || 'General') === selectedAdminSectionFilter);

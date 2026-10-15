@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../database/schema.js';
 import { authenticate, authorizeRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import { logAudit } from '../services/auditService.js';
+import { seedOfficialTables } from '../database/officialTables.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export const branchRouter = Router();
@@ -31,6 +32,13 @@ branchRouter.post('/', authenticate, authorizeRole(['admin', 'owner']), (req: Au
     INSERT INTO branches (id, name, city, address, phone, tax_number, vat_rate)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(id, name, city, address || '', phone || '', tax_number || '', vat_rate !== undefined ? vat_rate : 0.15);
+
+  // Automatically provision the 51 official tables across all 6 sections for the new branch
+  try {
+    seedOfficialTables(id, true);
+  } catch (err) {
+    console.warn('[Branch] Notice: could not auto-seed tables for new branch:', err);
+  }
 
   logAudit({
     branchId: id,

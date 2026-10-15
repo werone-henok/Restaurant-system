@@ -525,19 +525,22 @@ adminRouter.post('/seed-official-menu', authenticate, authorizeRole(['admin', 'o
 // Re-seed Official Tables with 6 sections and 51 tables
 adminRouter.post('/seed-official-tables', authenticate, authorizeRole(['admin', 'owner', 'superadmin']), async (req: AuthenticatedRequest, res) => {
   try {
-    const branch = (req.body?.branchId as string) || req.user?.branch_id || 'branch_addis';
-    seedOfficialTables(branch, true);
+    const rawBranch = req.body?.branchId as string;
+    const branch = (rawBranch && rawBranch !== 'ALL') ? rawBranch : undefined;
+    const result = seedOfficialTables(branch, true);
     await syncDatabaseToCloud('official_tables_seeded');
     logAudit({
-      branchId: branch,
+      branchId: branch || 'ALL',
       userId: req.user!.id,
       action: 'OFFICIAL_TABLES_SEEDED',
       entityType: 'TABLE',
-      details: { seededBy: req.user?.username }
+      details: { seededBy: req.user?.username, seededBranches: result.seededBranches }
     });
     res.json({
       success: true,
-      message: 'Official restaurant sections and 51 tables successfully seeded!'
+      message: `Official restaurant sections and ${result.tablesPerBranch} tables successfully seeded for ${result.seededBranches.length} branch(es)!`,
+      seededBranches: result.seededBranches,
+      tablesPerBranch: result.tablesPerBranch
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to seed official tables' });

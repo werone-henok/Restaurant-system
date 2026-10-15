@@ -84,40 +84,116 @@ export const OFFICIAL_TABLES: OfficialTable[] = [
 
 /**
  * Seeds or restores the 51 official restaurant tables across the 6 sections
+ * for either a specific branch or ALL active branches in the system.
  */
-export function seedOfficialTables(targetBranchId?: string, force: boolean = false) {
+export function seedOfficialTables(targetBranchId?: string, force: boolean = false): { seededBranches: string[]; tablesPerBranch: number } {
+  const seededBranches: string[] = [];
   try {
-    const branch = targetBranchId || (db.prepare("SELECT id FROM branches ORDER BY created_at ASC LIMIT 1").get() as any)?.id || 'branch_addis';
-
-    const existingCount = db.prepare('SELECT COUNT(*) as count FROM restaurant_tables WHERE branch_id = ? AND is_active = 1').get(branch) as { count: number };
-    if (!force && existingCount && existingCount.count >= 20) {
-      console.log(`[Official Tables] Already seeded (${existingCount.count} tables for branch ${branch}). Skipping.`);
-      return;
+    // 1. Determine target branches
+    let branchesToSeed: string[] = [];
+    if (targetBranchId && targetBranchId !== 'ALL') {
+      branchesToSeed = [targetBranchId];
+    } else {
+      const activeBranches = db.prepare('SELECT id FROM branches WHERE is_active = 1').all() as Array<{ id: string }>;
+      if (activeBranches.length > 0) {
+        branchesToSeed = activeBranches.map(b => b.id);
+      } else {
+        branchesToSeed = ['branch_addis'];
+      }
     }
 
-    console.log(`[Official Tables] Seeding all 6 official sections and ${OFFICIAL_TABLES.length} tables for branch: ${branch}...`);
+    const officialNumbers = OFFICIAL_TABLES.map(t => t.table_number);
+    const placeholders = officialNumbers.map(() => '?').join(',');
 
-    const tx = db.transaction(() => {
-      const insertTable = db.prepare(`
-        INSERT INTO restaurant_tables (id, branch_id, table_number, name, section, capacity, status, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, 'AVAILABLE', 1)
-        ON CONFLICT(id) DO UPDATE SET
-          branch_id = excluded.branch_id,
-          table_number = excluded.table_number,
-          name = excluded.name,
-          section = excluded.section,
-          capacity = excluded.capacity,
-          is_active = 1
-      `);
+    const insertTable = db.prepare(`
+      INSERT INTO restaurant_tables (id, branch_id, table_number, name, section, capacity, status, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, 'AVAILABLE', 1)
+      ON CONFLICT(id) DO UPDATE SET
+        branch_id = excluded.branch_id,
+        table_number = excluded.table_number,
+        name = excluded.name,
+        section = excluded.section,
+        capacity = excluded.capacity,
+        is_active = 1
+    `);
 
-      for (const t of OFFICIAL_TABLES) {
-        insertTable.run(t.id, branch, t.table_number, t.name, t.section, t.capacity);
+    const findExistingTable = db.prepare('SELECT id FROM restaurant_tables WHERE branch_id = ? AND table_number = ?');
+    const findCountOfficial = db.prepare(`
+      SELECT COUNT(*) as count 
+      FROM restaurant_tables 
+      WHERE branch_id = ? AND is_active = 1 AND table_number IN (${placeholders})
+    `);
+    const findObsoleteTables = db.prepare(`
+      SELECT id, table_number, name FROM restaurant_tables 
+      WHERE branch_id = ? AND table_number NOT IN (${placeholders})
+    `);
+    const checkActiveOrders = db.prepare(`
+      SELECT COUNT(*) as count FROM orders 
+      WHERE table_id = ? AND status NOT IN ('COMPLETED', 'CANCELLED')
+    `);
+    const deleteTable = db.prepare('DELETE FROM restaurant_tables WHERE id = ?');
+    const deactivateTable = db.prepare('UPDATE restaurant_tables SET is_active = 0 WHERE id = ?');
+
+    for (const branchId of branchesToSeed) {
+      // Check if this branch already has all 51 official tables
+      const existingOfficial = findCountOfficial.get(branchId, ...officialNumbers) as { count: number };
+
+      if (!force && existingOfficial && existingOfficial.count >= OFFICIAL_TABLES.length) {
+        console.log(`[Official Tables] Branch "${branchId}" already has all ${existingOfficial.count} official tables. Skipping.`);
+        continue;
       }
-    });
 
-    tx();
-    console.log(`[Official Tables] ✓ Successfully seeded ${OFFICIAL_TABLES.length} tables across ${OFFICIAL_SECTIONS.length} sections!`);
+      console.log(`[Official Tables] Seeding all 6 official sections and ${OFFICIAL_TABLES.length} tables for branch "${branchId}"...`);
+
+      const tx = db.transaction(() => {
+        for (const t of OFFICIAL_TABLES) {
+          // Check if table already exists in this branch with this table_number
+          const existingRow = findExistingTable.get(branchId, t.table_number) as { id: string } | undefined;
+
+          // Unique ID per branch so multiple branches can co-exist safely
+          let tableId = existingRow?.id;
+          if (!tableId) {
+            tableId = branchId === 'branch_addis' ? t.id : `tbl_${branchId}_${t.id.replace(/^tbl_/, '')}`;
+          }
+
+          insertTable.run(tableId, branchId, t.table_number, t.name, t.section, t.capacity);
+        }
+
+        // Clean up obsolete/test tables (like RB-01, TB 002) that are not part of the official 51 tables
+        try {
+          const obsoleteTables = findObsoleteTables.all(branchId, ...officialNumbers) as Array<{ id: string; table_number: string; name: string }>;
+
+          for (const obs of obsoleteTables) {
+            // Check if there are active uncompleted orders on this table
+            const activeOrders = checkActiveOrders.get(obs.id) as { count: number } | undefined;
+
+            if (!activeOrders || activeOrders.count === 0) {
+              deleteTable.run(obs.id);
+              console.log(`[Official Tables] Cleaned up obsolete table: ${obs.table_number} (${obs.name}) from branch "${branchId}"`);
+            } else {
+              deactivateTable.run(obs.id);
+              console.log(`[Official Tables] Deactivated obsolete table with order history: ${obs.table_number} from branch "${branchId}"`);
+            }
+          }
+        } catch (cleanupErr) {
+          console.warn('[Official Tables] Notice during obsolete tables cleanup:', cleanupErr);
+        }
+      });
+
+      tx();
+      seededBranches.push(branchId);
+      console.log(`[Official Tables] ✓ Successfully seeded ${OFFICIAL_TABLES.length} tables for branch: ${branchId}`);
+    }
+
+    // Trigger debounced cloud sync if any branch was modified
+    if (seededBranches.length > 0) {
+      import('../services/cloudSyncService.js')
+        .then(m => m.requestDebouncedSync(3000))
+        .catch(() => {});
+    }
   } catch (err) {
     console.error('[Official Tables] Error seeding tables:', err);
   }
+
+  return { seededBranches, tablesPerBranch: OFFICIAL_TABLES.length };
 }
