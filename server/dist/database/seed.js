@@ -1,7 +1,15 @@
 import { db, initDatabase } from './schema.js';
 import { hashSecretSync } from '../utils/security.js';
+import { seedOfficialMenu } from './officialMenu.js';
 export function seedDatabase() {
     initDatabase();
+    // Ensure official menu items (11 categories, 96 items) exist
+    try {
+        seedOfficialMenu(false);
+    }
+    catch (err) {
+        console.warn('Could not auto-seed official menu:', err);
+    }
     // Auto-backfill photo_urls for existing menu items if missing or empty
     try {
         const updatePhoto = db.prepare(`UPDATE menu_items SET photo_url = ? WHERE id = ? AND (photo_url IS NULL OR photo_url = '')`);

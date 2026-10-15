@@ -14,19 +14,37 @@ import { resolveImageUrl } from '../../utils/imageUrl';
 import { formatOrderDateTime } from '../../utils/timezone';
 
 const CATEGORY_EMOJIS: Record<string, string> = {
-  cat_burgers: '🍔',
+  cat_snack: '🍔',
   cat_pizza: '🍕',
+  cat_juice: '🧃',
+  cat_hot_drinks: '☕',
+  cat_salad: '🥗',
+  cat_fish: '🐟',
+  cat_breakfast: '🍳',
+  cat_lunch: '🍲',
+  cat_asian_fusion: '🍜',
+  cat_pasta_rice: '🍝',
+  cat_cold_drinks: '🥤',
+  cat_burgers: '🍔',
   cat_coffee: '☕',
-  cat_cold_drinks: '🧃',
   cat_dessert: '🍰',
   cat_traditional: '🍲'
 };
 
 const CATEGORY_NAMES_AM: Record<string, string> = {
-  cat_burgers: 'በርገር',
+  cat_snack: 'መክሰስ',
   cat_pizza: 'ፒዛ',
-  cat_coffee: 'ቡናና ሻይ',
+  cat_juice: 'ጭማቂ',
+  cat_hot_drinks: 'ትኩስ መጠጦች',
+  cat_salad: 'ሰላጣ',
+  cat_fish: 'የዓሣ ምግቦች',
+  cat_breakfast: 'ቁርስ',
+  cat_lunch: 'ምሳ',
+  cat_asian_fusion: 'ኤዥያን ፊውዥን',
+  cat_pasta_rice: 'ፓስታ እና ሩዝ',
   cat_cold_drinks: 'ቀዝቃዛ መጠጦች',
+  cat_burgers: 'በርገር',
+  cat_coffee: 'ቡናና ሻይ',
   cat_dessert: 'ጣፋጭ',
   cat_traditional: 'ባህላዊ ምግቦች'
 };

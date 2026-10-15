@@ -9,6 +9,7 @@ import { validate } from '../middleware/validate.js';
 import { createStaffSchema, updateUserStatusSchema } from '../schemas/api.schemas.js';
 import { getSyncStatus, syncDatabaseToCloud } from '../services/cloudSyncService.js';
 import { broadcastEvent } from '../services/websocket.js';
+import { seedOfficialMenu } from '../database/officialMenu.js';
 
 export const adminRouter = Router();
 
@@ -496,6 +497,27 @@ adminRouter.post('/clean-demo-data', authenticate, authorizeRole(['superadmin'])
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to clean demo data' });
+  }
+});
+
+// Re-seed Official Menu with 11 categories and 96 items
+adminRouter.post('/seed-official-menu', authenticate, authorizeRole(['admin', 'owner', 'superadmin']), async (req: AuthenticatedRequest, res) => {
+  try {
+    seedOfficialMenu(true);
+    await syncDatabaseToCloud('official_menu_seeded');
+    logAudit({
+      branchId: req.user?.branch_id || 'branch_addis',
+      userId: req.user!.id,
+      action: 'OFFICIAL_MENU_SEEDED',
+      entityType: 'MENU',
+      details: { seededBy: req.user?.username }
+    });
+    res.json({
+      success: true,
+      message: 'Official restaurant menu successfully seeded with 11 categories and 96 items!'
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to seed official menu' });
   }
 });
 

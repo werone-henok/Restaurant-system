@@ -42,6 +42,7 @@ export const AdminView: React.FC = () => {
   const [menuRouting, setMenuRouting] = useState<'KITCHEN' | 'BAR' | 'BOTH' | 'BAKERY' | 'FRONT_COUNTER'>('KITCHEN');
   const [menuDesc, setMenuDesc] = useState('');
   const [menuPhoto, setMenuPhoto] = useState<string>('');
+  const [isSeedingMenu, setIsSeedingMenu] = useState(false);
 
   // Table & Section Management State
   const [showTableModal, setShowTableModal] = useState(false);
@@ -678,6 +679,25 @@ export const AdminView: React.FC = () => {
       gToast.error(err.message || 'Failed to wipe demo data');
     } finally {
       setIsCleaningDemo(false);
+    }
+  };
+
+  const handleSeedOfficialMenu = async () => {
+    const confirmMsg = language === 'am'
+      ? 'ኦፊሴላዊውን የምግብ ዝርዝር (11 ምድቦች እና 96 ምግቦች ከፎቶዎቻቸው ጋር) ወደ ነበረበት መመለስ ይፈልጋሉ?'
+      : 'Do you want to restore/sync the official menu catalogue (11 categories and 96 items with photos)?';
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setIsSeedingMenu(true);
+      tactileFeedback('click');
+      await api.request('/admin/seed-official-menu', { method: 'POST' });
+      gToast.success(language === 'am' ? 'ኦፊሴላዊው የምግብ ዝርዝር በተሳካ ሁኔታ ተጭኗል!' : 'Official menu successfully restored!');
+      await loadData();
+    } catch (err: any) {
+      gToast.error(err.message || 'Failed to restore official menu');
+    } finally {
+      setIsSeedingMenu(false);
     }
   };
 
@@ -2154,7 +2174,16 @@ export const AdminView: React.FC = () => {
             <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase' }}>
               {language === 'am' ? 'የምግብ ካታሎግ' : 'Menu Catalogue'} ({menuItems.length} items)
             </span>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                onClick={handleSeedOfficialMenu}
+                disabled={isSeedingMenu}
+                className="btn btn-secondary"
+                style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+                title={language === 'am' ? 'ሁሉንም 11 ምድቦች እና 96 ምግቦች ጫን' : 'Restore all 11 official categories & 96 items'}
+              >
+                <Sparkles size={14} color="#f59e0b" /> {isSeedingMenu ? (language === 'am' ? 'በመጫን ላይ...' : 'Seeding...') : (language === 'am' ? 'ኦፊሴላዊ ምናሌ ጫን' : 'Restore Official Menu')}
+              </button>
               <button
                 onClick={() => setShowCategoryModal(true)}
                 className="btn btn-secondary"
