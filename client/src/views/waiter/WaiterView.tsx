@@ -57,6 +57,7 @@ export const WaiterView: React.FC = () => {
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedTable, setSelectedTable] = useState<string>('');
+  const [selectedSectionFilter, setSelectedSectionFilter] = useState<string>('ALL');
   const [orderType, setOrderType] = useState<'DINE_IN' | 'TAKEAWAY' | 'DELIVERY'>('DINE_IN');
   const [cart, setCart] = useState<{ [id: string]: { item: any; quantity: number; notes: string } }>({});
   const [specialNotes, setSpecialNotes] = useState('');
@@ -309,66 +310,146 @@ export const WaiterView: React.FC = () => {
         })}
       </div>
 
-      {orderType === 'DINE_IN' && (
-        <div style={{ width: '100%', boxSizing: 'border-box' }}>
-          <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main, #0f172a)', display: 'block', marginBottom: 8 }}>
-            📍 {t('select_table')} {selectedTable && <span style={{ color: '#ea580c', fontWeight: 900 }}>({tables.find(tb => tb.id === selectedTable)?.table_number || ''})</span>}
-          </label>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(68px, 1fr))',
-            gap: 6,
-            width: '100%',
-            maxWidth: '100%',
-            boxSizing: 'border-box'
-          }}>
-            {tables.map(tbl => {
-              const isSelected = selectedTable === tbl.id;
-              const isOccupied = tbl.status === 'OCCUPIED';
-              return (
+      {orderType === 'DINE_IN' && (() => {
+        const tableSections = Array.from(new Set(tables.map(tb => tb.section || 'General').filter(Boolean)));
+        const displayedTables = selectedSectionFilter === 'ALL'
+          ? tables
+          : tables.filter(tb => (tb.section || 'General') === selectedSectionFilter);
+
+        return (
+          <div style={{ width: '100%', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
+              <label style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main, #0f172a)', display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+                📍 {t('select_table')} {selectedTable && <span style={{ color: '#ea580c', fontWeight: 900 }}>({tables.find(tb => tb.id === selectedTable)?.table_number || ''})</span>}
+              </label>
+              {selectedTable && (
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  {tables.find(tb => tb.id === selectedTable)?.section} • {tables.find(tb => tb.id === selectedTable)?.name}
+                </span>
+              )}
+            </div>
+
+            {/* Section Filter Pills */}
+            {tableSections.length > 1 && (
+              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 6, marginBottom: 8 }}>
                 <button
-                  key={tbl.id}
                   type="button"
-                  onClick={() => setSelectedTable(tbl.id)}
+                  onClick={() => setSelectedSectionFilter('ALL')}
                   style={{
-                    padding: '8px 4px',
-                    borderRadius: 12,
-                    textAlign: 'center',
-                    border: isSelected ? '2.5px solid #ea580c' : '1px solid var(--border, #e2e8f0)',
-                    background: isSelected ? '#fff7ed' : isOccupied ? '#fef2f2' : 'var(--bg-card, #ffffff)',
-                    color: isSelected ? '#ea580c' : 'var(--text-main, #0f172a)',
-                    boxShadow: isSelected ? '0 0 0 2px rgba(234, 88, 12, 0.25)' : 'var(--shadow-sm)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 2,
+                    padding: '4px 10px',
+                    borderRadius: 16,
+                    fontSize: 11,
+                    fontWeight: selectedSectionFilter === 'ALL' ? 800 : 700,
+                    border: selectedSectionFilter === 'ALL' ? 'none' : '1px solid var(--border)',
+                    background: selectedSectionFilter === 'ALL' ? '#ea580c' : 'var(--bg-card, #ffffff)',
+                    color: selectedSectionFilter === 'ALL' ? '#ffffff' : 'var(--text-main)',
                     cursor: 'pointer',
-                    boxSizing: 'border-box',
-                    minWidth: 0,
-                    transition: 'all 0.15s ease'
+                    whiteSpace: 'nowrap'
                   }}
                 >
-                  <span style={{ fontSize: 14, fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
-                    {tbl.table_number}
-                  </span>
-                  <span style={{
-                    fontSize: 9,
-                    fontWeight: 800,
-                    padding: '2px 4px',
-                    borderRadius: 4,
-                    background: isOccupied ? '#ef4444' : '#10b981',
-                    color: '#ffffff',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    {isOccupied ? (language === 'am' ? 'የተያዘ' : 'Occupied') : (language === 'am' ? 'ነፃ' : 'Available')}
-                  </span>
+                  {language === 'am' ? 'ሁሉም ክፍሎች' : 'All Sections'} ({tables.length})
                 </button>
-              );
-            })}
+                {tableSections.map(sec => {
+                  const count = tables.filter(tb => (tb.section || 'General') === sec).length;
+                  const isSelected = selectedSectionFilter === sec;
+                  return (
+                    <button
+                      key={sec}
+                      type="button"
+                      onClick={() => setSelectedSectionFilter(sec)}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: 16,
+                        fontSize: 11,
+                        fontWeight: isSelected ? 800 : 700,
+                        border: isSelected ? 'none' : '1px solid var(--border)',
+                        background: isSelected ? '#ea580c' : 'var(--bg-card, #ffffff)',
+                        color: isSelected ? '#ffffff' : 'var(--text-main)',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}
+                    >
+                      <span>{sec}</span>
+                      <span style={{
+                        fontSize: 9,
+                        padding: '1px 5px',
+                        borderRadius: 10,
+                        background: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--bg-subtle)',
+                        color: isSelected ? '#ffffff' : 'var(--text-muted)'
+                      }}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))',
+              gap: 6,
+              width: '100%',
+              maxWidth: '100%',
+              boxSizing: 'border-box'
+            }}>
+              {displayedTables.map(tbl => {
+                const isSelected = selectedTable === tbl.id;
+                const isOccupied = tbl.status === 'OCCUPIED';
+                return (
+                  <button
+                    key={tbl.id}
+                    type="button"
+                    onClick={() => setSelectedTable(tbl.id)}
+                    style={{
+                      padding: '8px 4px',
+                      borderRadius: 12,
+                      textAlign: 'center',
+                      border: isSelected ? '2.5px solid #ea580c' : '1px solid var(--border, #e2e8f0)',
+                      background: isSelected ? '#fff7ed' : isOccupied ? '#fef2f2' : 'var(--bg-card, #ffffff)',
+                      color: isSelected ? '#ea580c' : 'var(--text-main, #0f172a)',
+                      boxShadow: isSelected ? '0 0 0 2px rgba(234, 88, 12, 0.25)' : 'var(--shadow-sm)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 2,
+                      cursor: 'pointer',
+                      boxSizing: 'border-box',
+                      minWidth: 0,
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <span style={{ fontSize: 13, fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                      {tbl.table_number}
+                    </span>
+                    {tbl.name && tbl.name !== tbl.table_number && (
+                      <span style={{ fontSize: 9, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '96%', lineHeight: 1.1 }}>
+                        {tbl.name}
+                      </span>
+                    )}
+                    <span style={{
+                      fontSize: 8.5,
+                      fontWeight: 800,
+                      padding: '2px 4px',
+                      borderRadius: 4,
+                      background: isOccupied ? '#ef4444' : '#10b981',
+                      color: '#ffffff',
+                      whiteSpace: 'nowrap',
+                      marginTop: 1
+                    }}>
+                      {isOccupied ? (language === 'am' ? 'የተያዘ' : 'Occupied') : (language === 'am' ? 'ነፃ' : 'Available')}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 

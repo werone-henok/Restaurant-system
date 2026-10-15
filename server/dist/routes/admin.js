@@ -10,6 +10,7 @@ import { createStaffSchema, updateUserStatusSchema } from '../schemas/api.schema
 import { getSyncStatus, syncDatabaseToCloud } from '../services/cloudSyncService.js';
 import { broadcastEvent } from '../services/websocket.js';
 import { seedOfficialMenu } from '../database/officialMenu.js';
+import { seedOfficialTables } from '../database/officialTables.js';
 export const adminRouter = Router();
 // 1. Get All Users (with branch name)
 adminRouter.get('/users', authenticate, authorizeRole(['admin', 'owner']), (_req, res) => {
@@ -440,6 +441,28 @@ adminRouter.post('/seed-official-menu', authenticate, authorizeRole(['admin', 'o
     }
     catch (err) {
         res.status(500).json({ error: err.message || 'Failed to seed official menu' });
+    }
+});
+// Re-seed Official Tables with 6 sections and 51 tables
+adminRouter.post('/seed-official-tables', authenticate, authorizeRole(['admin', 'owner', 'superadmin']), async (req, res) => {
+    try {
+        const branch = req.body?.branchId || req.user?.branch_id || 'branch_addis';
+        seedOfficialTables(branch, true);
+        await syncDatabaseToCloud('official_tables_seeded');
+        logAudit({
+            branchId: branch,
+            userId: req.user.id,
+            action: 'OFFICIAL_TABLES_SEEDED',
+            entityType: 'TABLE',
+            details: { seededBy: req.user?.username }
+        });
+        res.json({
+            success: true,
+            message: 'Official restaurant sections and 51 tables successfully seeded!'
+        });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message || 'Failed to seed official tables' });
     }
 });
 // 8. Delete Staff Member (Owner & Admin only; cannot delete Owner or self)

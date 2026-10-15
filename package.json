@@ -11,6 +11,7 @@
     "license:generate": "node server/scripts/generate-license.js",
     "db:clean": "node server/scripts/clean-demo-data.js",
     "db:seed-menu": "node server/scripts/seed-official-menu.js",
+    "db:seed-tables": "node server/scripts/seed-official-tables.js",
     "dev:server": "cd server && npm run dev",
     "dev:client": "cd client && npm run dev"
   },

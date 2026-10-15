@@ -1,6 +1,7 @@
 import { db, initDatabase } from './schema.js';
 import { hashSecretSync } from '../utils/security.js';
 import { seedOfficialMenu } from './officialMenu.js';
+import { seedOfficialTables } from './officialTables.js';
 export function seedDatabase() {
     initDatabase();
     // Ensure official menu items (11 categories, 96 items) exist
@@ -9,6 +10,13 @@ export function seedDatabase() {
     }
     catch (err) {
         console.warn('Could not auto-seed official menu:', err);
+    }
+    // Ensure official restaurant sections and 51 tables exist
+    try {
+        seedOfficialTables(undefined, false);
+    }
+    catch (err) {
+        console.warn('Could not auto-seed official tables:', err);
     }
     // Auto-backfill photo_urls for existing menu items if missing or empty
     try {

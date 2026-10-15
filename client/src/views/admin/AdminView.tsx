@@ -51,10 +51,12 @@ export const AdminView: React.FC = () => {
   const [editingTableId, setEditingTableId] = useState<string | null>(null);
   const [tableNumber, setTableNumber] = useState('');
   const [tableName, setTableName] = useState('');
-  const [tableSection, setTableSection] = useState('Main Dining');
+  const [tableSection, setTableSection] = useState('Restaurant 1');
   const [customSection, setCustomSection] = useState('');
   const [tableCapacity, setTableCapacity] = useState<number>(4);
   const [tableBranch, setTableBranch] = useState(currentBranchId);
+  const [isSeedingTables, setIsSeedingTables] = useState(false);
+  const [selectedAdminSectionFilter, setSelectedAdminSectionFilter] = useState<string>('ALL');
 
   // Staff Creation & Photo Upload State
   const [showStaffModal, setShowStaffModal] = useState(false);
@@ -252,6 +254,28 @@ export const AdminView: React.FC = () => {
       loadData();
     } catch (err: any) {
       gToast.error(err.message || 'Failed to delete table');
+    }
+  };
+
+  const handleSeedOfficialTables = async () => {
+    const confirmMsg = language === 'am'
+      ? 'ሁሉንም 6 ክፍሎች እና 51 ኦፊሴላዊ ጠረጴዛዎችን ወደ ነበረበት መመለስ ይፈልጋሉ?'
+      : 'Do you want to restore/sync all 6 official sections and 51 tables?';
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setIsSeedingTables(true);
+      tactileFeedback('click');
+      await api.request('/admin/seed-official-tables', {
+        method: 'POST',
+        body: JSON.stringify({ branchId: currentBranchId === 'ALL' ? branches[0]?.id : currentBranchId })
+      });
+      gToast.success(language === 'am' ? 'ኦፊሴላዊ ጠረጴዛዎች (51) በተሳካ ሁኔታ ተጭነዋል!' : 'Official tables (51) restored successfully!');
+      await loadData();
+    } catch (err: any) {
+      gToast.error(err.message || 'Failed to restore official tables');
+    } finally {
+      setIsSeedingTables(false);
     }
   };
 
@@ -1332,64 +1356,138 @@ export const AdminView: React.FC = () => {
       )}
 
       {/* 3. TABLES & SECTIONS MANAGEMENT TAB */}
-      {activeTab === 'tables' && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase' }}>
-              Tables & Restaurant Sections
-            </span>
-            <button
-              onClick={() => {
-                setEditingTableId(null);
-                setTableNumber('');
-                setTableName('');
-                setTableSection('Main Dining');
-                setCustomSection('');
-                setTableCapacity(4);
-                setTableBranch(currentBranchId === 'ALL' ? branches[0]?.id : currentBranchId);
-                setShowTableModal(true);
-              }}
-              className="btn btn-primary"
-              style={{ padding: '6px 12px', fontSize: 12 }}
-            >
-              <Plus size={14} /> Add Table / Section
-            </button>
-          </div>
+      {activeTab === 'tables' && (() => {
+        const tableSections = Array.from(new Set(tables.map(t => t.section || 'General').filter(Boolean)));
+        const displayedTables = selectedAdminSectionFilter === 'ALL'
+          ? tables
+          : tables.filter(t => (t.section || 'General') === selectedAdminSectionFilter);
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
-            {tables.map(tbl => (
-              <div key={tbl.id} style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: 14, padding: 12, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: 'var(--shadow-sm)' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--primary)' }}>
-                      {tbl.table_number}
+        return (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase' }}>
+                {language === 'am' ? 'ጠረጴዛዎች እና ክፍሎች' : 'Tables & Restaurant Sections'} ({tables.length} tables)
+              </span>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  onClick={handleSeedOfficialTables}
+                  disabled={isSeedingTables}
+                  className="btn btn-secondary"
+                  style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+                  title={language === 'am' ? 'ሁሉንም 6 ክፍሎች እና 51 ኦፊሴላዊ ጠረጴዛዎችን ጫን' : 'Restore all 6 official sections and 51 tables'}
+                >
+                  <Sparkles size={14} color="#f59e0b" /> {isSeedingTables ? (language === 'am' ? 'በመጫን ላይ...' : 'Seeding...') : (language === 'am' ? 'ኦፊሴላዊ ጠረጴዛዎችን ጫን (51)' : 'Restore Official Tables (51)')}
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingTableId(null);
+                    setTableNumber('');
+                    setTableName('');
+                    setTableSection('Restaurant 1');
+                    setCustomSection('');
+                    setTableCapacity(4);
+                    setTableBranch(currentBranchId === 'ALL' ? branches[0]?.id : currentBranchId);
+                    setShowTableModal(true);
+                  }}
+                  className="btn btn-primary"
+                  style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 800 }}
+                >
+                  <Plus size={14} /> {language === 'am' ? 'ጠረጴዛ ጨምር' : 'Add Table / Section'}
+                </button>
+              </div>
+            </div>
+
+            {/* Section Filter Pills */}
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 14 }}>
+              <button
+                onClick={() => setSelectedAdminSectionFilter('ALL')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: 800,
+                  border: selectedAdminSectionFilter === 'ALL' ? 'none' : '1px solid var(--border)',
+                  background: selectedAdminSectionFilter === 'ALL' ? 'var(--primary)' : 'var(--bg-card)',
+                  color: selectedAdminSectionFilter === 'ALL' ? '#ffffff' : 'var(--text-main)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {language === 'am' ? 'ሁሉም ክፍሎች' : 'All Sections'} ({tables.length})
+              </button>
+              {tableSections.map(sec => {
+                const count = tables.filter(t => (t.section || 'General') === sec).length;
+                const isSelected = selectedAdminSectionFilter === sec;
+                return (
+                  <button
+                    key={sec}
+                    onClick={() => setSelectedAdminSectionFilter(sec)}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: 20,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      border: isSelected ? 'none' : '1px solid var(--border)',
+                      background: isSelected ? 'var(--primary)' : 'var(--bg-card)',
+                      color: isSelected ? '#ffffff' : 'var(--text-main)',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}
+                  >
+                    <span>📍</span>
+                    <span>{sec}</span>
+                    <span style={{
+                      fontSize: 10,
+                      padding: '1px 6px',
+                      borderRadius: 10,
+                      background: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--bg-subtle)',
+                      color: isSelected ? '#ffffff' : 'var(--text-muted)'
+                    }}>
+                      {count}
                     </span>
-                    <span className={`badge badge-${tbl.status === 'AVAILABLE' ? 'ready' : tbl.status === 'OCCUPIED' ? 'cancelled' : 'pending'}`}>
-                      {tbl.status}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+              {displayedTables.map(tbl => (
+                <div key={tbl.id} style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: 14, padding: 12, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: 'var(--shadow-sm)' }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: 16, fontWeight: 900, color: 'var(--primary)' }}>
+                        {tbl.table_number}
+                      </span>
+                      <span className={`badge badge-${tbl.status === 'AVAILABLE' ? 'ready' : tbl.status === 'OCCUPIED' ? 'cancelled' : 'pending'}`}>
+                        {tbl.status === 'AVAILABLE' ? (language === 'am' ? 'ነፃ' : 'AVAILABLE') : tbl.status === 'OCCUPIED' ? (language === 'am' ? 'የተያዘ' : 'OCCUPIED') : tbl.status}
+                      </span>
+                    </div>
+                    <h5 style={{ fontSize: 13, fontWeight: 700, margin: '2px 0' }}>{tbl.name}</h5>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginTop: 2 }}>
+                      📍 Section: <strong style={{ color: 'var(--text-main)' }}>{tbl.section}</strong>
+                    </span>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      Capacity: {tbl.capacity} Guests
                     </span>
                   </div>
-                  <h5 style={{ fontSize: 13, fontWeight: 700 }}>{tbl.name}</h5>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginTop: 2 }}>
-                    📍 Section: <strong style={{ color: 'var(--text-main)' }}>{tbl.section}</strong>
-                  </span>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    Capacity: {tbl.capacity} Guests
-                  </span>
-                </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 10, borderTop: '1px dashed var(--border)', paddingTop: 8 }}>
-                  <button onClick={() => openEditTable(tbl)} className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: 11 }}>
-                    <Edit2 size={13} /> Edit
-                  </button>
-                  <button onClick={() => handleDeleteTable(tbl.id, tbl.table_number)} className="btn btn-danger" style={{ padding: '4px 8px', fontSize: 11 }}>
-                    <Trash2 size={13} />
-                  </button>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 10, borderTop: '1px dashed var(--border)', paddingTop: 8 }}>
+                    <button onClick={() => openEditTable(tbl)} className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: 11 }}>
+                      <Edit2 size={13} /> {language === 'am' ? 'አስተካክል' : 'Edit'}
+                    </button>
+                    <button onClick={() => handleDeleteTable(tbl.id, tbl.table_number)} className="btn btn-danger" style={{ padding: '4px 8px', fontSize: 11 }}>
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 4. BRANDING & APP NAME SETTINGS TAB */}
       {activeTab === 'settings' && (
@@ -3001,12 +3099,12 @@ export const AdminView: React.FC = () => {
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Restaurant Area / Section</label>
                   <select value={tableSection} onChange={e => setTableSection(e.target.value)} style={{ width: '100%', marginBottom: tableSection === 'CUSTOM' ? 8 : 0 }}>
-                    <option value="Main Dining">Main Dining Hall</option>
-                    <option value="Window View">Window View</option>
-                    <option value="Balcony">Balcony Terrace</option>
-                    <option value="VIP Lounge">VIP Private Suite</option>
-                    <option value="Cocktail & Coffee Bar">Cocktail & Coffee Bar</option>
-                    <option value="Outdoor Garden">Outdoor Garden</option>
+                    <option value="Restaurant 1">Restaurant 1</option>
+                    <option value="TERAZ (Terrace)">TERAZ (Terrace)</option>
+                    <option value="Restaurant-02">Restaurant-02</option>
+                    <option value="Restaurant Coffee Area">Restaurant Coffee Area</option>
+                    <option value="Garden - Left Side">Garden - Left Side</option>
+                    <option value="Berenda (Veranda)">Berenda (Veranda)</option>
                     <option value="CUSTOM">+ Create New Custom Section...</option>
                   </select>
 
