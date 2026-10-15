@@ -136,6 +136,16 @@ orderRouter.post('/', authenticate, (req, res) => {
     if (resolvedOrderType === 'DINE_IN' && !table_id) {
         return res.status(400).json({ error: 'Table selection is required for Dine-In orders. Please select a table before placing the order.' });
     }
+    // Validate item availability: check if any item is marked out of stock
+    for (const it of items) {
+        const menuItem = db.prepare('SELECT id, is_available, name, name_amharic FROM menu_items WHERE id = ?').get(it.menu_item_id);
+        if (menuItem && menuItem.is_available === 0) {
+            const displayName = menuItem.name_amharic || menuItem.name;
+            return res.status(400).json({
+                error: `Dish "${displayName}" is marked out of stock (አልቋል) by the kitchen and cannot be ordered.`
+            });
+        }
+    }
     const targetBranch = branch_id || req.user.branch_id;
     // Idempotency check for offline sync
     if (client_tx_id) {

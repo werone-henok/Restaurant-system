@@ -4,6 +4,7 @@ import { authenticate, authorizeRole } from '../middleware/auth.js';
 import { logAudit } from '../services/auditService.js';
 import { requestDebouncedSync } from '../services/cloudSyncService.js';
 import { v4 as uuidv4 } from 'uuid';
+import { broadcastEvent } from '../services/websocket.js';
 import { createCategorySchema, updateCategorySchema } from '../schemas/api.schemas.js';
 export const menuRouter = Router();
 // Get categories
@@ -142,10 +143,10 @@ menuRouter.get('/items/search', authenticate, (req, res) => {
 });
 // Get menu items with recipes
 menuRouter.get('/items', authenticate, (req, res) => {
-    const includeAll = req.query.all === 'true';
-    const whereClause = includeAll
-        ? 'WHERE m.deleted_at IS NULL'
-        : 'WHERE m.is_available = 1 AND m.deleted_at IS NULL';
+    const availableOnly = req.query.availableOnly === 'true';
+    const whereClause = availableOnly
+        ? 'WHERE m.is_available = 1 AND m.deleted_at IS NULL'
+        : 'WHERE m.deleted_at IS NULL';
     const items = db.prepare(`
     SELECT m.*, c.name as category_name,
            bpv.product_id as bakery_product_id,
@@ -217,6 +218,16 @@ menuRouter.post('/items', authenticate, authorizeRole(['admin', 'owner', 'chef']
         }
     });
     tx();
+    const newItem = db.prepare(`
+    SELECT m.*, c.name as category_name
+    FROM menu_items m
+    JOIN menu_categories c ON m.category_id = c.id
+    WHERE m.id = ?
+  `).get(itemId);
+    broadcastEvent({
+        type: 'MENU_ITEM_CREATED',
+        payload: { id: itemId, item: newItem }
+    });
     logAudit({
         branchId: req.user.branch_id,
         userId: req.user.id,
@@ -335,16 +346,45 @@ menuRouter.put('/items/:id', authenticate, authorizeRole(['admin', 'owner', 'che
         is_available = COALESCE(?, is_available)
     WHERE id = ?
   `).run(category_id ?? null, name ?? null, name_amharic ?? null, description ?? null, price !== undefined ? Number(price) : null, photo_url !== undefined ? photo_url : null, prep_time_minutes !== undefined ? Number(prep_time_minutes) : null, routing_destination ?? null, is_available !== undefined ? (is_available ? 1 : 0) : null, req.params.id);
+    const updatedItem = db.prepare(`
+    SELECT m.*, c.name as category_name,
+           bpv.product_id as bakery_product_id,
+           bp.name as bakery_product_name,
+           bp.name_amharic as bakery_product_name_amharic,
+           bp.description as bakery_product_description,
+           bp.photo_url as bakery_product_photo,
+           bpv.variation_name as bakery_variation_name,
+           bpv.size as bakery_size,
+           bpv.flavor_type as bakery_flavor,
+           bpv.counter_stock as bakery_counter_stock,
+           bpv.is_available as bakery_variation_available,
+           bpv.unavailable_reason as bakery_unavailable_reason
+    FROM menu_items m
+    JOIN menu_categories c ON m.category_id = c.id
+    LEFT JOIN bakery_product_variations bpv ON m.bakery_variation_id = bpv.id
+    LEFT JOIN bakery_products bp ON bpv.product_id = bp.id
+    WHERE m.id = ?
+  `).get(req.params.id);
+    broadcastEvent({
+        type: 'MENU_ITEM_UPDATED',
+        payload: {
+            id: req.params.id,
+            is_available: updatedItem ? updatedItem.is_available : (is_available !== undefined ? (is_available ? 1 : 0) : item.is_available),
+            name: updatedItem?.name || item.name,
+            name_amharic: updatedItem?.name_amharic || item.name_amharic,
+            item: updatedItem
+        }
+    });
     logAudit({
         branchId: req.user.branch_id,
         userId: req.user.id,
         action: 'MENU_ITEM_UPDATED',
         entityType: 'MENU_ITEM',
         entityId: req.params.id,
-        details: { name: name || item.name, price: price || item.price }
+        details: { name: name || item.name, price: price || item.price, is_available: is_available !== undefined ? (is_available ? 1 : 0) : item.is_available }
     });
     requestDebouncedSync();
-    res.json({ message: 'Menu item updated successfully', id: req.params.id });
+    res.json({ message: 'Menu item updated successfully', id: req.params.id, item: updatedItem });
 });
 // Delete menu item (Soft delete: Admin, Owner, Chef)
 menuRouter.delete('/items/:id', authenticate, authorizeRole(['admin', 'owner', 'chef']), (req, res) => {
@@ -352,6 +392,10 @@ menuRouter.delete('/items/:id', authenticate, authorizeRole(['admin', 'owner', '
     if (!item || item.deleted_at)
         return res.status(404).json({ error: 'Menu item not found' });
     db.prepare('UPDATE menu_items SET deleted_at = CURRENT_TIMESTAMP, is_available = 0 WHERE id = ?').run(req.params.id);
+    broadcastEvent({
+        type: 'MENU_ITEM_DELETED',
+        payload: { id: req.params.id, name: item.name }
+    });
     logAudit({
         branchId: req.user.branch_id,
         userId: req.user.id,

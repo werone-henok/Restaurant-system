@@ -128,6 +128,13 @@ export const ChefView: React.FC = () => {
             triggerNotificationSound('chef', undefined, `Order #${event.payload?.orderNumber || ''}`);
           }
         }, 300);
+      } else if (event.type === 'MENU_ITEM_UPDATED') {
+        const { id, is_available, item } = event.payload || {};
+        if (id) {
+          setMenuItems(prev => prev.map(m => m.id === id ? { ...m, ...(item || {}), is_available } : m));
+        }
+      } else if (['MENU_ITEM_CREATED', 'MENU_ITEM_DELETED', 'MENU_CATEGORIES_UPDATED'].includes(event.type)) {
+        loadCatalog();
       }
     });
 

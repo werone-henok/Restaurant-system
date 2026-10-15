@@ -85,6 +85,10 @@ export const ModifyOrderModal: React.FC<ModifyOrderModalProps> = ({ order, onClo
   };
 
   const handleAddItem = (dish: any) => {
+    if (dish.is_available === 0 || dish.is_available === false) {
+      gToast.error(language === 'am' ? `"${dish.name_amharic || dish.name}" አልቋል (Out of Stock)` : `"${dish.name}" is out of stock`);
+      return;
+    }
     setItems(prev => {
       const existingIdx = prev.findIndex(it => it.menu_item_id === dish.id);
       if (existingIdx >= 0) {
@@ -375,36 +379,58 @@ export const ModifyOrderModal: React.FC<ModifyOrderModalProps> = ({ order, onClo
                     {loadingMenu ? 'Loading menu...' : (language === 'am' ? 'ምግብ አልተገኘም' : 'No dishes found')}
                   </div>
                 ) : (
-                  filteredMenu.map(m => (
-                    <div
-                      key={m.id}
-                      onClick={() => handleAddItem(m)}
-                      style={{
-                        padding: '10px 14px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        borderBottom: '1px solid var(--border)',
-                        cursor: 'pointer',
-                        transition: 'background 0.15s ease'
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-subtle, #f8fafc)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = '#ffffff')}
-                    >
-                      <div>
-                        <span style={{ fontWeight: 700, fontSize: 13 }}>{m.name}</span>
-                        {m.name_amharic && (
-                          <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 6 }}>({m.name_amharic})</span>
+                  filteredMenu.map(m => {
+                    const isUnavailable = m.is_available === 0 || m.is_available === false;
+                    return (
+                      <div
+                        key={m.id}
+                        onClick={() => handleAddItem(m)}
+                        style={{
+                          padding: '10px 14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          borderBottom: '1px solid var(--border)',
+                          cursor: isUnavailable ? 'not-allowed' : 'pointer',
+                          background: isUnavailable ? '#fef2f2' : '#ffffff',
+                          opacity: isUnavailable ? 0.7 : 1,
+                          transition: 'background 0.15s ease'
+                        }}
+                        onMouseEnter={e => {
+                          if (!isUnavailable) e.currentTarget.style.background = 'var(--bg-subtle, #f8fafc)';
+                        }}
+                        onMouseLeave={e => {
+                          if (!isUnavailable) e.currentTarget.style.background = '#ffffff';
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontWeight: 700, fontSize: 13, color: isUnavailable ? '#991b1b' : 'inherit' }}>{m.name}</span>
+                            {m.name_amharic && (
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>({m.name_amharic})</span>
+                            )}
+                            {isUnavailable && (
+                              <span style={{ fontSize: 9.5, fontWeight: 800, color: '#dc2626', background: '#fee2e2', border: '1px solid #fca5a5', padding: '1px 5px', borderRadius: 4 }}>
+                                ✕ {language === 'am' ? 'አልቋል' : 'Unavailable'}
+                              </span>
+                            )}
+                          </div>
+                          <span style={{ fontSize: 11, color: isUnavailable ? '#94a3b8' : 'var(--primary)', fontWeight: 700, display: 'block', textDecoration: isUnavailable ? 'line-through' : 'none' }}>
+                            {m.price} {t('currency')}
+                          </span>
+                        </div>
+                        {isUnavailable ? (
+                          <span style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 800 }}>
+                            ✕ {language === 'am' ? 'አልቋል' : 'Unavailable'}
+                          </span>
+                        ) : (
+                          <span className="btn btn-sm btn-primary" style={{ padding: '4px 10px', fontSize: 12 }}>
+                            + {language === 'am' ? 'ጨምር' : 'Add'}
+                          </span>
                         )}
-                        <span style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700, display: 'block' }}>
-                          {m.price} {t('currency')}
-                        </span>
                       </div>
-                      <span className="btn btn-sm btn-primary" style={{ padding: '4px 10px', fontSize: 12 }}>
-                        + {language === 'am' ? 'ጨምር' : 'Add'}
-                      </span>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             )}

@@ -920,6 +920,11 @@ bakeryRouter.patch('/variations/:id/availability', authenticate, authorizeRole([
         updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
   `).run(is_available ? 1 : 0, is_available ? null : (unavailable_reason || null), id);
+    db.prepare(`
+    UPDATE menu_items
+    SET is_available = ?
+    WHERE bakery_variation_id = ?
+  `).run(is_available ? 1 : 0, id);
     broadcastEvent({
         type: 'BAKERY_ITEM_AVAILABILITY_CHANGED',
         branchId,

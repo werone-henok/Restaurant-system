@@ -114,7 +114,7 @@ export const WaiterView: React.FC = () => {
   const loadData = () => {
     api.request<any[]>(`/tables?branchId=${currentBranchId}`).then(setTables).catch(() => {});
     api.request<any[]>('/menu/categories').then(setCategories).catch(() => {});
-    api.request<any[]>('/menu/items').then(setMenuItems).catch(() => {});
+    api.request<any[]>('/menu/items?all=true').then(setMenuItems).catch(() => {});
     api.request<any[]>(`/orders?branchId=${currentBranchId}&myOrders=true`).then(setMyOrders).catch(() => {});
     if (canViewHistory('waiter')) {
       loadHistory();
@@ -148,6 +148,31 @@ export const WaiterView: React.FC = () => {
             triggerNotificationSound('waiter', undefined, `Order #${event.payload?.orderNumber || ''} is ready`);
           }
         }, 300);
+      } else if (event.type === 'MENU_ITEM_UPDATED') {
+        const { id, is_available, name, name_amharic, item } = event.payload || {};
+        if (id) {
+          setMenuItems(prev => prev.map(m => m.id === id ? { ...m, ...(item || {}), is_available } : m));
+          const displayName = language === 'am' ? (name_amharic || name) : (name || name_amharic);
+          if (is_available === 0 || is_available === false) {
+            gToast.warning(
+              language === 'am'
+                ? `⚠️ ማብሰያ ክፍሉ "${displayName}" ማለቁን (አልቋል) አስታውቋል!`
+                : `⚠️ Kitchen marked "${displayName}" as Out of Stock!`
+            );
+            triggerNotificationSound('waiter', undefined, `${displayName} is out of stock`);
+          } else if (is_available === 1 || is_available === true) {
+            gToast.success(
+              language === 'am'
+                ? `✅ "${displayName}" አሁን ዝግጁ ነው!`
+                : `✅ "${displayName}" is now Available!`
+            );
+          }
+        }
+      } else if (['MENU_ITEM_CREATED', 'MENU_ITEM_DELETED', 'MENU_CATEGORIES_UPDATED', 'BAKERY_ITEM_AVAILABILITY_CHANGED'].includes(event.type)) {
+        api.request<any[]>('/menu/items?all=true').then(setMenuItems).catch(() => {});
+        if (event.type === 'BAKERY_ITEM_AVAILABILITY_CHANGED' && event.payload?.is_available === 0) {
+          gToast.warning(language === 'am' ? '⚠️ የዳቦ/ኬክ ምርት ማለቁ ተመዝግቧል' : '⚠️ Bakery item marked out of stock');
+        }
       }
     });
 
@@ -167,6 +192,23 @@ export const WaiterView: React.FC = () => {
   }, [currentBranchId]);
 
   const addToCart = (item: any) => {
+    const isItemDisabled = item.is_available === 0 || item.is_available === false;
+    const stock = item.bakery_counter_stock ?? item.counter_stock;
+    const isOutOfStock = stock !== undefined && stock !== null && stock <= 0;
+    const isBakeryPaused = item.bakery_variation_available === 0 || item.bakery_variation_available === false;
+    const hasStock = stock !== undefined && stock !== null && stock > 0;
+    const isUnavailable = isItemDisabled || isOutOfStock || (isBakeryPaused && !hasStock);
+
+    if (isUnavailable) {
+      tactileFeedback('warning');
+      gToast.error(
+        language === 'am'
+          ? `ይቅርታ፣ "${item.name_amharic || item.name}" በአሁኑ ወቅት አልቋል (Out of Stock)`
+          : `Sorry, "${item.name}" is currently Out of Stock`
+      );
+      return;
+    }
+
     setCart(prev => ({
       ...prev,
       [item.id]: {
@@ -205,6 +247,27 @@ export const WaiterView: React.FC = () => {
       tactileFeedback('warning');
       gToast.error(t('cart_empty'));
       speak(language === 'am' ? 'ትዕዛዝ አልተመረጠም' : 'Order is empty', language);
+      return;
+    }
+
+    const unavailableInCart = cartList.filter(c => {
+      const it = c.item;
+      const isItemDisabled = it.is_available === 0 || it.is_available === false;
+      const stock = it.bakery_counter_stock ?? it.counter_stock;
+      const isOutOfStock = stock !== undefined && stock !== null && stock <= 0;
+      const isBakeryPaused = it.bakery_variation_available === 0 || it.bakery_variation_available === false;
+      const hasStock = stock !== undefined && stock !== null && stock > 0;
+      return isItemDisabled || isOutOfStock || (isBakeryPaused && !hasStock);
+    });
+
+    if (unavailableInCart.length > 0) {
+      tactileFeedback('warning');
+      const names = unavailableInCart.map(c => c.item.name_amharic || c.item.name).join(', ');
+      gToast.error(
+        language === 'am'
+          ? `ይቅርታ፣ እነዚህ ምግቦች ስላለቁ ከትዕዛዝዎ ያስወግዱ: ${names}`
+          : `Please remove out of stock items from order: ${names}`
+      );
       return;
     }
 
@@ -740,29 +803,52 @@ export const WaiterView: React.FC = () => {
           // If combined bakery group with multiple sizes/types
           if (group.isGroup && group.variations.length > 1) {
             const totalInCart = group.variations.reduce((sum, v) => sum + (cart[v.id]?.quantity || 0), 0);
+            const allVariationsUnavailable = group.variations.every(v => {
+              const isItemDisabled = v.is_available === 0 || v.is_available === false;
+              const stock = v.bakery_counter_stock ?? v.counter_stock;
+              const isOutOfStock = stock !== undefined && stock !== null && stock <= 0;
+              const isBakeryPaused = v.bakery_variation_available === 0 || v.bakery_variation_available === false;
+              const hasStock = stock !== undefined && stock !== null && stock > 0;
+              return isItemDisabled || isOutOfStock || (isBakeryPaused && !hasStock);
+            });
 
             return (
               <div
                 key={group.id}
                 style={{
-                  background: 'var(--bg-card, #ffffff)',
-                  border: totalInCart > 0 ? '1.5px solid #ea580c' : '1px solid var(--border, #e2e8f0)',
+                  background: allVariationsUnavailable && totalInCart === 0 ? 'var(--bg-subtle, #fef2f2)' : 'var(--bg-card, #ffffff)',
+                  border: allVariationsUnavailable && totalInCart === 0
+                    ? '1.5px dashed #f87171'
+                    : totalInCart > 0
+                      ? '1.5px solid #ea580c'
+                      : '1px solid var(--border, #e2e8f0)',
                   borderRadius: 14,
                   overflow: 'hidden',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
-                  boxShadow: totalInCart > 0 ? '0 4px 14px rgba(234, 88, 12, 0.16)' : '0 2px 8px rgba(0,0,0,0.06)',
+                  boxShadow: allVariationsUnavailable && totalInCart === 0
+                    ? 'none'
+                    : totalInCart > 0
+                      ? '0 4px 14px rgba(234, 88, 12, 0.16)'
+                      : '0 2px 8px rgba(0,0,0,0.06)',
+                  opacity: allVariationsUnavailable && totalInCart === 0 ? 0.82 : 1,
                   transition: 'all 0.2s ease'
                 }}
               >
                 {/* Photo Banner with Badges */}
-                <div style={{ position: 'relative', width: '100%', height: 120, background: 'linear-gradient(135deg, #f97316, #ea580c)', overflow: 'hidden' }}>
+                <div style={{ position: 'relative', width: '100%', height: 120, background: allVariationsUnavailable && totalInCart === 0 ? 'linear-gradient(135deg, #94a3b8, #64748b)' : 'linear-gradient(135deg, #f97316, #ea580c)', overflow: 'hidden' }}>
                   {group.photoUrl ? (
                     <img
                       src={resolveImageUrl(group.photoUrl)}
                       alt={group.productName}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        display: 'block',
+                        filter: allVariationsUnavailable && totalInCart === 0 ? 'grayscale(0.65)' : 'none'
+                      }}
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
@@ -805,6 +891,29 @@ export const WaiterView: React.FC = () => {
                   >
                     {group.routingDestination}
                   </span>
+
+                  {/* Out of stock badge if all variations are unavailable */}
+                  {allVariationsUnavailable && totalInCart === 0 && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        fontSize: 10,
+                        fontWeight: 900,
+                        color: '#ffffff',
+                        background: '#dc2626',
+                        padding: '3px 8px',
+                        borderRadius: 12,
+                        boxShadow: '0 2px 6px rgba(220, 38, 38, 0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 3
+                      }}
+                    >
+                      <span>✕</span> {language === 'am' ? 'አልቋል' : 'Unavailable'}
+                    </span>
+                  )}
 
                   {/* Floating In-Cart Badge for this bakery item */}
                   {totalInCart > 0 && (
@@ -1087,27 +1196,47 @@ export const WaiterView: React.FC = () => {
           const m = group.variations[0] || group.baseItem;
           const inCart = cart[m.id]?.quantity || 0;
 
+          const isItemDisabled = m.is_available === 0 || m.is_available === false;
+          const stock = m.bakery_counter_stock ?? m.counter_stock;
+          const hasStock = stock !== undefined && stock !== null && stock > 0;
+          const isOutOfStock = stock !== undefined && stock !== null && stock <= 0;
+          const isBakeryPaused = m.bakery_variation_available === 0 || m.bakery_variation_available === false;
+          const isUnavailable = isItemDisabled || isOutOfStock || (isBakeryPaused && !hasStock);
+
           return (
             <div
               key={m.id}
               style={{
-                background: 'var(--bg-card, #ffffff)',
-                border: inCart > 0 ? '1.5px solid #ea580c' : '1px solid var(--border, #e2e8f0)',
+                background: isUnavailable ? 'var(--bg-subtle, #fef2f2)' : 'var(--bg-card, #ffffff)',
+                border: isUnavailable
+                  ? '1.5px dashed #f87171'
+                  : inCart > 0
+                    ? '1.5px solid #ea580c'
+                    : '1px solid var(--border, #e2e8f0)',
                 borderRadius: 14,
                 overflow: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                boxShadow: inCart > 0 ? '0 4px 14px rgba(234, 88, 12, 0.16)' : '0 2px 8px rgba(0,0,0,0.06)'
+                boxShadow: isUnavailable ? 'none' : inCart > 0 ? '0 4px 14px rgba(234, 88, 12, 0.16)' : '0 2px 8px rgba(0,0,0,0.06)',
+                opacity: isUnavailable ? 0.8 : 1,
+                transition: 'all 0.2s ease',
+                position: 'relative'
               }}
             >
               {/* Photo or Gradient Avatar Banner */}
-              <div style={{ position: 'relative', width: '100%', height: 120, background: 'linear-gradient(135deg, #f97316, #ea580c)', overflow: 'hidden' }}>
+              <div style={{ position: 'relative', width: '100%', height: 120, background: isUnavailable ? 'linear-gradient(135deg, #94a3b8, #64748b)' : 'linear-gradient(135deg, #f97316, #ea580c)', overflow: 'hidden' }}>
                 {m.photo_url ? (
                   <img
                     src={resolveImageUrl(m.photo_url)}
                     alt={m.name}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      display: 'block',
+                      filter: isUnavailable ? 'grayscale(0.65)' : 'none'
+                    }}
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.style.display = 'none';
@@ -1149,14 +1278,87 @@ export const WaiterView: React.FC = () => {
                 >
                   {m.routing_destination}
                 </span>
+
+                {/* OUT OF STOCK BADGE ON TOP RIGHT OF IMAGE */}
+                {isUnavailable ? (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      fontSize: 10,
+                      fontWeight: 900,
+                      color: '#ffffff',
+                      background: '#dc2626',
+                      padding: '3px 8px',
+                      borderRadius: 12,
+                      boxShadow: '0 2px 6px rgba(220, 38, 38, 0.4)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 3
+                    }}
+                  >
+                    <span>✕</span> {language === 'am' ? 'አልቋል' : 'Unavailable'}
+                  </span>
+                ) : null}
+
+                {/* Grayscale overlay when unavailable */}
+                {isUnavailable && (
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'rgba(15, 23, 42, 0.35)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <span style={{
+                      background: 'rgba(220, 38, 38, 0.95)',
+                      color: '#ffffff',
+                      fontSize: 12,
+                      fontWeight: 900,
+                      padding: '4px 12px',
+                      borderRadius: 20,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      letterSpacing: '0.4px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}>
+                      <span>✕</span> {language === 'am' ? 'አልቋል' : 'OUT OF STOCK'}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div style={{ padding: 12, display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
                 <div>
                   {/* Amharic name primary, English subtitle secondary */}
-                  <h4 style={{ fontSize: 15, fontWeight: 800, margin: '2px 0 2px', lineHeight: 1.3, color: 'var(--text-main, #0f172a)' }}>
-                    {m.name_amharic || m.name}
-                  </h4>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap' }}>
+                    <h4 style={{
+                      fontSize: 15,
+                      fontWeight: 800,
+                      margin: '2px 0 2px',
+                      lineHeight: 1.3,
+                      color: isUnavailable ? '#991b1b' : 'var(--text-main, #0f172a)'
+                    }}>
+                      {m.name_amharic || m.name}
+                    </h4>
+                    {isUnavailable && (
+                      <span style={{
+                        fontSize: 9.5,
+                        fontWeight: 800,
+                        color: '#dc2626',
+                        background: '#fee2e2',
+                        border: '1px solid #fca5a5',
+                        padding: '1px 6px',
+                        borderRadius: 6
+                      }}>
+                        ✕ {language === 'am' ? 'አልቋል' : 'Unavailable'}
+                      </span>
+                    )}
+                  </div>
+
                   {m.name_amharic && (
                     <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', display: 'block', marginBottom: 4 }}>
                       {m.name}
@@ -1169,7 +1371,12 @@ export const WaiterView: React.FC = () => {
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
                   <div>
-                    <span style={{ fontSize: 17, fontWeight: 900, color: 'var(--text-main, #0f172a)' }}>
+                    <span style={{
+                      fontSize: 17,
+                      fontWeight: 900,
+                      color: isUnavailable ? '#94a3b8' : 'var(--text-main, #0f172a)',
+                      textDecoration: isUnavailable ? 'line-through' : 'none'
+                    }}>
                       {m.price}
                     </span>
                     <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #64748b)', marginLeft: 3 }}>
@@ -1177,7 +1384,30 @@ export const WaiterView: React.FC = () => {
                     </span>
                   </div>
 
-                  {inCart > 0 ? (
+                  {isUnavailable ? (
+                    <button
+                      type="button"
+                      disabled
+                      style={{
+                        background: '#fee2e2',
+                        color: '#dc2626',
+                        border: '1px solid #fca5a5',
+                        borderRadius: 10,
+                        padding: '6px 10px',
+                        fontSize: 11,
+                        fontWeight: 800,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        cursor: 'not-allowed',
+                        opacity: 0.95
+                      }}
+                      title={language === 'am' ? 'ይህ ምግብ አልቋል፣ ማዘዝ አይቻልም' : 'This item is out of stock and cannot be ordered'}
+                    >
+                      <span>✕</span>
+                      <span>{language === 'am' ? 'አልቋል' : 'Unavailable'}</span>
+                    </button>
+                  ) : inCart > 0 ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff7ed', border: '1.5px solid #ea580c', borderRadius: 20, padding: '4px 8px' }}>
                       <button
                         type="button"
@@ -1279,12 +1509,66 @@ export const WaiterView: React.FC = () => {
           {language === 'am' ? 'የአሁኑ ትዕዛዝ' : 'Current Order'}
         </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-          {cartList.map(line => (
-            <div key={line.item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-              <span>{line.quantity}x {line.item.name}</span>
-              <span style={{ fontWeight: 800 }}>{line.item.price * line.quantity} {t('currency')}</span>
-            </div>
-          ))}
+          {cartList.map(line => {
+            const it = line.item;
+            const isItemDisabled = it.is_available === 0 || it.is_available === false;
+            const stock = it.bakery_counter_stock ?? it.counter_stock;
+            const isOutOfStock = stock !== undefined && stock !== null && stock <= 0;
+            const isBakeryPaused = it.bakery_variation_available === 0 || it.bakery_variation_available === false;
+            const hasStock = stock !== undefined && stock !== null && stock > 0;
+            const isItemUnavailable = isItemDisabled || isOutOfStock || (isBakeryPaused && !hasStock);
+
+            return (
+              <div
+                key={line.item.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: 13,
+                  padding: isItemUnavailable ? '6px 8px' : '2px 0',
+                  borderRadius: 8,
+                  background: isItemUnavailable ? '#fee2e2' : 'transparent',
+                  border: isItemUnavailable ? '1px dashed #f87171' : 'none'
+                }}
+              >
+                <div>
+                  <span style={{ color: isItemUnavailable ? '#991b1b' : 'inherit', fontWeight: isItemUnavailable ? 700 : 500 }}>
+                    {line.quantity}x {language === 'am' ? (line.item.name_amharic || line.item.name) : line.item.name}
+                  </span>
+                  {isItemUnavailable && (
+                    <span style={{ fontSize: 10, fontWeight: 800, color: '#dc2626', display: 'block', marginTop: 1 }}>
+                      ⚠️ {language === 'am' ? 'አልቋል! እባክዎ ያስወግዱ' : 'Out of stock! Please remove'}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontWeight: 800, color: isItemUnavailable ? '#991b1b' : 'inherit' }}>
+                    {line.item.price * line.quantity} {t('currency')}
+                  </span>
+                  {isItemUnavailable && (
+                    <button
+                      type="button"
+                      onClick={() => removeFromCart(line.item.id)}
+                      style={{
+                        background: '#dc2626',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: 6,
+                        padding: '2px 7px',
+                        fontSize: 10.5,
+                        fontWeight: 800,
+                        cursor: 'pointer'
+                      }}
+                      title="Remove out of stock item"
+                    >
+                      {language === 'am' ? 'አስወግድ' : 'Remove'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Quick Preset Note Chips */}
