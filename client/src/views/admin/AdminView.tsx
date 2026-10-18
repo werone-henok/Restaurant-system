@@ -13,6 +13,7 @@ import { gToast } from '../../utils/toast';
 import { tactileFeedback } from '../../utils/feedback';
 import { ModalPortal } from '../../components/ModalPortal';
 import { AiAssistantModal } from '../../components/AiAssistantModal';
+import { CustomerFeedbackDashboard } from './CustomerFeedbackDashboard';
 
 export const AdminView: React.FC = () => {
   const { 
@@ -20,7 +21,7 @@ export const AdminView: React.FC = () => {
     currentBranchId, branches, refreshBranches, settings, refreshSettings, 
     t, language, setTimezoneMode, setSelectedTimezone, activeTimezone, formatTime 
   } = useApp();
-  const [activeTab, setActiveTab] = useState<'employees' | 'branches' | 'tables' | 'settings' | 'expenses' | 'audit' | 'menu' | 'analytics' | 'accountRequests'>('employees');
+  const [activeTab, setActiveTab] = useState<'employees' | 'branches' | 'tables' | 'settings' | 'expenses' | 'audit' | 'menu' | 'analytics' | 'accountRequests' | 'feedback'>('employees');
   const [users, setUsers] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -1038,6 +1039,13 @@ export const AdminView: React.FC = () => {
           style={{ flex: 1, minWidth: 70, padding: '8px 4px', fontSize: 11, fontWeight: 700, borderRadius: 8, background: activeTab === 'analytics' ? '#ffffff' : 'transparent', color: activeTab === 'analytics' ? 'var(--primary)' : 'var(--text-muted)' }}
         >
           {language === 'am' ? 'ሪፖርቶች' : 'Analytics'}
+        </button>
+        <button
+          onClick={() => setActiveTab('feedback')}
+          style={{ flex: 1, minWidth: 78, padding: '8px 4px', fontSize: 11, fontWeight: 700, borderRadius: 8, background: activeTab === 'feedback' ? '#ffffff' : 'transparent', color: activeTab === 'feedback' ? 'var(--primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+        >
+          <span>⭐</span>
+          <span>{language === 'am' ? 'አስተያየት' : 'Feedback'}</span>
         </button>
       </div>
 
@@ -2845,6 +2853,13 @@ export const AdminView: React.FC = () => {
                 })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* 9. CUSTOMER FEEDBACK & QR CODE REVIEWS TAB */}
+      {activeTab === 'feedback' && (
+        <div style={{ marginTop: 10 }}>
+          <CustomerFeedbackDashboard />
         </div>
       )}
 

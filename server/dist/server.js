@@ -27,6 +27,7 @@ import { uploadRouter } from './routes/upload.js';
 import { notificationRouter } from './routes/notifications.js';
 import { bakeryRouter } from './routes/bakery.js';
 import { aiRouter } from './routes/ai.js';
+import { feedbackRouter } from './routes/feedback.js';
 import { licenseRouter } from './routes/license.js';
 import { licenseEnforcer } from './middleware/licenseEnforcer.js';
 import { initBackupScheduler } from './services/backupService.js';
@@ -228,6 +229,7 @@ async function bootstrap() {
     app.use('/api/notifications', notificationRouter);
     app.use('/api/bakery', bakeryRouter);
     app.use('/api/ai', aiRouter);
+    app.use('/api/feedback', feedbackRouter);
     // ── 404 catch-all for unmatched API routes ─────────────────────────
     app.all('/api/*', notFoundHandler);
     // ── SPA Catch-all (Serves React web app on all web routes) ────────

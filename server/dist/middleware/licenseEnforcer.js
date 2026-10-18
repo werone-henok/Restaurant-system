@@ -3,7 +3,8 @@ const ALLOWED_UNLICENSED_PATHS = [
     '/api/license',
     '/api/health',
     '/api/auth/login',
-    '/api/auth/me'
+    '/api/auth/me',
+    '/api/feedback'
 ];
 /**
  * Middleware that blocks operational restaurant APIs if the system

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { DetailedReportsDashboard } from '../../components/DetailedReportsDashboard';
 import { AiAssistantModal } from '../../components/AiAssistantModal';
+import { CustomerFeedbackDashboard } from '../admin/CustomerFeedbackDashboard';
 import { useApp } from '../../context/AppContext';
-import { Sparkles, Eye, EyeOff } from 'lucide-react';
+import { Sparkles, Eye, EyeOff, BarChart3, Star } from 'lucide-react';
 import { api } from '../../api/client';
 import { gToast } from '../../utils/toast';
 import { tactileFeedback } from '../../utils/feedback';
@@ -11,6 +12,7 @@ export const OwnerView: React.FC = () => {
   const { currentBranchId, language, settings, refreshSettings } = useApp();
   const [showAiModal, setShowAiModal] = useState(false);
   const [isTogglingHistory, setIsTogglingHistory] = useState(false);
+  const [ownerSection, setOwnerSection] = useState<'reports' | 'feedback'>('reports');
 
   const isStaffHistoryVisible = settings?.staff_history_visible !== 0;
 
@@ -197,7 +199,71 @@ export const OwnerView: React.FC = () => {
         </button>
       </div>
 
-      <DetailedReportsDashboard />
+      {/* Executive Section Navigation Switcher */}
+      <div style={{
+        display: 'flex',
+        gap: 8,
+        background: 'var(--bg-subtle, #f1f5f9)',
+        padding: 4,
+        borderRadius: 14,
+        marginBottom: 16
+      }}>
+        <button
+          type="button"
+          onClick={() => { tactileFeedback('click'); setOwnerSection('reports'); }}
+          style={{
+            flex: 1,
+            padding: '10px 14px',
+            borderRadius: 10,
+            border: 'none',
+            background: ownerSection === 'reports' ? 'var(--bg-card, #ffffff)' : 'transparent',
+            color: ownerSection === 'reports' ? 'var(--primary, #f59e0b)' : 'var(--text-muted, #64748b)',
+            fontWeight: 800,
+            fontSize: 13,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            boxShadow: ownerSection === 'reports' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <BarChart3 size={16} />
+          <span>{language === 'am' ? 'የሽያጭና ፋይናንስ ሪፖርቶች' : 'Sales & Financial Reports'}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { tactileFeedback('click'); setOwnerSection('feedback'); }}
+          style={{
+            flex: 1,
+            padding: '10px 14px',
+            borderRadius: 10,
+            border: 'none',
+            background: ownerSection === 'feedback' ? 'var(--bg-card, #ffffff)' : 'transparent',
+            color: ownerSection === 'feedback' ? 'var(--primary, #f59e0b)' : 'var(--text-muted, #64748b)',
+            fontWeight: 800,
+            fontSize: 13,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            boxShadow: ownerSection === 'feedback' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <Star size={16} />
+          <span>{language === 'am' ? 'የደንበኞች አስተያየትና QR ምዘና' : 'Guest Feedback & Reviews'}</span>
+        </button>
+      </div>
+
+      {ownerSection === 'reports' ? (
+        <DetailedReportsDashboard />
+      ) : (
+        <CustomerFeedbackDashboard />
+      )}
 
       <AiAssistantModal
         isOpen={showAiModal}

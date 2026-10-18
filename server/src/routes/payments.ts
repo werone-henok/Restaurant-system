@@ -218,6 +218,8 @@ paymentRouter.post('/', authenticate, authorizeRole(['cashier', 'admin', 'owner'
       receiptNumber,
       date: new Date().toISOString(),
       cashier: req.user!.full_name,
+      branchId: order.branch_id,
+      tableNumber: order.table_number,
       subtotal: order.subtotal,
       taxAmount: order.tax_amount,
       discountAmount: order.discount_amount,

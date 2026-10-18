@@ -563,7 +563,38 @@ export function initDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- Customer Feedback & QR Code Reviews
+    CREATE TABLE IF NOT EXISTS customer_feedback (
+      id TEXT PRIMARY KEY,
+      branch_id TEXT NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+      table_number TEXT,
+      order_id TEXT,
+      waiter_id TEXT,
+      waiter_name TEXT,
+      overall_rating INTEGER NOT NULL, -- 1 to 5
+      food_rating INTEGER, -- 1 to 5
+      service_rating INTEGER, -- 1 to 5
+      cleanliness_rating INTEGER, -- 1 to 5
+      ambiance_rating INTEGER, -- 1 to 5
+      comment TEXT,
+      dishes_feedback TEXT, -- JSON array of { name: string, liked: boolean } or strings
+      customer_name TEXT,
+      customer_phone TEXT,
+      customer_email TEXT,
+      sentiment TEXT DEFAULT 'NEUTRAL', -- 'POSITIVE', 'NEUTRAL', 'NEGATIVE'
+      status TEXT DEFAULT 'NEW', -- 'NEW', 'REVIEWED', 'RESOLVED', 'ARCHIVED'
+      manager_notes TEXT,
+      language TEXT DEFAULT 'en', -- 'en', 'am', 'om'
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     -- Performance Indexes
+    CREATE INDEX IF NOT EXISTS idx_feedback_branch ON customer_feedback(branch_id);
+    CREATE INDEX IF NOT EXISTS idx_feedback_rating ON customer_feedback(overall_rating);
+    CREATE INDEX IF NOT EXISTS idx_feedback_status ON customer_feedback(status);
+    CREATE INDEX IF NOT EXISTS idx_feedback_created ON customer_feedback(created_at);
+
     CREATE INDEX IF NOT EXISTS idx_orders_branch ON orders(branch_id);
     CREATE INDEX IF NOT EXISTS idx_orders_waiter ON orders(waiter_id);
     CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
@@ -667,7 +698,14 @@ export function runMigrations() {
     "CREATE INDEX IF NOT EXISTS idx_user_account_requests_status ON user_account_requests(status)",
 
     // System License & Hardware Anti-Theft Lock
-    "CREATE TABLE IF NOT EXISTS system_license (id TEXT PRIMARY KEY, license_key TEXT NOT NULL, license_token TEXT NOT NULL, restaurant_name TEXT NOT NULL, machine_id TEXT NOT NULL, plan TEXT NOT NULL, max_branches INTEGER DEFAULT 5, expires_at TEXT NOT NULL, status TEXT NOT NULL, last_verified_at DATETIME DEFAULT CURRENT_TIMESTAMP, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
+    "CREATE TABLE IF NOT EXISTS system_license (id TEXT PRIMARY KEY, license_key TEXT NOT NULL, license_token TEXT NOT NULL, restaurant_name TEXT NOT NULL, machine_id TEXT NOT NULL, plan TEXT NOT NULL, max_branches INTEGER DEFAULT 5, expires_at TEXT NOT NULL, status TEXT NOT NULL, last_verified_at DATETIME DEFAULT CURRENT_TIMESTAMP, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
+
+    // Customer Feedback & QR Code Reviews
+    "CREATE TABLE IF NOT EXISTS customer_feedback (id TEXT PRIMARY KEY, branch_id TEXT NOT NULL REFERENCES branches(id) ON DELETE CASCADE, table_number TEXT, order_id TEXT, waiter_id TEXT, waiter_name TEXT, overall_rating INTEGER NOT NULL, food_rating INTEGER, service_rating INTEGER, cleanliness_rating INTEGER, ambiance_rating INTEGER, comment TEXT, dishes_feedback TEXT, customer_name TEXT, customer_phone TEXT, customer_email TEXT, sentiment TEXT DEFAULT 'NEUTRAL', status TEXT DEFAULT 'NEW', manager_notes TEXT, language TEXT DEFAULT 'en', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
+    "CREATE INDEX IF NOT EXISTS idx_feedback_branch ON customer_feedback(branch_id)",
+    "CREATE INDEX IF NOT EXISTS idx_feedback_rating ON customer_feedback(overall_rating)",
+    "CREATE INDEX IF NOT EXISTS idx_feedback_status ON customer_feedback(status)",
+    "CREATE INDEX IF NOT EXISTS idx_feedback_created ON customer_feedback(created_at)"
   ];
 
   for (const sql of migrations) {

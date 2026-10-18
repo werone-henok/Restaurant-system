@@ -7,6 +7,7 @@ import { OrderHistoryModal } from '../../components/OrderHistoryModal';
 import { ModifyOrderModal } from '../../components/ModifyOrderModal';
 import { gToast } from '../../utils/toast';
 import { formatOrderDateTime } from '../../utils/timezone';
+import { generateQrDataUrl, buildFeedbackUrl } from '../../utils/qrCode';
 
 export const CashierView: React.FC = () => {
   const { currentBranchId, branches, settings, t, language, canViewHistory } = useApp();
@@ -19,10 +20,21 @@ export const CashierView: React.FC = () => {
     { method: 'CASH', amount: 0 }
   ]);
   const [receipt, setReceipt] = useState<any | null>(null);
+  const [receiptQr, setReceiptQr] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [showCustomSplit, setShowCustomSplit] = useState(false);
   const [isConnected, setIsConnected] = useState(api.isConnected);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Generate QR code for receipt for feedback
+  useEffect(() => {
+    if (receipt) {
+      const targetUrl = buildFeedbackUrl(receipt.branchId || currentBranchId, receipt.tableNumber);
+      generateQrDataUrl(targetUrl, { width: 150, margin: 1 }).then(setReceiptQr).catch(() => {});
+    } else {
+      setReceiptQr('');
+    }
+  }, [receipt, currentBranchId]);
   const [filterTab, setFilterTab] = useState<'ALL' | 'PENDING' | 'READY' | 'HISTORY'>('ALL');
   const [approvalHistory, setApprovalHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -1028,6 +1040,19 @@ export const CashierView: React.FC = () => {
                 </div>
               ))}
             </div>
+
+            {/* Thermal Receipt Feedback QR Code */}
+            {receiptQr && (
+              <div style={{ textAlign: 'center', margin: '8px 0', borderTop: '1px dashed #000', paddingTop: 8 }}>
+                <img src={receiptQr} alt="Feedback QR" style={{ width: 75, height: 75, margin: '0 auto', display: 'block' }} />
+                <p style={{ fontSize: 9, fontWeight: 700, margin: '4px 0 0', color: '#000000' }}>
+                  Scan to Rate Your Experience
+                </p>
+                <p style={{ fontSize: 8, margin: '1px 0 0', color: '#444' }}>
+                  አስተያየትዎን ይስጡ • Yaada keessan nuuf ergaa
+                </p>
+              </div>
+            )}
 
             <div style={{ textAlign: 'center', fontSize: 10, color: '#666', borderTop: '1px dashed #000', paddingTop: 8, marginBottom: 14 }}>
               {language === 'am' && settings?.receipt_footer_amharic

@@ -19,6 +19,7 @@ import { OwnerView } from './views/owner/OwnerView';
 
 import { BakeryView } from './views/bakery/BakeryView';
 import { FrontCounterView } from './views/front_counter/FrontCounterView';
+import { CustomerFeedbackView } from './views/customer/CustomerFeedbackView';
 
 import {
   UtensilsCrossed,
@@ -77,6 +78,19 @@ export const App: React.FC = () => {
   useEffect(() => {
     setActiveTabOverride(null);
   }, [user?.id, user?.role]);
+
+  // Public Route: Customer QR Feedback & Review Page (Bypasses staff login & onboarding)
+  const isFeedbackPage = 
+    typeof window !== 'undefined' && (
+      window.location.search.includes('feedback=') || 
+      window.location.search.includes('review=') || 
+      window.location.pathname === '/feedback' || 
+      window.location.pathname.startsWith('/feedback/')
+    );
+
+  if (isFeedbackPage) {
+    return <CustomerFeedbackView />;
+  }
 
   // 0. Enforce Hardware Lock / License Activation
   if (licenseState && licenseState.checked && !licenseState.valid) {
