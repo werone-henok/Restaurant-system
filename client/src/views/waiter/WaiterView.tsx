@@ -948,6 +948,43 @@ export const WaiterView: React.FC = () => {
             )}
           </div>
 
+          {/* Quick Category Jump Dropdown for instant selection */}
+          <div style={{ flex: '0 0 auto' }}>
+            <select
+              value={selectedCategory}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value);
+                setMenuSearch('');
+              }}
+              style={{
+                height: 38,
+                background: 'var(--bg-card, #ffffff)',
+                border: '1.5px solid var(--border, #cbd5e1)',
+                borderRadius: 12,
+                padding: '0 12px',
+                fontSize: 12.5,
+                fontWeight: 700,
+                color: 'var(--text-main)',
+                outline: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+              }}
+            >
+              <option value="all">
+                🍽️ {language === 'am' ? 'ሁሉም ምድቦች' : 'All Categories'} ({menuItems.length})
+              </option>
+              {categories.map(c => {
+                const cnt = menuItems.filter(m => m.category_id === c.id).length;
+                const cName = language === 'am' ? (c.name_amharic || CATEGORY_NAMES_AM[c.id] || c.name) : c.name;
+                return (
+                  <option key={c.id} value={c.id}>
+                    {CATEGORY_EMOJIS[c.id] || '🍴'} {cName} ({cnt})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
           {/* Quick Filter Chips: Routing Destinations + Available Only + Layout Mode */}
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
             {/* Routing Destination Filter Pills */}
@@ -1052,14 +1089,14 @@ export const WaiterView: React.FC = () => {
             type="button"
             onClick={() => {
               if (categoryScrollRef.current) {
-                categoryScrollRef.current.scrollBy({ left: -200, behavior: 'smooth' });
+                categoryScrollRef.current.scrollBy({ left: -240, behavior: 'smooth' });
               }
             }}
             style={{
               flexShrink: 0,
-              width: 28,
-              height: 36,
-              borderRadius: 8,
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
               border: '1px solid var(--border)',
               background: 'var(--bg-card, #ffffff)',
               color: 'var(--text-main)',
@@ -1068,7 +1105,8 @@ export const WaiterView: React.FC = () => {
               alignItems: 'center',
               justifyContent: 'center',
               marginRight: 6,
-              boxShadow: 'var(--shadow-sm)'
+              boxShadow: 'var(--shadow-sm)',
+              transition: 'all 0.15s ease'
             }}
             title="Previous categories"
           >
@@ -1088,26 +1126,31 @@ export const WaiterView: React.FC = () => {
               display: 'flex',
               gap: 8,
               overflowX: 'auto',
+              flexWrap: 'nowrap',
               scrollBehavior: 'smooth',
               flex: 1,
-              padding: '2px 0'
+              padding: '4px 0'
             }}
           >
             <button
               onClick={() => { setSelectedCategory('all'); setMenuSearch(''); }}
               style={{
-                padding: '8px 14px',
+                padding: '7px 14px',
                 borderRadius: 20,
                 fontSize: 12.5,
-                fontWeight: 800,
+                fontWeight: selectedCategory === 'all' && !menuSearch ? 800 : 700,
                 whiteSpace: 'nowrap',
-                background: selectedCategory === 'all' && !menuSearch ? '#1e293b' : 'var(--bg-subtle, #f1f5f9)',
+                flexShrink: 0,
+                background: selectedCategory === 'all' && !menuSearch
+                  ? 'linear-gradient(135deg, var(--primary) 0%, #ea8c00 100%)'
+                  : 'var(--bg-card, #ffffff)',
                 color: selectedCategory === 'all' && !menuSearch ? '#ffffff' : 'var(--text-main, #334155)',
-                border: selectedCategory === 'all' && !menuSearch ? '1px solid #1e293b' : '1px solid var(--border, #e2e8f0)',
+                border: selectedCategory === 'all' && !menuSearch ? 'none' : '1px solid var(--border, #e2e8f0)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
                 cursor: 'pointer',
+                boxShadow: selectedCategory === 'all' && !menuSearch ? '0 3px 10px rgba(255, 158, 1, 0.35)' : 'none',
                 transition: 'all 0.15s ease'
               }}
             >
@@ -1115,8 +1158,9 @@ export const WaiterView: React.FC = () => {
               <span>{language === 'am' ? 'ሁሉም' : 'All Items'}</span>
               <span style={{
                 fontSize: 10,
-                fontWeight: 700,
-                background: selectedCategory === 'all' && !menuSearch ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.06)',
+                fontWeight: 800,
+                background: selectedCategory === 'all' && !menuSearch ? 'rgba(255,255,255,0.25)' : 'var(--bg-subtle)',
+                color: selectedCategory === 'all' && !menuSearch ? '#ffffff' : 'var(--text-muted)',
                 padding: '1px 6px',
                 borderRadius: 10
               }}>
@@ -1132,18 +1176,22 @@ export const WaiterView: React.FC = () => {
                   key={c.id}
                   onClick={() => { setSelectedCategory(c.id); setMenuSearch(''); }}
                   style={{
-                    padding: '8px 14px',
+                    padding: '7px 14px',
                     borderRadius: 20,
                     fontSize: 12.5,
-                    fontWeight: 800,
+                    fontWeight: isSelected ? 800 : 700,
                     whiteSpace: 'nowrap',
-                    background: isSelected ? '#1e293b' : 'var(--bg-subtle, #f1f5f9)',
+                    flexShrink: 0,
+                    background: isSelected
+                      ? 'linear-gradient(135deg, var(--primary) 0%, #ea8c00 100%)'
+                      : 'var(--bg-card, #ffffff)',
                     color: isSelected ? '#ffffff' : 'var(--text-main, #334155)',
-                    border: isSelected ? '1px solid #1e293b' : '1px solid var(--border, #e2e8f0)',
+                    border: isSelected ? 'none' : '1px solid var(--border, #e2e8f0)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
                     cursor: 'pointer',
+                    boxShadow: isSelected ? '0 3px 10px rgba(255, 158, 1, 0.35)' : 'none',
                     transition: 'all 0.15s ease'
                   }}
                 >
@@ -1152,8 +1200,9 @@ export const WaiterView: React.FC = () => {
                   {catItemCount > 0 && (
                     <span style={{
                       fontSize: 10,
-                      fontWeight: 700,
-                      background: isSelected ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.06)',
+                      fontWeight: 800,
+                      background: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--bg-subtle)',
+                      color: isSelected ? '#ffffff' : 'var(--text-muted)',
                       padding: '1px 6px',
                       borderRadius: 10
                     }}>
@@ -1170,14 +1219,14 @@ export const WaiterView: React.FC = () => {
             type="button"
             onClick={() => {
               if (categoryScrollRef.current) {
-                categoryScrollRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+                categoryScrollRef.current.scrollBy({ left: 240, behavior: 'smooth' });
               }
             }}
             style={{
               flexShrink: 0,
-              width: 28,
-              height: 36,
-              borderRadius: 8,
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
               border: '1px solid var(--border)',
               background: 'var(--bg-card, #ffffff)',
               color: 'var(--text-main)',
@@ -1186,7 +1235,8 @@ export const WaiterView: React.FC = () => {
               alignItems: 'center',
               justifyContent: 'center',
               marginLeft: 6,
-              boxShadow: 'var(--shadow-sm)'
+              boxShadow: 'var(--shadow-sm)',
+              transition: 'all 0.15s ease'
             }}
             title="Next categories"
           >

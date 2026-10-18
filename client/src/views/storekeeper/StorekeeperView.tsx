@@ -19,7 +19,9 @@ import {
   MapPin,
   Calendar,
   Layers,
-  Sparkles
+  Sparkles,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { gToast } from '../../utils/toast';
 import { tactileFeedback } from '../../utils/feedback';
@@ -87,6 +89,17 @@ export const StorekeeperView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [onlyLowStock, setOnlyLowStock] = useState(false);
+  const categoryScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollCategories = (direction: 'left' | 'right') => {
+    if (categoryScrollRef.current) {
+      const scrollAmount = 240;
+      categoryScrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   // Ingredient Create / Edit Modal
   const [showModal, setShowModal] = useState(false);
@@ -503,9 +516,9 @@ export const StorekeeperView: React.FC = () => {
       {/* ────────────────── Tab 1: Stock Catalog ────────────────── */}
       {activeTab === 'stock' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Action Header: Search & + Add Ingredient Button */}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <div style={{ position: 'relative', flex: 1 }}>
+          {/* Action Header: Search, Category Jump & + Add Ingredient Button */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: '1 1 200px' }}>
               <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-muted)' }} />
               <input
                 type="text"
@@ -524,6 +537,41 @@ export const StorekeeperView: React.FC = () => {
               )}
             </div>
 
+            {/* Quick Category Jump Dropdown */}
+            <div style={{ flex: '0 0 auto' }}>
+              <select
+                value={selectedCategory}
+                onChange={(e) => {
+                  tactileFeedback('click');
+                  setSelectedCategory(e.target.value);
+                }}
+                style={{
+                  height: 40,
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 10,
+                  padding: '0 12px',
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  color: 'var(--text-main)',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="ALL">
+                  📦 {language === 'am' ? 'ሁሉም ምድቦች' : 'All Categories'} ({stockList.length})
+                </option>
+                {CATEGORIES.map(c => {
+                  const cnt = stockList.filter(s => (s.category || '').toLowerCase() === c.id.toLowerCase()).length;
+                  return (
+                    <option key={c.id} value={c.id}>
+                      {c.emoji} {language === 'am' ? c.labelAm : c.label} ({cnt})
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
             {/* Create Ingredient Button (Storekeeper, Admin, Owner) */}
             {canManage && (
               <button
@@ -537,51 +585,149 @@ export const StorekeeperView: React.FC = () => {
             )}
           </div>
 
-          {/* Category Filter Pills - Wrapped cleanly on PC */}
-          <div className="no-scrollbar" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingBottom: 4 }}>
+          {/* Smart Horizontal Category Carousel (Single Row Slider) */}
+          <div style={{ position: 'relative', marginBottom: 2 }}>
+            {/* Left Scroll Arrow */}
             <button
-              onClick={() => { tactileFeedback('click'); setSelectedCategory('ALL'); }}
+              type="button"
+              onClick={() => scrollCategories('left')}
+              title="Scroll left"
               style={{
-                padding: '6px 12px',
-                borderRadius: 20,
-                fontSize: 12,
-                fontWeight: 700,
-                whiteSpace: 'nowrap',
-                border: 'none',
-                background: selectedCategory === 'ALL' ? 'var(--primary)' : 'var(--bg-subtle)',
-                color: selectedCategory === 'ALL' ? '#ffffff' : 'var(--text-main)',
-                cursor: 'pointer'
+                position: 'absolute',
+                left: 0,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 2,
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-md)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text-main)'
               }}
             >
-              {language === 'am' ? 'ሁሉም' : 'All'} ({stockList.length})
+              <ChevronLeft size={16} />
             </button>
-            {CATEGORIES.map(cat => {
-              const count = stockList.filter(s => (s.category || '').toLowerCase() === cat.id.toLowerCase()).length;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => { tactileFeedback('click'); setSelectedCategory(cat.id); }}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: 20,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    whiteSpace: 'nowrap',
-                    border: 'none',
-                    background: selectedCategory === cat.id ? 'var(--primary)' : 'var(--bg-subtle)',
-                    color: selectedCategory === cat.id ? '#ffffff' : 'var(--text-main)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4
-                  }}
-                >
-                  <span>{cat.emoji}</span>
-                  <span>{language === 'am' ? cat.labelAm : cat.label}</span>
-                  {count > 0 && <span style={{ opacity: 0.7, fontSize: 10 }}>({count})</span>}
-                </button>
-              );
-            })}
+
+            {/* Horizontal Track */}
+            <div
+              ref={categoryScrollRef}
+              className="no-scrollbar"
+              onWheel={(e) => {
+                if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) {
+                  e.currentTarget.scrollLeft += e.deltaY;
+                }
+              }}
+              style={{
+                display: 'flex',
+                gap: 8,
+                overflowX: 'auto',
+                flexWrap: 'nowrap',
+                alignItems: 'center',
+                padding: '4px 34px',
+                scrollBehavior: 'smooth'
+              }}
+            >
+              {/* All Items Pill */}
+              <button
+                onClick={() => { tactileFeedback('click'); setSelectedCategory('ALL'); }}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: selectedCategory === 'ALL' ? 800 : 700,
+                  border: selectedCategory === 'ALL' ? 'none' : '1px solid var(--border)',
+                  background: selectedCategory === 'ALL'
+                    ? 'linear-gradient(135deg, var(--primary) 0%, #ea8c00 100%)'
+                    : 'var(--bg-card)',
+                  color: selectedCategory === 'ALL' ? '#ffffff' : 'var(--text-main)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  boxShadow: selectedCategory === 'ALL' ? '0 3px 10px rgba(255, 158, 1, 0.35)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                📦 {language === 'am' ? 'ሁሉም' : 'All'} ({stockList.length})
+              </button>
+
+              {/* Category Pills */}
+              {CATEGORIES.map(cat => {
+                const count = stockList.filter(s => (s.category || '').toLowerCase() === cat.id.toLowerCase()).length;
+                const isSelected = selectedCategory === cat.id;
+
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => { tactileFeedback('click'); setSelectedCategory(cat.id); }}
+                    style={{
+                      padding: '7px 14px',
+                      borderRadius: 20,
+                      fontSize: 12,
+                      fontWeight: isSelected ? 800 : 700,
+                      border: isSelected ? 'none' : '1px solid var(--border)',
+                      background: isSelected
+                        ? 'linear-gradient(135deg, var(--primary) 0%, #ea8c00 100%)'
+                        : 'var(--bg-card)',
+                      color: isSelected ? '#ffffff' : 'var(--text-main)',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      boxShadow: isSelected ? '0 3px 10px rgba(255, 158, 1, 0.35)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <span>{cat.emoji}</span>
+                    <span>{language === 'am' ? cat.labelAm : cat.label}</span>
+                    <span style={{
+                      fontSize: 10,
+                      fontWeight: 800,
+                      padding: '1px 6px',
+                      borderRadius: 10,
+                      background: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--bg-subtle)',
+                      color: isSelected ? '#ffffff' : 'var(--text-muted)'
+                    }}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Right Scroll Arrow */}
+            <button
+              type="button"
+              onClick={() => scrollCategories('right')}
+              title="Scroll right"
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 2,
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-md)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text-main)'
+              }}
+            >
+              <ChevronRight size={16} />
+            </button>
           </div>
 
           {/* Low Stock Filter Bar */}

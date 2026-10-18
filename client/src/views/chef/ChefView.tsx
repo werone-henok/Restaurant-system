@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
-import { ChefHat, Clock, CheckCircle2, Play, Flame, RefreshCw, Wifi, WifiOff, Search, History, Eye, Utensils, FolderPlus, Plus, Tag, Volume2 } from 'lucide-react';
+import { ChefHat, Clock, CheckCircle2, Play, Flame, RefreshCw, Wifi, WifiOff, Search, History, Eye, Utensils, FolderPlus, Plus, Tag, Volume2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { UniversalStatusBadge } from '../../components/UniversalStatusBadge';
 import { OrderHistoryModal } from '../../components/OrderHistoryModal';
 import { CreateCategoryModal } from '../../components/CreateCategoryModal';
@@ -35,6 +35,18 @@ export const ChefView: React.FC = () => {
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('ALL');
+  const [menuSearchQuery, setMenuSearchQuery] = useState('');
+  const categoryScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollCategories = (direction: 'left' | 'right') => {
+    if (categoryScrollRef.current) {
+      const scrollAmount = 260;
+      categoryScrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   // Chef Create Menu Item Modal
   const [showDishModal, setShowDishModal] = useState(false);
@@ -700,60 +712,228 @@ export const ChefView: React.FC = () => {
             </div>
           </div>
 
-          {/* Category Filter Pills - Clean wrapping on PC */}
-          <div className="no-scrollbar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
-            <button
-              onClick={() => setSelectedCategoryFilter('ALL')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 20,
-                fontSize: 12,
-                fontWeight: 800,
-                border: selectedCategoryFilter === 'ALL' ? 'none' : '1px solid var(--border)',
-                background: selectedCategoryFilter === 'ALL' ? '#ea580c' : 'var(--bg-card)',
-                color: selectedCategoryFilter === 'ALL' ? '#ffffff' : 'var(--text-main)',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {language === 'am' ? 'ሁሉም ምግቦች' : 'All Categories'} ({menuItems.length})
-            </button>
-            {categories.map(cat => {
-              const count = menuItems.filter(m => m.category_id === cat.id).length;
-              const isSelected = selectedCategoryFilter === cat.id;
-              return (
+          {/* Search & Category Jump Control Bar */}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: '1 1 240px' }}>
+              <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <input
+                type="text"
+                value={menuSearchQuery}
+                onChange={(e) => setMenuSearchQuery(e.target.value)}
+                placeholder={language === 'am' ? 'ምግቦችን በስም ፈልግ...' : 'Search dishes by name...'}
+                style={{
+                  width: '100%',
+                  padding: '8px 30px 8px 34px',
+                  borderRadius: 10,
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-main)',
+                  fontSize: 13,
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+              {menuSearchQuery && (
                 <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategoryFilter(cat.id)}
+                  type="button"
+                  onClick={() => setMenuSearchQuery('')}
                   style={{
-                    padding: '6px 14px',
-                    borderRadius: 20,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    border: isSelected ? 'none' : '1px solid var(--border)',
-                    background: isSelected ? '#ea580c' : 'var(--bg-card)',
-                    color: isSelected ? '#ffffff' : 'var(--text-main)',
+                    position: 'absolute',
+                    right: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
                     cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6
+                    padding: 0
                   }}
                 >
-                  <span>{cat.icon || '🍽️'}</span>
-                  <span>{language === 'am' && cat.name_amharic ? cat.name_amharic : cat.name}</span>
-                  <span style={{
-                    fontSize: 10,
-                    padding: '1px 6px',
-                    borderRadius: 10,
-                    background: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--bg-subtle)',
-                    color: isSelected ? '#ffffff' : 'var(--text-muted)'
-                  }}>
-                    {count}
-                  </span>
+                  <X size={14} />
                 </button>
-              );
-            })}
+              )}
+            </div>
+
+            {/* Quick Category Jump Dropdown for fast navigation */}
+            <div style={{ flex: '0 0 auto' }}>
+              <select
+                value={selectedCategoryFilter}
+                onChange={(e) => {
+                  setSelectedCategoryFilter(e.target.value);
+                  setMenuSearchQuery('');
+                }}
+                style={{
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 10,
+                  padding: '8px 12px',
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  color: 'var(--text-main)',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="ALL">
+                  🍽️ {language === 'am' ? 'ሁሉም ምድቦች' : 'All Categories'} ({menuItems.length})
+                </option>
+                {categories.map(c => {
+                  const cnt = menuItems.filter(m => m.category_id === c.id).length;
+                  const cName = language === 'am' && c.name_amharic ? c.name_amharic : c.name;
+                  return (
+                    <option key={c.id} value={c.id}>
+                      {c.icon || '🍽️'} {cName} ({cnt})
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          </div>
+
+          {/* Smart Horizontal Category Carousel (Single Row Slider) */}
+          <div style={{ position: 'relative', marginBottom: 14 }}>
+            {/* Left Scroll Arrow Button */}
+            <button
+              type="button"
+              onClick={() => scrollCategories('left')}
+              title="Scroll left"
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 2,
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-md)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text-main)'
+              }}
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            {/* Horizontal Track */}
+            <div
+              ref={categoryScrollRef}
+              className="no-scrollbar"
+              onWheel={(e) => {
+                if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) {
+                  e.currentTarget.scrollLeft += e.deltaY;
+                }
+              }}
+              style={{
+                display: 'flex',
+                gap: 8,
+                overflowX: 'auto',
+                flexWrap: 'nowrap',
+                alignItems: 'center',
+                padding: '4px 34px',
+                scrollBehavior: 'smooth'
+              }}
+            >
+              {/* All Items Pill */}
+              <button
+                onClick={() => { setSelectedCategoryFilter('ALL'); setMenuSearchQuery(''); }}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: selectedCategoryFilter === 'ALL' && !menuSearchQuery ? 800 : 700,
+                  border: selectedCategoryFilter === 'ALL' && !menuSearchQuery ? 'none' : '1px solid var(--border)',
+                  background: selectedCategoryFilter === 'ALL' && !menuSearchQuery
+                    ? 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)'
+                    : 'var(--bg-card)',
+                  color: selectedCategoryFilter === 'ALL' && !menuSearchQuery ? '#ffffff' : 'var(--text-main)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  boxShadow: selectedCategoryFilter === 'ALL' && !menuSearchQuery ? '0 3px 10px rgba(234, 88, 12, 0.35)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                🍽️ {language === 'am' ? 'ሁሉም ምግቦች' : 'All Items'} ({menuItems.length})
+              </button>
+
+              {/* Individual Category Pills */}
+              {categories.map(cat => {
+                const count = menuItems.filter(m => m.category_id === cat.id).length;
+                const isSelected = selectedCategoryFilter === cat.id && !menuSearchQuery;
+                const catTitle = language === 'am' && cat.name_amharic ? cat.name_amharic : cat.name;
+
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => { setSelectedCategoryFilter(cat.id); setMenuSearchQuery(''); }}
+                    style={{
+                      padding: '7px 14px',
+                      borderRadius: 20,
+                      fontSize: 12,
+                      fontWeight: isSelected ? 800 : 700,
+                      border: isSelected ? 'none' : '1px solid var(--border)',
+                      background: isSelected
+                        ? 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)'
+                        : 'var(--bg-card)',
+                      color: isSelected ? '#ffffff' : 'var(--text-main)',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      boxShadow: isSelected ? '0 3px 10px rgba(234, 88, 12, 0.35)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <span>{cat.icon || '🍽️'}</span>
+                    <span>{catTitle}</span>
+                    <span style={{
+                      fontSize: 10,
+                      fontWeight: 800,
+                      padding: '1px 6px',
+                      borderRadius: 10,
+                      background: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--bg-subtle)',
+                      color: isSelected ? '#ffffff' : 'var(--text-muted)'
+                    }}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Right Scroll Arrow Button */}
+            <button
+              type="button"
+              onClick={() => scrollCategories('right')}
+              title="Scroll right"
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 2,
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-md)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text-main)'
+              }}
+            >
+              <ChevronRight size={16} />
+            </button>
           </div>
 
           {/* Dishes Grid */}
@@ -762,11 +942,17 @@ export const ChefView: React.FC = () => {
               <div className="animate-spin" style={{ width: 28, height: 28, border: '3px solid var(--border)', borderTopColor: '#ea580c', borderRadius: '50%', margin: '0 auto 12px' }} />
               <span style={{ fontWeight: 600, fontSize: 13 }}>{language === 'am' ? 'ምግቦች በመጫን ላይ...' : 'Loading menu items...'}</span>
             </div>
-          ) : menuItems.filter(item => selectedCategoryFilter === 'ALL' || item.category_id === selectedCategoryFilter).length === 0 ? (
+          ) : menuItems.filter(item => {
+              const matchesCategory = selectedCategoryFilter === 'ALL' || item.category_id === selectedCategoryFilter;
+              if (!matchesCategory) return false;
+              if (!menuSearchQuery.trim()) return true;
+              const q = menuSearchQuery.toLowerCase();
+              return (item.name && item.name.toLowerCase().includes(q)) || (item.name_amharic && item.name_amharic.toLowerCase().includes(q));
+            }).length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 20px', background: 'var(--bg-card)', borderRadius: 14, border: '1px dashed var(--border)' }}>
               <Utensils size={32} color="var(--text-muted)" style={{ margin: '0 auto 8px', display: 'block', opacity: 0.5 }} />
               <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
-                {language === 'am' ? 'በዚህ ምድብ ውስጥ ምንም ምግብ አልተገኘም' : 'No menu items in this category'}
+                {language === 'am' ? 'በዚህ ምድብ ወይም ፍለጋ ውስጥ ምንም ምግብ አልተገኘም' : 'No menu items in this category or search'}
               </div>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                 {language === 'am' ? 'የመጀመሪያውን ምግብ ለመጨመር ከላይ ያለውን ቁልፍ ይጫኑ' : 'Click "+ New Dish" above to add the first item'}
@@ -775,7 +961,13 @@ export const ChefView: React.FC = () => {
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
               {menuItems
-                .filter(item => selectedCategoryFilter === 'ALL' || item.category_id === selectedCategoryFilter)
+                .filter(item => {
+                  const matchesCategory = selectedCategoryFilter === 'ALL' || item.category_id === selectedCategoryFilter;
+                  if (!matchesCategory) return false;
+                  if (!menuSearchQuery.trim()) return true;
+                  const q = menuSearchQuery.toLowerCase();
+                  return (item.name && item.name.toLowerCase().includes(q)) || (item.name_amharic && item.name_amharic.toLowerCase().includes(q));
+                })
                 .map(item => (
                   <div
                     key={item.id}
