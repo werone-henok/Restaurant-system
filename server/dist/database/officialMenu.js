@@ -243,7 +243,7 @@ export const OFFICIAL_MENU_ITEMS = [
         name_amharic: 'ፕሮቲን ሼክ',
         description: 'High-energy post-workout shake packed with pure whey protein, banana, peanut butter and oat milk',
         price: 200,
-        photo_url: 'https://images.unsplash.com/photo-1579722820308-d74e571900a9?w=600&q=80',
+        photo_url: 'https://images.unsplash.com/photo-1577805947697-89e18249d767?w=600&q=80',
         prep_time_minutes: 5,
         routing_destination: 'BAR'
     },
@@ -265,7 +265,7 @@ export const OFFICIAL_MENU_ITEMS = [
         name_amharic: 'ፓፓያ ጭማቂ',
         description: 'Vibrant sun-ripened tropical papaya smoothie, naturally sweet and smooth with fresh citrus hint',
         price: 200,
-        photo_url: 'https://images.unsplash.com/photo-1596704017254-9b121068fb31?w=600&q=80',
+        photo_url: 'https://images.unsplash.com/photo-1517282009859-f000ec3b26fe?w=600&q=80',
         prep_time_minutes: 5,
         routing_destination: 'BAR'
     },
@@ -276,7 +276,7 @@ export const OFFICIAL_MENU_ITEMS = [
         name_amharic: 'ፓይናፕል ጭማቂ',
         description: 'Freshly squeezed golden pineapple juice packed with refreshing tropical tang and vitamin C',
         price: 250,
-        photo_url: 'https://images.unsplash.com/photo-1589733955941-5eeaf752f6dd?w=600&q=80',
+        photo_url: 'https://images.unsplash.com/photo-1550258987-190a2d41a8ba?w=600&q=80',
         prep_time_minutes: 5,
         routing_destination: 'BAR'
     },

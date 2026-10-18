@@ -722,6 +722,25 @@ export function runMigrations() {
     db.exec("UPDATE purchase_orders SET receiving_date = date(created_at) WHERE receiving_date IS NULL");
   } catch (_) {}
 
+  // Auto-correct known legacy bad photos in existing database
+  try {
+    db.prepare(`
+      UPDATE menu_items
+      SET photo_url = 'https://images.unsplash.com/photo-1517282009859-f000ec3b26fe?w=600&q=80'
+      WHERE id = 'juice_papaya' AND (photo_url LIKE '%photo-1596704017254%' OR photo_url IS NULL)
+    `).run();
+    db.prepare(`
+      UPDATE menu_items
+      SET photo_url = 'https://images.unsplash.com/photo-1550258987-190a2d41a8ba?w=600&q=80'
+      WHERE id = 'juice_pineapple' AND (photo_url LIKE '%photo-1589733955941%' OR photo_url IS NULL)
+    `).run();
+    db.prepare(`
+      UPDATE menu_items
+      SET photo_url = 'https://images.unsplash.com/photo-1577805947697-89e18249d767?w=600&q=80'
+      WHERE id = 'juice_protein_shake' AND (photo_url LIKE '%photo-1579722820308%' OR photo_url IS NULL)
+    `).run();
+  } catch (_) {}
+
   // Ensure default restaurant_settings row exists and is up to date
   try {
     const existing = db.prepare('SELECT id, restaurant_name, logo_url FROM restaurant_settings LIMIT 1').get() as { id: string; restaurant_name: string; logo_url?: string } | undefined;

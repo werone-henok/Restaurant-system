@@ -6,8 +6,8 @@ import { ImageUploadCompressor } from '../../components/ImageUploadCompressor';
 import { DetailedReportsDashboard } from '../../components/DetailedReportsDashboard';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import { compressImageFile } from '../../utils/imageCompressor';
-import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, AlertTriangle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils, BarChart3, FolderPlus, Tag, Clock, Sparkles, Globe, Key, Lock, ShieldCheck, ShieldAlert, UserCheck, UserX, Camera, RefreshCw, X, History, Eye, EyeOff } from 'lucide-react';
 import { CreateCategoryModal } from '../../components/CreateCategoryModal';
+import { Users, DollarSign, FileText, CheckCircle, XCircle, AlertCircle, AlertTriangle, Building2, Plus, Edit2, Trash2, Settings, Shield, Utensils, BarChart3, FolderPlus, Tag, Clock, Sparkles, Globe, Key, Lock, ShieldCheck, ShieldAlert, UserCheck, UserX, Camera, RefreshCw, X, History, Eye, EyeOff, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { TIMEZONE_OPTIONS, getDeviceTimezone } from '../../utils/timezone';
 import { gToast } from '../../utils/toast';
 import { tactileFeedback } from '../../utils/feedback';
@@ -46,6 +46,17 @@ export const AdminView: React.FC = () => {
   const [menuDesc, setMenuDesc] = useState('');
   const [menuPhoto, setMenuPhoto] = useState<string>('');
   const [isSeedingMenu, setIsSeedingMenu] = useState(false);
+  const [menuSearchQuery, setMenuSearchQuery] = useState('');
+  const categoryScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollCategories = (direction: 'left' | 'right') => {
+    if (categoryScrollRef.current) {
+      categoryScrollRef.current.scrollBy({
+        left: direction === 'left' ? -220 : 220,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   // Table & Section Management State
   const [showTableModal, setShowTableModal] = useState(false);
@@ -2336,27 +2347,43 @@ export const AdminView: React.FC = () => {
       {/* 6. MENU MANAGEMENT TAB */}
       {activeTab === 'menu' && (
         <div>
+          {/* Top Title & Quick Actions Bar */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-            <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase' }}>
-              {language === 'am' ? 'የምግብ ካታሎግ' : 'Menu Catalogue'} ({menuItems.length} items)
-            </span>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase' }}>
+                {language === 'am' ? 'የምግብ ካታሎግ' : 'Menu Catalogue'}
+              </span>
+              <span style={{
+                fontSize: 11,
+                fontWeight: 800,
+                background: 'var(--primary-light, rgba(255,158,1,0.15))',
+                color: 'var(--primary)',
+                padding: '2px 8px',
+                borderRadius: 10
+              }}>
+                {menuItems.length} {language === 'am' ? 'ምግቦች' : 'items'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <button
                 onClick={handleSeedOfficialMenu}
                 disabled={isSeedingMenu}
                 className="btn btn-secondary"
-                style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+                style={{ padding: '6px 10px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 700 }}
                 title={language === 'am' ? 'ሁሉንም 11 ምድቦች እና 96 ምግቦች ጫን' : 'Restore all 11 official categories & 96 items'}
               >
-                <Sparkles size={14} color="#f59e0b" /> {isSeedingMenu ? (language === 'am' ? 'በመጫን ላይ...' : 'Seeding...') : (language === 'am' ? 'ኦፊሴላዊ ምናሌ ጫን' : 'Restore Official Menu')}
+                <Sparkles size={13} color="#f59e0b" />
+                <span>{isSeedingMenu ? (language === 'am' ? 'በመጫን ላይ...' : 'Seeding...') : (language === 'am' ? 'ኦፊሴላዊ ምናሌ ጫን' : 'Restore Menu')}</span>
               </button>
               <button
                 onClick={() => setShowCategoryManagerModal(true)}
                 className="btn btn-secondary"
-                style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+                style={{ padding: '6px 10px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 700 }}
                 title={language === 'am' ? 'ሁሉንም ምድቦች አስተዳድር፣ አስተካክል ወይም ሰርዝ' : 'Manage, edit or delete all menu categories'}
               >
-                <Tag size={14} color="var(--primary)" /> {language === 'am' ? 'ምድቦችን አስተዳድር' : 'Manage Categories'}
+                <Tag size={13} color="var(--primary)" />
+                <span>{language === 'am' ? 'ምድቦች' : 'Categories'}</span>
               </button>
               <button
                 onClick={() => {
@@ -2364,9 +2391,10 @@ export const AdminView: React.FC = () => {
                   setShowCategoryModal(true);
                 }}
                 className="btn btn-secondary"
-                style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+                style={{ padding: '6px 10px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 700 }}
               >
-                <FolderPlus size={14} color="var(--primary)" /> {language === 'am' ? 'አዲስ ምድብ' : '+ New Category'}
+                <FolderPlus size={13} color="var(--primary)" />
+                <span>{language === 'am' ? '+ አዲስ ምድብ' : '+ Category'}</span>
               </button>
               <button
                 onClick={() => {
@@ -2381,206 +2409,410 @@ export const AdminView: React.FC = () => {
                   setShowMenuModal(true);
                 }}
                 className="btn btn-primary"
-                style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 800 }}
+                style={{ padding: '6px 14px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 800 }}
               >
-                <Plus size={14} /> {language === 'am' ? 'ምግብ ጨምር' : 'Add Menu Item'}
+                <Plus size={14} />
+                <span>{language === 'am' ? 'ምግብ ጨምር' : 'Add Item'}</span>
               </button>
             </div>
           </div>
 
-          {/* Category Filter Pills - Wrapped cleanly on PC */}
-          <div
-            className="no-scrollbar"
-            onWheel={(e) => {
-              if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) {
-                e.currentTarget.scrollLeft += e.deltaY;
-              }
-            }}
-            style={{
-              display: 'flex',
-              gap: 8,
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              marginBottom: 14
-            }}
-          >
-            <button
-              onClick={() => setSelectedCategoryFilter('ALL')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 20,
-                fontSize: 12,
-                fontWeight: 800,
-                border: selectedCategoryFilter === 'ALL' ? 'none' : '1px solid var(--border)',
-                background: selectedCategoryFilter === 'ALL' ? 'var(--primary)' : 'var(--bg-card)',
-                color: selectedCategoryFilter === 'ALL' ? '#ffffff' : 'var(--text-main)',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {language === 'am' ? 'ሁሉም ምግቦች' : 'All Categories'} ({menuItems.length})
-            </button>
-            {categories.map(cat => {
-              const count = menuItems.filter(m => m.category_id === cat.id).length;
-              const isSelected = selectedCategoryFilter === cat.id;
-              return (
-                <div
-                  key={cat.id}
+          {/* Quick Search & Filter Controls */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 10,
+            flexWrap: 'wrap'
+          }}>
+            {/* Search Input */}
+            <div style={{ flex: '1 1 200px', position: 'relative' }}>
+              <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: 10, top: 10 }} />
+              <input
+                type="text"
+                value={menuSearchQuery}
+                onChange={(e) => setMenuSearchQuery(e.target.value)}
+                placeholder={language === 'am' ? 'ምግብ በስም ወይም በማብራሪያ ፈልግ...' : 'Search dish by name, Amharic, or ingredient...'}
+                style={{
+                  width: '100%',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 10,
+                  padding: '7px 30px 7px 30px',
+                  fontSize: 12,
+                  color: 'var(--text-main)',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+              {menuSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setMenuSearchQuery('')}
                   style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    borderRadius: 20,
-                    border: isSelected ? 'none' : '1px solid var(--border)',
-                    background: isSelected ? 'var(--primary)' : 'var(--bg-card)',
-                    overflow: 'hidden',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                    boxShadow: isSelected ? '0 2px 6px rgba(0,0,0,0.12)' : 'none'
+                    position: 'absolute',
+                    right: 8,
+                    top: 8,
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: 0
                   }}
                 >
-                  <button
-                    onClick={() => setSelectedCategoryFilter(cat.id)}
-                    style={{
-                      padding: '6px 8px 6px 12px',
-                      fontSize: 12,
-                      fontWeight: isSelected ? 800 : 700,
-                      background: 'transparent',
-                      color: isSelected ? '#ffffff' : 'var(--text-main)',
-                      border: 'none',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6
-                    }}
-                  >
-                    <span>{cat.icon || '🍽️'}</span>
-                    <span>{language === 'am' && cat.name_amharic ? cat.name_amharic : cat.name}</span>
-                    <span style={{
-                      fontSize: 10,
-                      padding: '1px 6px',
-                      borderRadius: 10,
-                      background: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--bg-subtle)',
-                      color: isSelected ? '#ffffff' : 'var(--text-muted)'
-                    }}>
-                      {count}
-                    </span>
-                  </button>
+                  <X size={14} />
+                </button>
+              )}
+            </div>
 
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingCategory(cat);
-                      setShowCategoryModal(true);
-                    }}
-                    title={language === 'am' ? `"${cat.name_amharic || cat.name}" ምድብ አስተካክል / ሰርዝ` : `Edit / Delete "${cat.name}" category`}
-                    style={{
-                      padding: '6px 8px 6px 4px',
-                      background: 'transparent',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: isSelected ? '#ffffff' : 'var(--text-muted)',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      opacity: 0.85
-                    }}
-                  >
-                    <Edit2 size={12} />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
-            {menuItems
-              .filter(item => selectedCategoryFilter === 'ALL' || item.category_id === selectedCategoryFilter)
-              .map(item => (
-              <div
-                key={item.id}
+            {/* Quick Category Jump Dropdown for fast navigation */}
+            <div style={{ flex: '0 0 auto' }}>
+              <select
+                value={selectedCategoryFilter}
+                onChange={(e) => setSelectedCategoryFilter(e.target.value)}
                 style={{
                   background: 'var(--bg-card)',
                   border: '1px solid var(--border)',
-                  borderRadius: 14,
-                  padding: 12,
-                  display: 'flex',
-                  gap: 12,
-                  alignItems: 'center',
-                  boxShadow: 'var(--shadow-sm)'
+                  borderRadius: 10,
+                  padding: '7px 12px',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: 'var(--text-main)',
+                  outline: 'none',
+                  cursor: 'pointer'
                 }}
               >
-                {/* Thumbnail */}
-                <div style={{ width: 64, height: 64, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: 'linear-gradient(135deg, #f97316, #ea580c)', position: 'relative' }}>
-                  {item.photo_url ? (
-                    <img
-                      src={resolveImageUrl(item.photo_url)}
-                      alt={item.name}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const fallback = target.parentElement?.querySelector('.admin-item-fallback') as HTMLElement;
-                        if (fallback) fallback.style.display = 'flex';
-                      }}
-                    />
-                  ) : null}
+                <option value="ALL">
+                  🍽️ {language === 'am' ? 'ሁሉም ምድቦች' : 'All Categories'} ({menuItems.length})
+                </option>
+                {categories.map(c => {
+                  const cnt = menuItems.filter(m => m.category_id === c.id).length;
+                  const cName = language === 'am' && c.name_amharic ? c.name_amharic : c.name;
+                  return (
+                    <option key={c.id} value={c.id}>
+                      {c.icon || '🍽️'} {cName} ({cnt})
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          </div>
+
+          {/* Smart Horizontal Category Carousel (Single Row Slider) */}
+          <div style={{ position: 'relative', marginBottom: 14 }}>
+            {/* Left Scroll Arrow Button */}
+            <button
+              type="button"
+              onClick={() => scrollCategories('left')}
+              title="Scroll left"
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 2,
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-md)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text-main)'
+              }}
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            {/* Horizontal Track */}
+            <div
+              ref={categoryScrollRef}
+              className="no-scrollbar"
+              onWheel={(e) => {
+                if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) {
+                  e.currentTarget.scrollLeft += e.deltaY;
+                }
+              }}
+              style={{
+                display: 'flex',
+                gap: 8,
+                overflowX: 'auto',
+                flexWrap: 'nowrap',
+                alignItems: 'center',
+                padding: '4px 34px',
+                scrollBehavior: 'smooth'
+              }}
+            >
+              {/* All Items Pill */}
+              <button
+                onClick={() => setSelectedCategoryFilter('ALL')}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: selectedCategoryFilter === 'ALL' ? 800 : 700,
+                  border: selectedCategoryFilter === 'ALL' ? 'none' : '1px solid var(--border)',
+                  background: selectedCategoryFilter === 'ALL'
+                    ? 'linear-gradient(135deg, var(--primary) 0%, #ea8c00 100%)'
+                    : 'var(--bg-card)',
+                  color: selectedCategoryFilter === 'ALL' ? '#ffffff' : 'var(--text-main)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  boxShadow: selectedCategoryFilter === 'ALL' ? '0 3px 10px rgba(255, 158, 1, 0.35)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                🍽️ {language === 'am' ? 'ሁሉም ምግቦች' : 'All Items'} ({menuItems.length})
+              </button>
+
+              {/* Individual Category Pills */}
+              {categories.map(cat => {
+                const count = menuItems.filter(m => m.category_id === cat.id).length;
+                const isSelected = selectedCategoryFilter === cat.id;
+                const catTitle = language === 'am' && cat.name_amharic ? cat.name_amharic : cat.name;
+
+                return (
                   <div
-                    className="admin-item-fallback"
+                    key={cat.id}
                     style={{
-                      position: 'absolute',
-                      inset: 0,
-                      display: item.photo_url ? 'none' : 'flex',
+                      display: 'inline-flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#fff',
-                      fontWeight: 800,
-                      fontSize: 20
+                      borderRadius: 20,
+                      border: isSelected ? 'none' : '1px solid var(--border)',
+                      background: isSelected
+                        ? 'linear-gradient(135deg, var(--primary) 0%, #ea8c00 100%)'
+                        : 'var(--bg-card)',
+                      overflow: 'hidden',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                      boxShadow: isSelected ? '0 3px 10px rgba(255, 158, 1, 0.35)' : 'none',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    {item.name.charAt(0)}
-                  </div>
-                </div>
-
-                {/* Details */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
-                    <h5 style={{ fontSize: 13, fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{item.name}</h5>
-                    <span style={{
-                      fontSize: 9,
-                      fontWeight: 800,
-                      padding: '1px 6px',
-                      borderRadius: 4,
-                      background: item.routing_destination === 'KITCHEN' ? '#fef3c7' : item.routing_destination === 'BAR' ? '#e0f2fe' : item.routing_destination === 'BAKERY' ? '#fdf2f8' : item.routing_destination === 'FRONT_COUNTER' ? '#f0fdf4' : '#f3e8ff',
-                      color: item.routing_destination === 'KITCHEN' ? '#b45309' : item.routing_destination === 'BAR' ? '#0284c7' : item.routing_destination === 'BAKERY' ? '#be185d' : item.routing_destination === 'FRONT_COUNTER' ? '#15803d' : '#7e22ce'
-                    }}>
-                      {item.routing_destination}
-                    </span>
-                    {item.category_name && (
-                      <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>
-                        {item.category_name}
+                    <button
+                      onClick={() => setSelectedCategoryFilter(cat.id)}
+                      style={{
+                        padding: '7px 8px 7px 12px',
+                        fontSize: 12,
+                        fontWeight: isSelected ? 800 : 700,
+                        background: 'transparent',
+                        color: isSelected ? '#ffffff' : 'var(--text-main)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}
+                    >
+                      <span>{cat.icon || '🍽️'}</span>
+                      <span>{catTitle}</span>
+                      <span style={{
+                        fontSize: 10,
+                        fontWeight: 800,
+                        padding: '1px 6px',
+                        borderRadius: 10,
+                        background: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--bg-subtle)',
+                        color: isSelected ? '#ffffff' : 'var(--text-muted)'
+                      }}>
+                        {count}
                       </span>
-                    )}
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingCategory(cat);
+                        setShowCategoryModal(true);
+                      }}
+                      title={language === 'am' ? `"${catTitle}" ምድብ አስተካክል / ሰርዝ` : `Edit / Delete "${cat.name}" category`}
+                      style={{
+                        padding: '7px 8px 7px 2px',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: isSelected ? '#ffffff' : 'var(--text-muted)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: isSelected ? 0.95 : 0.7
+                      }}
+                    >
+                      <Edit2 size={11} />
+                    </button>
                   </div>
-                  {item.name_amharic && (
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block' }}>{item.name_amharic}</span>
+                );
+              })}
+            </div>
+
+            {/* Right Scroll Arrow Button */}
+            <button
+              type="button"
+              onClick={() => scrollCategories('right')}
+              title="Scroll right"
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 2,
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-md)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text-main)'
+              }}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          {/* Menu Items List */}
+          {(() => {
+            const filteredItems = menuItems.filter(item => {
+              const matchesCategory = selectedCategoryFilter === 'ALL' || item.category_id === selectedCategoryFilter;
+              if (!matchesCategory) return false;
+              if (!menuSearchQuery.trim()) return true;
+              const q = menuSearchQuery.toLowerCase().trim();
+              return (
+                (item.name && item.name.toLowerCase().includes(q)) ||
+                (item.name_amharic && item.name_amharic.toLowerCase().includes(q)) ||
+                (item.description && item.description.toLowerCase().includes(q))
+              );
+            });
+
+            if (filteredItems.length === 0) {
+              return (
+                <div style={{
+                  background: 'var(--bg-card)',
+                  border: '1px dashed var(--border)',
+                  borderRadius: 16,
+                  padding: '36px 20px',
+                  textAlign: 'center',
+                  color: 'var(--text-muted)',
+                  marginTop: 10
+                }}>
+                  <Utensils size={32} style={{ margin: '0 auto 10px', opacity: 0.5 }} />
+                  <p style={{ fontSize: 14, fontWeight: 700, margin: '0 0 6px', color: 'var(--text-main)' }}>
+                    {language === 'am' ? 'ምንም ምግብ አልተገኘም' : 'No menu items found'}
+                  </p>
+                  <p style={{ fontSize: 12, margin: 0 }}>
+                    {menuSearchQuery
+                      ? (language === 'am' ? `ከ "${menuSearchQuery}" ጋር የሚዛመድ ምግብ የለም` : `No dishes match "${menuSearchQuery}" in this category`)
+                      : (language === 'am' ? 'በዚህ ምድብ ውስጥ የተመዘገበ ምግብ የለም' : 'No items registered in this category yet')}
+                  </p>
+                  {menuSearchQuery && (
+                    <button
+                      onClick={() => setMenuSearchQuery('')}
+                      className="btn btn-secondary"
+                      style={{ marginTop: 12, padding: '4px 12px', fontSize: 11 }}
+                    >
+                      {language === 'am' ? 'ፍለጋውን አጽዳ' : 'Clear Search'}
+                    </button>
                   )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary)' }}>
-                      {item.price} {t('currency')}
-                    </span>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => openEditMenuItem(item)} className="btn btn-secondary" style={{ padding: '3px 8px', fontSize: 11 }}>
-                        <Edit2 size={12} /> Edit
-                      </button>
-                      <button onClick={() => handleDeleteMenuItem(item.id, item.name)} className="btn btn-danger" style={{ padding: '3px 8px', fontSize: 11 }}>
-                        <Trash2 size={12} />
-                      </button>
+                </div>
+              );
+            }
+
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+                {filteredItems.map(item => (
+                  <div
+                    key={item.id}
+                    style={{
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 14,
+                      padding: 12,
+                      display: 'flex',
+                      gap: 12,
+                      alignItems: 'center',
+                      boxShadow: 'var(--shadow-sm)'
+                    }}
+                  >
+                    {/* Thumbnail */}
+                    <div style={{ width: 64, height: 64, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: 'linear-gradient(135deg, #f97316, #ea580c)', position: 'relative' }}>
+                      {item.photo_url ? (
+                        <img
+                          src={resolveImageUrl(item.photo_url)}
+                          alt={item.name}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const fallback = target.parentElement?.querySelector('.admin-item-fallback') as HTMLElement;
+                            if (fallback) fallback.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className="admin-item-fallback"
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          display: item.photo_url ? 'none' : 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#fff',
+                          fontWeight: 800,
+                          fontSize: 20
+                        }}
+                      >
+                        {item.name.charAt(0)}
+                      </div>
+                    </div>
+
+                    {/* Details */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
+                        <h5 style={{ fontSize: 13, fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{item.name}</h5>
+                        <span style={{
+                          fontSize: 9,
+                          fontWeight: 800,
+                          padding: '1px 6px',
+                          borderRadius: 4,
+                          background: item.routing_destination === 'KITCHEN' ? '#fef3c7' : item.routing_destination === 'BAR' ? '#e0f2fe' : item.routing_destination === 'BAKERY' ? '#fdf2f8' : item.routing_destination === 'FRONT_COUNTER' ? '#f0fdf4' : '#f3e8ff',
+                          color: item.routing_destination === 'KITCHEN' ? '#b45309' : item.routing_destination === 'BAR' ? '#0284c7' : item.routing_destination === 'BAKERY' ? '#be185d' : item.routing_destination === 'FRONT_COUNTER' ? '#15803d' : '#7e22ce'
+                        }}>
+                          {item.routing_destination}
+                        </span>
+                        {item.category_name && (
+                          <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>
+                            {item.category_name}
+                          </span>
+                        )}
+                      </div>
+                      {item.name_amharic && (
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block' }}>{item.name_amharic}</span>
+                      )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary)' }}>
+                          {item.price} {t('currency')}
+                        </span>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button onClick={() => openEditMenuItem(item)} className="btn btn-secondary" style={{ padding: '3px 8px', fontSize: 11 }}>
+                            <Edit2 size={12} /> Edit
+                          </button>
+                          <button onClick={() => handleDeleteMenuItem(item.id, item.name)} className="btn btn-danger" style={{ padding: '3px 8px', fontSize: 11 }}>
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })()}
         </div>
       )}
 
@@ -3774,9 +4006,9 @@ export const AdminView: React.FC = () => {
 
       {/* MODAL: CREATE CATEGORY */}
       <CreateCategoryModal
-        isOpen={showCategoryModal}
+        isOpen={showCategoryModal && !editingCategory}
         onClose={() => setShowCategoryModal(false)}
-        onCategoryCreated={(newCat) => {
+        onCategoryCreated={(newCat: any) => {
           setCategories(prev => {
             if (prev.some(c => c.id === newCat.id)) return prev;
             return [...prev, newCat];
@@ -4160,7 +4392,7 @@ export const AdminView: React.FC = () => {
         onCategorySaved={async () => {
           await loadData();
         }}
-        onCategoryDeleted={async (catId) => {
+        onCategoryDeleted={async (catId: string) => {
           if (selectedCategoryFilter === catId) setSelectedCategoryFilter('ALL');
           await loadData();
         }}

@@ -19,6 +19,7 @@ export const ImageUploadCompressor: React.FC<ImageUploadCompressorProps> = ({
 }) => {
   const { language } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [compressing, setCompressing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [stats, setStats] = useState<CompressionResult | null>(null);
@@ -85,6 +86,21 @@ export const ImageUploadCompressor: React.FC<ImageUploadCompressorProps> = ({
     if (file) {
       handleFile(file);
     }
+    e.target.value = '';
+  };
+
+  const triggerGalleryPicker = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
+  };
+
+  const triggerCamera = () => {
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
+      cameraInputRef.current.click();
+    }
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -99,15 +115,31 @@ export const ImageUploadCompressor: React.FC<ImageUploadCompressorProps> = ({
   const handleRemove = () => {
     onChange('');
     setStats(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
 
   const displaySrc = resolveImageUrl(value);
 
   return (
     <div style={{ marginBottom: 14, width: '100%', boxSizing: 'border-box' }}>
+      {/* Hidden File Inputs: Gallery & Camera */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileInputChange}
+        style={{ display: 'none' }}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileInputChange}
+        style={{ display: 'none' }}
+      />
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
         <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', flex: '1 1 180px', minWidth: 0, wordBreak: 'break-word' }}>
           {label || (language === 'am' ? 'የምግብ ፎቶ (ከተንቀሳቃሽ ስልክ ወይም ፋይል)' : 'Dish Photo (Mobile Camera or Upload)')}
@@ -153,18 +185,8 @@ export const ImageUploadCompressor: React.FC<ImageUploadCompressorProps> = ({
         </div>
       ) : (
         <div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleFileInputChange}
-            style={{ display: 'none' }}
-          />
-
           {!value ? (
             <div
-              onClick={() => fileInputRef.current?.click()}
               onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
               onDragLeave={() => setIsDragOver(false)}
               onDrop={handleDrop}
@@ -172,35 +194,35 @@ export const ImageUploadCompressor: React.FC<ImageUploadCompressorProps> = ({
                 border: isDragOver ? '2px dashed var(--primary)' : '2px dashed var(--border)',
                 background: isDragOver ? 'var(--primary-light, #fff7ed)' : 'var(--bg-subtle, #f9fafb)',
                 borderRadius: 14,
-                padding: '24px 16px',
+                padding: '18px 16px',
                 textAlign: 'center',
-                cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 8,
+                gap: 10,
                 width: '100%',
                 boxSizing: 'border-box'
               }}
             >
               <div
                 style={{
-                  width: 46,
-                  height: 46,
-                  borderRadius: 23,
-                  background: '#ffffff',
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  background: 'var(--bg-card)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: 'var(--primary)',
-                  boxShadow: 'var(--shadow-sm)'
+                  boxShadow: 'var(--shadow-sm)',
+                  border: '1px solid var(--border)'
                 }}
               >
                 {compressing || uploading ? (
-                  <RefreshCw size={22} className="animate-spin" />
+                  <RefreshCw size={20} className="animate-spin" />
                 ) : (
-                  <Camera size={22} />
+                  <Camera size={20} />
                 )}
               </div>
 
@@ -210,11 +232,34 @@ export const ImageUploadCompressor: React.FC<ImageUploadCompressorProps> = ({
                     ? (language === 'am' ? '⚡ ፎቶው እየተጨመቀ ነው...' : '⚡ Compressing image...')
                     : uploading
                     ? (language === 'am' ? 'ወደ ሲስተም እየተላከ ነው...' : 'Uploading compressed photo...')
-                    : (language === 'am' ? 'ፎቶ አንሳ ወይም ከስልክ ምረጥ' : 'Tap to take photo or choose file')}
+                    : (language === 'am' ? 'ምስል ይምረጡ ወይም ፎቶ ያንሱ' : 'Select an image or take a photo')}
                 </span>
                 <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginTop: 2 }}>
-                  {language === 'am' ? 'ስልኩ ፎቶውን በራስ-ሰር አጨብቆ ቀላል ያደርገዋል (~40KB)' : 'Auto-compresses high-res camera photos to ~40KB'}
+                  {language === 'am' ? 'ስልኩ ፎቶውን በራስ-ሰር አጨብቆ ፈጣን ያደርገዋል (~40KB)' : 'Auto-compresses high-res camera photos to ~40KB'}
                 </span>
+              </div>
+
+              {/* Action Buttons for Mobile & Desktop */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <button
+                  type="button"
+                  onClick={triggerGalleryPicker}
+                  className="btn btn-secondary"
+                  style={{ padding: '6px 14px', fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                >
+                  <Upload size={14} />
+                  <span>{language === 'am' ? 'ከስልክ/ፋይል ምረጥ' : 'Choose File / Gallery'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={triggerCamera}
+                  className="btn btn-secondary"
+                  style={{ padding: '6px 14px', fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                >
+                  <Camera size={14} />
+                  <span>{language === 'am' ? 'ካሜራ አንሳ' : 'Take Photo'}</span>
+                </button>
               </div>
             </div>
           ) : (
@@ -223,7 +268,7 @@ export const ImageUploadCompressor: React.FC<ImageUploadCompressorProps> = ({
                 border: '1px solid var(--border)',
                 borderRadius: 14,
                 padding: 12,
-                background: '#ffffff',
+                background: 'var(--bg-card)',
                 boxShadow: 'var(--shadow-sm)',
                 width: '100%',
                 boxSizing: 'border-box'
@@ -236,7 +281,7 @@ export const ImageUploadCompressor: React.FC<ImageUploadCompressorProps> = ({
                     height: 76,
                     borderRadius: 10,
                     overflow: 'hidden',
-                    background: '#f1f5f9',
+                    background: 'var(--bg-subtle)',
                     flexShrink: 0,
                     border: '1px solid var(--border)'
                   }}
@@ -274,14 +319,24 @@ export const ImageUploadCompressor: React.FC<ImageUploadCompressorProps> = ({
                     </span>
                   )}
 
-                  <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
                     <button
                       type="button"
-                      onClick={() => fileInputRef.current?.click()}
+                      onClick={triggerGalleryPicker}
                       className="btn btn-secondary"
-                      style={{ padding: '4px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}
+                      style={{ padding: '4px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      title={language === 'am' ? 'ከስልክ ወይም ከፋይል ቀይር' : 'Change from files / gallery'}
                     >
-                      <RefreshCw size={12} /> {language === 'am' ? 'ቀይር' : 'Change'}
+                      <Upload size={12} /> {language === 'am' ? 'ከፋይል' : 'Change'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={triggerCamera}
+                      className="btn btn-secondary"
+                      style={{ padding: '4px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      title={language === 'am' ? 'በካሜራ አዲስ ፎቶ አንሳ' : 'Take new camera photo'}
+                    >
+                      <Camera size={12} /> {language === 'am' ? 'ካሜራ' : 'Camera'}
                     </button>
                     <button
                       type="button"
@@ -291,7 +346,7 @@ export const ImageUploadCompressor: React.FC<ImageUploadCompressorProps> = ({
                         fontSize: 11,
                         fontWeight: 700,
                         color: '#ef4444',
-                        background: '#fef2f2',
+                        background: 'var(--danger-light, #fef2f2)',
                         border: '1px solid #fee2e2',
                         borderRadius: 8,
                         cursor: 'pointer',

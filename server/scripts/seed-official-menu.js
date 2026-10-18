@@ -20,7 +20,7 @@ console.log(`[Official Menu CLI] Connecting to database at: ${dbPath}`);
 const db = new Database(dbPath);
 
 // Import official categories and menu items
-import('../src/database/officialMenu.js').then(({ seedOfficialMenu, OFFICIAL_CATEGORIES, OFFICIAL_MENU_ITEMS }) => {
+import('../dist/database/officialMenu.js').then(({ seedOfficialMenu, OFFICIAL_CATEGORIES, OFFICIAL_MENU_ITEMS }) => {
   console.log(`[Official Menu CLI] Starting seed of ${OFFICIAL_CATEGORIES.length} categories and ${OFFICIAL_MENU_ITEMS.length} items...`);
   seedOfficialMenu(true);
   console.log('[Official Menu CLI] ✓ Seeding complete!');

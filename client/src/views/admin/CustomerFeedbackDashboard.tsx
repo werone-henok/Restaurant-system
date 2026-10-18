@@ -246,11 +246,11 @@ export const CustomerFeedbackDashboard: React.FC = () => {
             value={selectedBranch}
             onChange={(e) => setSelectedBranch(e.target.value)}
             style={{
-              background: 'var(--bg-input, #0f172a)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
               borderRadius: 10,
               padding: '8px 12px',
-              color: '#ffffff',
+              color: 'var(--text-main)',
               fontSize: 12,
               fontWeight: 700,
               outline: 'none'
@@ -310,8 +310,8 @@ export const CustomerFeedbackDashboard: React.FC = () => {
           <button
             onClick={fetchFeedback}
             style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
               borderRadius: 10,
               width: 36,
               height: 36,
@@ -319,7 +319,7 @@ export const CustomerFeedbackDashboard: React.FC = () => {
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              color: 'var(--text-muted, #94a3b8)'
+              color: 'var(--text-muted)'
             }}
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
@@ -335,16 +335,17 @@ export const CustomerFeedbackDashboard: React.FC = () => {
       }}>
         {/* Card 1: Overall Average Rating */}
         <div style={{
-          background: 'var(--bg-card, #1e293b)',
-          border: '1px solid var(--border-color, rgba(255, 255, 255, 0.08))',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
           borderRadius: 20,
           padding: '18px 20px',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
+          boxShadow: 'var(--shadow-sm)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted, #94a3b8)', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
               Overall Score
             </span>
             <div style={{
@@ -356,17 +357,17 @@ export const CustomerFeedbackDashboard: React.FC = () => {
               borderRadius: 8
             }}>
               <Star size={13} fill="#f59e0b" color="#f59e0b" />
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#f59e0b' }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#d97706' }}>
                 {stats.totalReviews} Reviews
               </span>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, margin: '10px 0 6px' }}>
-            <span style={{ fontSize: 36, fontWeight: 900, color: '#ffffff', lineHeight: 1 }}>
+            <span style={{ fontSize: 36, fontWeight: 900, color: 'var(--text-main)', lineHeight: 1 }}>
               {stats.avgRating.toFixed(1)}
             </span>
-            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-muted, #94a3b8)' }}>
+            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-muted)' }}>
               / 5.0
             </span>
           </div>
@@ -377,7 +378,7 @@ export const CustomerFeedbackDashboard: React.FC = () => {
                 key={star}
                 size={16}
                 fill={stats.avgRating >= star ? '#f59e0b' : stats.avgRating >= star - 0.5 ? '#f59e0b' : 'none'}
-                color={stats.avgRating >= star - 0.5 ? '#f59e0b' : '#475569'}
+                color={stats.avgRating >= star - 0.5 ? '#f59e0b' : 'var(--border)'}
               />
             ))}
           </div>
@@ -385,51 +386,53 @@ export const CustomerFeedbackDashboard: React.FC = () => {
 
         {/* Card 2: Aspect Scores */}
         <div style={{
-          background: 'var(--bg-card, #1e293b)',
-          border: '1px solid var(--border-color, rgba(255, 255, 255, 0.08))',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
           borderRadius: 20,
           padding: '16px 20px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          gap: 6
+          gap: 6,
+          boxShadow: 'var(--shadow-sm)'
         }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted, #94a3b8)', textTransform: 'uppercase' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
             Aspect Breakdown
           </span>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-              <span style={{ color: '#cbd5e1' }}>🍲 Food Quality</span>
+              <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>🍲 Food Quality</span>
               <span style={{ fontWeight: 800, color: '#f97316' }}>{stats.avgFood ? `${stats.avgFood}★` : '—'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-              <span style={{ color: '#cbd5e1' }}>⚡ Service Speed</span>
-              <span style={{ fontWeight: 800, color: '#06b6d4' }}>{stats.avgService ? `${stats.avgService}★` : '—'}</span>
+              <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>⚡ Service Speed</span>
+              <span style={{ fontWeight: 800, color: '#0284c7' }}>{stats.avgService ? `${stats.avgService}★` : '—'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-              <span style={{ color: '#cbd5e1' }}>✨ Cleanliness</span>
-              <span style={{ fontWeight: 800, color: '#10b981' }}>{stats.avgCleanliness ? `${stats.avgCleanliness}★` : '—'}</span>
+              <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>✨ Cleanliness</span>
+              <span style={{ fontWeight: 800, color: '#059669' }}>{stats.avgCleanliness ? `${stats.avgCleanliness}★` : '—'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-              <span style={{ color: '#cbd5e1' }}>🎶 Atmosphere</span>
-              <span style={{ fontWeight: 800, color: '#a855f7' }}>{stats.avgAmbiance ? `${stats.avgAmbiance}★` : '—'}</span>
+              <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>🎶 Atmosphere</span>
+              <span style={{ fontWeight: 800, color: '#7c3aed' }}>{stats.avgAmbiance ? `${stats.avgAmbiance}★` : '—'}</span>
             </div>
           </div>
         </div>
 
         {/* Card 3: Sentiment & Urgency */}
         <div style={{
-          background: 'var(--bg-card, #1e293b)',
-          border: '1px solid var(--border-color, rgba(255, 255, 255, 0.08))',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
           borderRadius: 20,
           padding: '18px 20px',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
+          boxShadow: 'var(--shadow-sm)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted, #94a3b8)', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
               Sentiment & Alerts
             </span>
             {stats.unresolvedUrgentCount > 0 && (
@@ -449,28 +452,28 @@ export const CustomerFeedbackDashboard: React.FC = () => {
 
           <div style={{ display: 'flex', gap: 8, margin: '10px 0' }}>
             <div style={{ flex: 1, background: 'rgba(16, 185, 129, 0.1)', borderRadius: 10, padding: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: 16, fontWeight: 900, color: '#10b981' }}>
+              <div style={{ fontSize: 16, fontWeight: 900, color: '#059669' }}>
                 {stats.sentimentDistribution.POSITIVE}
               </div>
-              <div style={{ fontSize: 10, color: '#94a3b8' }}>Positive</div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>Positive</div>
             </div>
 
-            <div style={{ flex: 1, background: 'rgba(234, 179, 8, 0.1)', borderRadius: 10, padding: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: 16, fontWeight: 900, color: '#eab308' }}>
+            <div style={{ flex: 1, background: 'rgba(234, 179, 8, 0.12)', borderRadius: 10, padding: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: 16, fontWeight: 900, color: '#d97706' }}>
                 {stats.sentimentDistribution.NEUTRAL}
               </div>
-              <div style={{ fontSize: 10, color: '#94a3b8' }}>Neutral</div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>Neutral</div>
             </div>
 
             <div style={{ flex: 1, background: 'rgba(239, 68, 68, 0.1)', borderRadius: 10, padding: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: 16, fontWeight: 900, color: '#ef4444' }}>
+              <div style={{ fontSize: 16, fontWeight: 900, color: '#dc2626' }}>
                 {stats.sentimentDistribution.NEGATIVE}
               </div>
-              <div style={{ fontSize: 10, color: '#94a3b8' }}>Negative</div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>Negative</div>
             </div>
           </div>
 
-          <div style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
             {stats.totalReviews > 0 
               ? `${Math.round((stats.sentimentDistribution.POSITIVE / stats.totalReviews) * 100)}% positive rating ratio`
               : 'Awaiting reviews'}
@@ -495,9 +498,9 @@ export const CustomerFeedbackDashboard: React.FC = () => {
               style={{
                 padding: '6px 12px',
                 borderRadius: 10,
-                border: selectedRating === r ? '1px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.1)',
-                background: selectedRating === r ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                color: selectedRating === r ? '#fbbf24' : 'var(--text-muted, #94a3b8)',
+                border: selectedRating === r ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                background: selectedRating === r ? 'rgba(245, 158, 11, 0.15)' : 'var(--bg-card)',
+                color: selectedRating === r ? '#d97706' : 'var(--text-muted)',
                 fontSize: 12,
                 fontWeight: 700,
                 cursor: 'pointer'
@@ -514,11 +517,11 @@ export const CustomerFeedbackDashboard: React.FC = () => {
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
             style={{
-              background: '#0f172a',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
               borderRadius: 10,
               padding: '6px 12px',
-              color: '#ffffff',
+              color: 'var(--text-main)',
               fontSize: 12,
               fontWeight: 700,
               outline: 'none'
@@ -532,18 +535,18 @@ export const CustomerFeedbackDashboard: React.FC = () => {
           </select>
 
           <div style={{ position: 'relative' }}>
-            <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: 10, top: 10 }} />
+            <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: 10, top: 10 }} />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search comments, phone..."
               style={{
-                background: '#0f172a',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
                 borderRadius: 10,
                 padding: '6px 10px 6px 30px',
-                color: '#ffffff',
+                color: 'var(--text-main)',
                 fontSize: 12,
                 outline: 'none',
                 width: 170
@@ -582,16 +585,16 @@ export const CustomerFeedbackDashboard: React.FC = () => {
               <div
                 key={item.id}
                 style={{
-                  background: isUrgentUnresolved ? 'rgba(239, 68, 68, 0.05)' : 'var(--bg-card, #1e293b)',
+                  background: isUrgentUnresolved ? 'rgba(239, 68, 68, 0.05)' : 'var(--bg-card)',
                   border: isUrgentUnresolved 
-                    ? '1px solid rgba(239, 68, 68, 0.35)' 
-                    : '1px solid var(--border-color, rgba(255, 255, 255, 0.08))',
+                    ? '1.5px solid rgba(239, 68, 68, 0.4)' 
+                    : '1px solid var(--border)',
                   borderRadius: 18,
                   padding: '16px 20px',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 12,
-                  boxShadow: isUrgentUnresolved ? '0 4px 20px rgba(239, 68, 68, 0.15)' : 'none'
+                  boxShadow: isUrgentUnresolved ? '0 4px 20px rgba(239, 68, 68, 0.15)' : 'var(--shadow-sm)'
                 }}
               >
                 {/* Review Header */}
@@ -622,7 +625,7 @@ export const CustomerFeedbackDashboard: React.FC = () => {
                     </div>
 
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-main, #ffffff)' }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-main)' }}>
                         {item.customer_name || 'Anonymous Guest'}
                         {item.table_number && (
                           <span style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b', marginLeft: 8 }}>
@@ -630,15 +633,15 @@ export const CustomerFeedbackDashboard: React.FC = () => {
                           </span>
                         )}
                         {item.waiter_name && (
-                          <span style={{ fontSize: 12, fontWeight: 500, color: '#94a3b8', marginLeft: 8 }}>
+                          <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>
                             (Server: {item.waiter_name})
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                         {item.branch_name || 'Main Branch'} • {new Date(item.created_at).toLocaleString()}
                         {item.language && (
-                          <span style={{ marginLeft: 6, textTransform: 'uppercase', color: '#64748b' }}>
+                          <span style={{ marginLeft: 6, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                             [{item.language}]
                           </span>
                         )}
@@ -747,7 +750,7 @@ export const CustomerFeedbackDashboard: React.FC = () => {
                           fontSize: 11,
                           fontWeight: 600,
                           background: df.liked ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                          color: df.liked ? '#10b981' : '#f87171',
+                          color: df.liked ? '#10b981' : '#ef4444',
                           padding: '2px 8px',
                           borderRadius: 6,
                           display: 'inline-flex',
@@ -767,8 +770,8 @@ export const CustomerFeedbackDashboard: React.FC = () => {
                   <div style={{
                     fontSize: 13,
                     lineHeight: 1.5,
-                    color: 'var(--text-main, #f1f5f9)',
-                    background: 'rgba(255, 255, 255, 0.03)',
+                    color: 'var(--text-main)',
+                    background: 'var(--bg-subtle)',
                     padding: '10px 12px',
                     borderRadius: 10,
                     borderLeft: isNegative ? '3px solid #ef4444' : isPositive ? '3px solid #10b981' : '3px solid #eab308'
@@ -779,7 +782,7 @@ export const CustomerFeedbackDashboard: React.FC = () => {
 
                 {/* Customer Contact details if provided */}
                 {(item.customer_phone || item.customer_email) && (
-                  <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#94a3b8' }}>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)' }}>
                     {item.customer_phone && (
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Phone size={12} color="#f59e0b" />
@@ -788,7 +791,7 @@ export const CustomerFeedbackDashboard: React.FC = () => {
                     )}
                     {item.customer_email && (
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Mail size={12} color="#38bdf8" />
+                        <Mail size={12} color="#0284c7" />
                         {item.customer_email}
                       </span>
                     )}
@@ -798,7 +801,7 @@ export const CustomerFeedbackDashboard: React.FC = () => {
                 {/* Manager Notes / Action Resolution Section */}
                 <div style={{
                   paddingTop: 8,
-                  borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+                  borderTop: '1px solid var(--border)',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
@@ -813,11 +816,11 @@ export const CustomerFeedbackDashboard: React.FC = () => {
                         placeholder="Add manager action note (e.g. Talked to waiter, apologized to guest)..."
                         style={{
                           flex: 1,
-                          background: '#0f172a',
-                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          background: 'var(--bg-card)',
+                          border: '1px solid var(--border)',
                           borderRadius: 8,
                           padding: '6px 10px',
-                          color: '#ffffff',
+                          color: 'var(--text-main)',
                           fontSize: 12,
                           outline: 'none'
                         }}
@@ -840,8 +843,8 @@ export const CustomerFeedbackDashboard: React.FC = () => {
                       <button
                         onClick={() => setEditingNoteId(null)}
                         style={{
-                          background: 'rgba(255, 255, 255, 0.05)',
-                          color: '#94a3b8',
+                          background: 'var(--bg-subtle)',
+                          color: 'var(--text-muted)',
                           border: 'none',
                           borderRadius: 8,
                           padding: '6px 10px',
@@ -854,7 +857,7 @@ export const CustomerFeedbackDashboard: React.FC = () => {
                     </div>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-                      <span style={{ color: 'var(--text-muted, #94a3b8)' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>
                         {item.manager_notes ? `Note: ${item.manager_notes}` : 'No manager notes yet.'}
                       </span>
                       <button
@@ -894,8 +897,8 @@ export const CustomerFeedbackDashboard: React.FC = () => {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(0, 0, 0, 0.8)',
-          backdropFilter: 'blur(10px)',
+          background: 'rgba(0, 0, 0, 0.7)',
+          backdropFilter: 'blur(8px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -903,8 +906,8 @@ export const CustomerFeedbackDashboard: React.FC = () => {
           padding: 16
         }}>
           <div style={{
-            background: 'var(--bg-card, #1e293b)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
             borderRadius: 24,
             width: '100%',
             maxWidth: 540,
@@ -913,14 +916,14 @@ export const CustomerFeedbackDashboard: React.FC = () => {
             display: 'flex',
             flexDirection: 'column',
             gap: 16,
-            color: '#ffffff',
-            boxShadow: '0 25px 50px rgba(0, 0, 0, 0.5)',
+            color: 'var(--text-main)',
+            boxShadow: '0 25px 50px rgba(0, 0, 0, 0.35)',
             overflowY: 'auto'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Bot size={22} color="#8b5cf6" />
-                <h3 style={{ fontSize: 17, fontWeight: 900, margin: 0 }}>
+                <h3 style={{ fontSize: 17, fontWeight: 900, margin: 0, color: 'var(--text-main)' }}>
                   AI Sentiment & Executive Feedback Report
                 </h3>
               </div>
@@ -929,7 +932,7 @@ export const CustomerFeedbackDashboard: React.FC = () => {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#94a3b8',
+                  color: 'var(--text-muted)',
                   fontSize: 18,
                   cursor: 'pointer'
                 }}
@@ -939,20 +942,20 @@ export const CustomerFeedbackDashboard: React.FC = () => {
             </div>
 
             {loadingAi ? (
-              <div style={{ padding: '40px 0', textAlign: 'center', color: '#94a3b8' }}>
+              <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
                 <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 12px' }} />
                 <p>Analyzing customer sentiment and synthesizing operational advice...</p>
               </div>
             ) : aiInsights ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div style={{
-                  background: 'rgba(99, 102, 241, 0.1)',
-                  border: '1px solid rgba(99, 102, 241, 0.3)',
+                  background: 'var(--bg-subtle)',
+                  border: '1px solid var(--border)',
                   borderRadius: 14,
                   padding: '12px 16px',
                   fontSize: 13,
                   lineHeight: 1.5,
-                  color: '#e0e7ff'
+                  color: 'var(--text-main)'
                 }}>
                   {(language as string) === 'am' 
                     ? aiInsights.summaryAmharic 
@@ -964,10 +967,10 @@ export const CustomerFeedbackDashboard: React.FC = () => {
                 {/* Praises */}
                 {aiInsights.praises?.length > 0 && (
                   <div>
-                    <h4 style={{ fontSize: 13, fontWeight: 800, color: '#10b981', margin: '0 0 6px' }}>
+                    <h4 style={{ fontSize: 13, fontWeight: 800, color: '#059669', margin: '0 0 6px' }}>
                       🌟 Top Customer Praises
                     </h4>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#cbd5e1', lineHeight: 1.6 }}>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--text-main)', lineHeight: 1.6 }}>
                       {aiInsights.praises.map((p: string, i: number) => (
                         <li key={i}>{p}</li>
                       ))}
@@ -978,10 +981,10 @@ export const CustomerFeedbackDashboard: React.FC = () => {
                 {/* Complaints */}
                 {aiInsights.complaints?.length > 0 && (
                   <div>
-                    <h4 style={{ fontSize: 13, fontWeight: 800, color: '#ef4444', margin: '0 0 6px' }}>
+                    <h4 style={{ fontSize: 13, fontWeight: 800, color: '#dc2626', margin: '0 0 6px' }}>
                       ⚠️ Recurring Issues Requiring Attention
                     </h4>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#cbd5e1', lineHeight: 1.6 }}>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--text-main)', lineHeight: 1.6 }}>
                       {aiInsights.complaints.map((c: string, i: number) => (
                         <li key={i}>{c}</li>
                       ))}
@@ -997,10 +1000,10 @@ export const CustomerFeedbackDashboard: React.FC = () => {
                     borderRadius: 14,
                     padding: '12px 16px'
                   }}>
-                    <h4 style={{ fontSize: 13, fontWeight: 800, color: '#fbbf24', margin: '0 0 6px' }}>
+                    <h4 style={{ fontSize: 13, fontWeight: 800, color: '#d97706', margin: '0 0 6px' }}>
                       📋 Recommended Action Checklist
                     </h4>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#fef08a', lineHeight: 1.5 }}>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--text-main)', lineHeight: 1.5 }}>
                       {aiInsights.actionItems.map((a: string, i: number) => (
                         <li key={i}>{a}</li>
                       ))}

@@ -333,19 +333,28 @@ menuRouter.put('/items/:id', authenticate, authorizeRole(['admin', 'owner', 'che
     const item = db.prepare('SELECT * FROM menu_items WHERE id = ?').get(req.params.id);
     if (!item)
         return res.status(404).json({ error: 'Menu item not found' });
+    const targetPhotoUrl = photo_url !== undefined
+        ? (photo_url && String(photo_url).trim().length > 0 ? String(photo_url).trim() : null)
+        : item.photo_url;
+    const targetNameAmharic = name_amharic !== undefined
+        ? (name_amharic && String(name_amharic).trim().length > 0 ? String(name_amharic).trim() : null)
+        : item.name_amharic;
+    const targetDescription = description !== undefined
+        ? (description && String(description).trim().length > 0 ? String(description).trim() : null)
+        : item.description;
     db.prepare(`
     UPDATE menu_items
     SET category_id = COALESCE(?, category_id),
         name = COALESCE(?, name),
-        name_amharic = COALESCE(?, name_amharic),
-        description = COALESCE(?, description),
+        name_amharic = ?,
+        description = ?,
         price = COALESCE(?, price),
-        photo_url = COALESCE(?, photo_url),
+        photo_url = ?,
         prep_time_minutes = COALESCE(?, prep_time_minutes),
         routing_destination = COALESCE(?, routing_destination),
         is_available = COALESCE(?, is_available)
     WHERE id = ?
-  `).run(category_id ?? null, name ?? null, name_amharic ?? null, description ?? null, price !== undefined ? Number(price) : null, photo_url !== undefined ? photo_url : null, prep_time_minutes !== undefined ? Number(prep_time_minutes) : null, routing_destination ?? null, is_available !== undefined ? (is_available ? 1 : 0) : null, req.params.id);
+  `).run(category_id ?? null, name ?? null, targetNameAmharic, targetDescription, price !== undefined ? Number(price) : null, targetPhotoUrl, prep_time_minutes !== undefined ? Number(prep_time_minutes) : null, routing_destination ?? null, is_available !== undefined ? (is_available ? 1 : 0) : null, req.params.id);
     const updatedItem = db.prepare(`
     SELECT m.*, c.name as category_name,
            bpv.product_id as bakery_product_id,
